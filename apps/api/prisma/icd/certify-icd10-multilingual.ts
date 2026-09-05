@@ -17,6 +17,9 @@
 import { PrismaClient } from "@prisma/client";
 import { normalizeIcd10CodeForLookup } from "@medora/shared";
 import {
+  countAliasUsedAsDisplay,
+  countConsumerUsedAsClinician,
+  countCrossLanguageFallback,
   evaluateIcd10MultilingualCertification,
   ICD10_CM_CODE_SYSTEM,
   icd10MultilingualCertificationExitCode,
@@ -191,18 +194,12 @@ export async function collectIcd10MultilingualCertification(
       codeOnlyEs += 1;
     }
 
-    const enText = row.shortDescription?.trim() || row.longDescription?.trim() || "";
-    if (fr.localized && enText && fr.displayName === enText) crossLanguageFallback += 1;
-    if (es.localized && enText && es.displayName === enText) crossLanguageFallback += 1;
-    if (fr.localized && !es.localized && es.displayName === fr.displayName) crossLanguageFallback += 1;
-    if (es.localized && !fr.localized && fr.displayName === es.displayName) crossLanguageFallback += 1;
+    crossLanguageFallback += countCrossLanguageFallback({ fr, es });
 
     const consumerLabels = new Set(
       rowsForCode.filter((t) => t.labelRegister === "CONSUMER").map((t) => t.preferredLabel),
     );
-    if (consumerLabels.has(fr.displayName) || consumerLabels.has(es.displayName)) {
-      consumerUsedAsClinician += 1;
-    }
+    consumerUsedAsClinician += countConsumerUsedAsClinician({ fr, es, consumerLabels });
 
     const clinicianFr = new Set(
       rowsForCode
@@ -214,15 +211,14 @@ export async function collectIcd10MultilingualCertification(
         .filter((t) => t.locale === "es" && t.labelRegister === "CLINICIAN_PREFERRED" && t.status === "APPROVED")
         .map((t) => t.preferredLabel),
     );
-    for (const alias of aliases) {
-      if (alias.icd10CatalogId !== row.id) continue;
-      if (alias.locale === "fr" && fr.localized && fr.displayName === alias.aliasText && !clinicianFr.has(fr.displayName)) {
-        aliasUsedAsDisplay += 1;
-      }
-      if (alias.locale === "es" && es.localized && es.displayName === alias.aliasText && !clinicianEs.has(es.displayName)) {
-        aliasUsedAsDisplay += 1;
-      }
-    }
+    aliasUsedAsDisplay += countAliasUsedAsDisplay({
+      catalogId: row.id,
+      fr,
+      es,
+      clinicianFrLabels: clinicianFr,
+      clinicianEsLabels: clinicianEs,
+      aliases,
+    });
   }
 
   for (const [parentCode, childCode] of CATEGORY_CHILD_PAIRS) {

@@ -90,6 +90,7 @@ describe("MEDUI.TRILANG.DX.P3 selectable display contract", () => {
       displayResolution: mapIcd10ExactnessToDisplayResolution(resolved.exactness),
     });
     expect(resolved.exactness).toBe("EXACT_GOVERNED");
+    expect(resolved.sourceKind).toBe("TERMINOLOGY_ROW");
     expect(line.primary).toBe("Dolor abdominal en varios sitios");
     expect(line.primary).not.toMatch(/abdominal pain/i);
     expect(line.metadata).toBe("R10.85");

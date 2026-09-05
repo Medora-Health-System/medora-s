@@ -94,6 +94,7 @@ function unlocalized(code: string): Icd10DiagnosisDisplayResult {
     exactness: "UNLOCALIZED_CODE",
     provenance: null,
     localized: false,
+    sourceKind: "UNLOCALIZED_CODE",
   };
 }
 
@@ -106,6 +107,7 @@ function officialEnglish(catalog: Icd10CatalogDisplaySource): Icd10DiagnosisDisp
     exactness: "EXACT_SOURCE",
     provenance: "OFFICIAL_SOURCE",
     localized: true,
+    sourceKind: "CATALOG_SOURCE",
   };
 }
 
@@ -153,6 +155,7 @@ export function resolveIcd10DiagnosisDisplay(input: {
     exactness: chosen.exactness,
     provenance: chosen.provenance,
     localized: true,
+    sourceKind: "TERMINOLOGY_ROW",
   };
 }
 

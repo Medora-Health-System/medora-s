@@ -1,7 +1,8 @@
 /**
  * Import the current 89 governed FR/ES clinician labels into Icd10DiagnosisTerminology.
  * Source of truth: @medora/shared GOVERNED_ICD10_CLINICIAN_LABELS.
- * Does not rewrite Diagnosis rows. Rejects codes missing from the target release.
+ * Does not rewrite Diagnosis rows or governed source maps.
+ * Rejects codes missing from the target release and category/header nonselectable rows.
  *
  *   pnpm --filter @medora/api run icd:seed-governed-terminology
  *   pnpm --filter @medora/api run icd:seed-governed-terminology -- --dry-run
@@ -49,6 +50,8 @@ export async function seedGovernedIcd10Terminology(
       normalizedCode: true,
       codeSystem: true,
       releaseVersion: true,
+      isSelectable: true,
+      isBillable: true,
     },
   });
   const catalogByNormalizedCode = new Map(catalogRows.map((row) => [row.normalizedCode, row]));
@@ -58,15 +61,65 @@ export async function seedGovernedIcd10Terminology(
   });
 
   console.log(`RELEASE=${options.releaseVersion}`);
+  console.log(`SOURCE_ID=${plan.sourceId}`);
+  console.log(`TERMINOLOGY_VERSION=${plan.terminologyVersion}`);
+  console.log(`SOURCE_PRIORITY=${plan.sourcePriority}`);
   console.log(`DETECTED_FR=${plan.detectedFr}`);
   console.log(`DETECTED_ES=${plan.detectedEs}`);
+  console.log(`CANDIDATE_TERMINOLOGY=${plan.detectedFr + plan.detectedEs}`);
   console.log(`ACCEPTED_TERMINOLOGY=${plan.acceptedTerminology.length}`);
+  console.log(`ACCEPTED_SELECTABLE_FR=${plan.acceptedSelectableFr}`);
+  console.log(`ACCEPTED_SELECTABLE_ES=${plan.acceptedSelectableEs}`);
   console.log(`ACCEPTED_ALIASES=${plan.acceptedAliases.length}`);
   console.log(`REJECTED=${plan.rejected.length}`);
-  console.log(`TERMINOLOGY_VERSION=${plan.terminologyVersion}`);
+  console.log(`CATEGORY_HEADER_EXCLUDED=${plan.rejectedCategoryHeader}`);
+  console.log(`INVALID_ABSENT=${plan.rejectedAbsent}`);
+  console.log(`IDENTITY_MISMATCH=${plan.rejectedIdentityMismatch}`);
   for (const row of plan.rejected) {
     console.log(`REJECT ${row.locale} ${row.normalizedCode} ${row.reason}`);
   }
+
+  const existingTerminologyKeys = new Set(
+    (
+      await prisma.icd10DiagnosisTerminology.findMany({
+        where: { codeSystem: ICD10_CM_CODE_SYSTEM, releaseVersion: options.releaseVersion },
+        select: {
+          code: true,
+          locale: true,
+          labelRegister: true,
+          provenance: true,
+          sourceId: true,
+          terminologyVersion: true,
+        },
+      })
+    ).map(
+      (row) =>
+        `${row.code}|${row.locale}|${row.labelRegister}|${row.provenance}|${row.sourceId}|${row.terminologyVersion}`,
+    ),
+  );
+  const existingAliasKeys = new Set(
+    (
+      await prisma.icd10DiagnosisSearchAlias.findMany({
+        where: { codeSystem: ICD10_CM_CODE_SYSTEM, releaseVersion: options.releaseVersion },
+        select: { code: true, locale: true, aliasText: true },
+      })
+    ).map((row) => `${row.code}|${row.locale}|${row.aliasText}`),
+  );
+  const terminologyNew = plan.acceptedTerminology.filter(
+    (row) =>
+      !existingTerminologyKeys.has(
+        `${row.code}|${row.locale}|${row.labelRegister}|${row.provenance}|${row.sourceId}|${row.terminologyVersion}`,
+      ),
+  ).length;
+  const terminologyExisting = plan.acceptedTerminology.length - terminologyNew;
+  const aliasNew = plan.acceptedAliases.filter(
+    (row) => !existingAliasKeys.has(`${row.code}|${row.locale}|${row.aliasText}`),
+  ).length;
+  const aliasExisting = plan.acceptedAliases.length - aliasNew;
+  console.log(`TERMINOLOGY_NEW=${terminologyNew}`);
+  console.log(`TERMINOLOGY_EXISTING=${terminologyExisting}`);
+  console.log(`ALIAS_NEW=${aliasNew}`);
+  console.log(`ALIAS_EXISTING=${aliasExisting}`);
 
   if (options.dryRun) {
     console.log("DRY_RUN=YES");
@@ -155,7 +208,7 @@ async function main() {
   const prisma = new PrismaClient();
   try {
     const plan = await seedGovernedIcd10Terminology(prisma, options);
-    if (plan.rejected.length > 0) {
+    if (plan.rejectedIdentityMismatch > 0) {
       process.exitCode = 1;
     }
   } finally {

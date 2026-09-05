@@ -82,6 +82,7 @@ describe("MEDUI.TRILANG.DX.P2 ICD display resolver", () => {
       exactness: "EXACT_SOURCE",
       provenance: "OFFICIAL_SOURCE",
       localized: true,
+      sourceKind: "CATALOG_SOURCE",
     });
   });
 
@@ -98,6 +99,7 @@ describe("MEDUI.TRILANG.DX.P2 ICD display resolver", () => {
       expect(result.displayName).toBe("A42.1");
       expect(result.exactness).toBe("UNLOCALIZED_CODE");
       expect(result.localized).toBe(false);
+      expect(result.sourceKind).toBe("UNLOCALIZED_CODE");
       expect(result.displayName).not.toMatch(/actinomycosis/i);
     }
   });
@@ -496,6 +498,7 @@ describe("MEDUI.TRILANG.DX.P2 search match vs display", () => {
     });
     expect(searchMatchText).toBe("Abdominal pain, unspecified site");
     expect(display.displayName).toBe("Douleur abdominale à plusieurs sites");
+    expect(display.sourceKind).toBe("TERMINOLOGY_ROW");
     expect(display.displayName).not.toBe(searchMatchText);
   });
 
@@ -598,12 +601,24 @@ describe("MEDUI.TRILANG.DX.P2 governed seed transform", () => {
     ]);
   });
 
-  it("rejects category/prefix labels that are not an exact catalog code", () => {
+  it("rejects category/header catalog rows even when the exact code exists", () => {
     const maps = {
       fr: { L03: "Cellulite", L0390: "Cellulite, non précisée" },
       es: { L03: "Celulitis", L0390: "Celulitis no especificada" },
     };
     const catalogByNormalizedCode = new Map([
+      [
+        "L03",
+        {
+          id: "cat-l03",
+          code: "L03",
+          normalizedCode: "L03",
+          codeSystem: SYSTEM,
+          releaseVersion: RELEASE,
+          isSelectable: false,
+          isBillable: false,
+        },
+      ],
       [
         "L0390",
         {
@@ -612,6 +627,8 @@ describe("MEDUI.TRILANG.DX.P2 governed seed transform", () => {
           normalizedCode: "L0390",
           codeSystem: SYSTEM,
           releaseVersion: RELEASE,
+          isSelectable: true,
+          isBillable: true,
         },
       ],
     ]);
@@ -621,10 +638,54 @@ describe("MEDUI.TRILANG.DX.P2 governed seed transform", () => {
       expectedReleaseVersion: RELEASE,
     });
     expect(plan.acceptedTerminology.map((row) => row.code).sort()).toEqual(["L03.90", "L03.90"]);
+    expect(plan.rejectedCategoryHeader).toBe(2);
     expect(plan.rejected.map((row) => `${row.locale}:${row.normalizedCode}:${row.reason}`).sort()).toEqual([
-      "es:L03:CODE_NOT_IN_TARGET_RELEASE",
-      "fr:L03:CODE_NOT_IN_TARGET_RELEASE",
+      "es:L03:NOT_SELECTABLE_CATEGORY_HEADER",
+      "fr:L03:NOT_SELECTABLE_CATEGORY_HEADER",
     ]);
+  });
+
+  it("does not substitute an invalid governed code with a nearby FY2026 code", () => {
+    const maps = {
+      fr: { S030XXA: "Luxation de la mâchoire", T141: "Lésion traumatique, non précisée" },
+      es: { S030XXA: "Luxación de la mandíbula", T141: "Lesión traumática no especificada" },
+    };
+    const catalogByNormalizedCode = new Map([
+      [
+        "S0300XA",
+        {
+          id: "cat-s0300xa",
+          code: "S03.00XA",
+          normalizedCode: "S0300XA",
+          codeSystem: SYSTEM,
+          releaseVersion: RELEASE,
+          isSelectable: true,
+          isBillable: true,
+        },
+      ],
+      [
+        "T1490XA",
+        {
+          id: "cat-t1490xa",
+          code: "T14.90XA",
+          normalizedCode: "T1490XA",
+          codeSystem: SYSTEM,
+          releaseVersion: RELEASE,
+          isSelectable: true,
+          isBillable: true,
+        },
+      ],
+    ]);
+    const plan = buildGovernedIcd10TerminologySeedPlan({
+      maps,
+      catalogByNormalizedCode,
+      expectedReleaseVersion: RELEASE,
+    });
+    expect(plan.acceptedTerminology).toHaveLength(0);
+    expect(plan.rejectedAbsent).toBe(4);
+    expect(plan.rejected.every((row) => row.reason === "CODE_NOT_IN_TARGET_RELEASE")).toBe(true);
+    expect(plan.rejected.some((row) => row.normalizedCode === "S0300XA")).toBe(false);
+    expect(plan.rejected.some((row) => row.normalizedCode === "T1490XA")).toBe(false);
   });
 
   it("does not indiscriminately alias generic dolor", () => {

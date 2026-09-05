@@ -45,6 +45,7 @@ describe("Icd10TerminologyService", () => {
       exactness: "EXACT_GOVERNED",
       provenance: "MEDORA_GOVERNED",
       localized: true,
+      sourceKind: "TERMINOLOGY_ROW",
     });
     expect(prisma.icd10DiagnosisSearchAlias.findMany).not.toHaveBeenCalled();
   });
