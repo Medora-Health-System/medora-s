@@ -53,6 +53,7 @@ import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
 import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
 import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
 import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
+import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -164,6 +165,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const es1kPublicKeys = new Set(Object.keys(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY));
     const es1k1Keys = new Set(Object.keys(MEDUI_ES_1K1_OVERLAY));
     const esTrilangKeys = new Set(Object.keys(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY));
+    const esTrilang2Keys = new Set(Object.keys(MEDUI_TRILANG_2_OVERLAY));
     const governedKeys = new Set([
       ...es1eKeys,
       ...es1fKeys,
@@ -175,6 +177,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       ...es1kPublicKeys,
       ...es1k1Keys,
       ...esTrilangKeys,
+      ...esTrilang2Keys,
     ]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
@@ -209,6 +212,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_ES_1K1_OVERLAY[path]);
       } else if (esTrilangKeys.has(path)) {
         expect(value, path).toBe(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY[path]);
+      } else if (esTrilang2Keys.has(path)) {
+        expect(value, path).toBe(MEDUI_TRILANG_2_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -280,7 +285,10 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         (es1iKeys.has(path) && MEDUI_ES_1I_OVERLAY[path] === "") ||
         (es1jbKeys.has(path) && MEDUI_ES_1JB_OVERLAY[path] === "") ||
         (es1kKeys.has(path) && MEDUI_ES_1K_OVERLAY[path] === "") ||
-        (es1kPublicKeys.has(path) && MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path] === "");
+        (es1kPublicKeys.has(path) && MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path] === "") ||
+        (es1k1Keys.has(path) && MEDUI_ES_1K1_OVERLAY[path] === "") ||
+        (esTrilangKeys.has(path) && MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY[path] === "") ||
+        (esTrilang2Keys.has(path) && MEDUI_TRILANG_2_OVERLAY[path] === "");
       if (!emptyAllowed) {
         expect(value).not.toBe("");
       }

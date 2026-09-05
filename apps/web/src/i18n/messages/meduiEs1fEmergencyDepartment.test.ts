@@ -31,6 +31,7 @@ import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOver
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
 import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
+import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -311,7 +312,7 @@ describe("MEDUI.ES.1F EMTALA locale-independence", () => {
 });
 
 describe("MEDUI.ES.1F authored narrative / templates / 1G / 1H stay unlocalized", () => {
-  it("Medora-authored MSE/template bodies remain placeholders", () => {
+  it("1F overlay still excludes MSE chips; TRILANG.2 authors them as required clinical UI", () => {
     for (const prefix of [
       "erMseHpiChips",
       "erMseRosChips",
@@ -323,8 +324,9 @@ describe("MEDUI.ES.1F authored narrative / templates / 1G / 1H stay unlocalized"
       const leaves = collectLeaves(getByPath(es, prefix), prefix);
       expect(leaves.size, prefix).toBeGreaterThan(0);
       for (const [path, value] of leaves) {
-        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
-        expect(MEDUI_ES_1F_OVERLAY[path]).toBeUndefined();
+        expect(MEDUI_ES_1F_OVERLAY[path], path).toBeUndefined();
+        expect(isHiddenSpanishPlaceholder(value), path).toBe(false);
+        expect(MEDUI_TRILANG_2_OVERLAY[path], path).toBe(value);
       }
     }
   });
@@ -483,7 +485,7 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(emptyOverlayEntries).toHaveLength(43);
     expect(before1f.placeholders).toBe(43671);
     expect(after1f.placeholders).toBe(43671 - 2737);
-    expect(live.placeholders).toBe(24342);
+    expect(live.placeholders).toBe(23013);
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
     for (const path of overlayPaths) {

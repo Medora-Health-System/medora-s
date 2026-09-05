@@ -13507,7 +13507,7 @@ export default {
     superseded: "Order superseded",
   },
   erTriageComplaintTemplates: {
-    helper: "",
+    helper: "Common complaint templates — click to prefill the chief complaint (and the triage narrative if empty).",
     searchPlaceholder: "Search templates…",
     minCharsHint: "Type at least 2 characters to search more templates.",
     noResults: "No matching templates.",
@@ -15545,7 +15545,8 @@ export default {
     filterAllRooms: "All",
     filterProvider: "Provider",
     providerTitle: "Provider",
-    providerSubtitle: "",
+    providerSubtitle:
+      "Entry point to the shared chart: medical evaluation, diagnoses, and orders happen in the same encounter as nursing care.",
     providerQuickPatients: "Patients to assess",
     encounterList: "Encounter list",
     trackboard: "Clinical trackboard",
