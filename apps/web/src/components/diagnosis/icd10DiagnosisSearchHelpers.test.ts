@@ -66,13 +66,38 @@ describe("INP.DIS.1I ICD-10 diagnosis search helpers", () => {
     ).toEqual({ type: "close" });
   });
 
-  it("prefers long description over code-only", () => {
+  it("never persists displayLabel as the canonical description snapshot", () => {
     expect(
       icd10HitDescription({
-        code: "A41.9",
-        shortDescription: "Sepsis, unspecified organism",
-        longDescription: "Sepsis, unspecified organism",
+        code: "A42.1",
+        shortDescription: "Abdominal actinomycosis",
+        longDescription: null,
+        displayLabel: "A42.1",
       })
-    ).toBe("Sepsis, unspecified organism");
+    ).toBe("Abdominal actinomycosis");
+    expect(
+      icd10HitDescription({
+        code: "R10.85",
+        shortDescription: "Abdominal pain, unspecified site",
+        displayLabel: "Dolor abdominal en varios sitios",
+      })
+    ).toBe("Abdominal pain, unspecified site");
+    const persistBody = {
+      icd10CatalogId: "cat-r1085",
+      code: "R10.85",
+      description: icd10HitDescription({
+        code: "R10.85",
+        shortDescription: "Abdominal pain, unspecified site",
+        displayLabel: "Dolor abdominal en varios sitios",
+      }),
+    };
+    expect(persistBody).not.toHaveProperty("displayLabel");
+    expect(persistBody.description).not.toBe("Dolor abdominal en varios sitios");
+    expect(
+      isDuplicateDischargeDiagnosis(
+        { code: persistBody.code, description: persistBody.description },
+        [{ code: "R10.85", description: "Abdominal pain, unspecified site" }]
+      )
+    ).toBe(true);
   });
 });

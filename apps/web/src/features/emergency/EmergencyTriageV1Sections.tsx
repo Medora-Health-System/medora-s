@@ -415,7 +415,7 @@ export function EmergencyTriageV1Sections({
           const merged: Icd10SearchHit[] = [];
           const seen = new Set<string>();
           for (const apiQ of apiQueries) {
-            const res = await searchIcd10Catalog(apiQ, PMH_DIAGNOSIS_SEARCH_LIMIT);
+            const res = await searchIcd10Catalog(apiQ, PMH_DIAGNOSIS_SEARCH_LIMIT, language);
             for (const hit of Array.isArray(res.items) ? res.items : []) {
               if (seen.has(hit.id)) continue;
               seen.add(hit.id);

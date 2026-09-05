@@ -17,7 +17,8 @@
  *   + approved search aliases does NOT multiply rows; multi-release
  *   catalog rows do. Alias/label match only widens predicates — it must not emit
  *   an extra visible row for the same ICD code, and must never replace
- *   selected shortDescription (English catalog remains the DTO until P3).
+ *   selected shortDescription (source/debug field). P3 display is resolved
+ *   after this query via batched Icd10TerminologyService.
  *   Collapse by `code` happens in the select builder (one official row per code).
  *
  * Not the source of duplicates:
@@ -33,6 +34,8 @@ export type Icd10CatalogSearchRow = {
   id: string;
   code: string;
   normalizedCode: string;
+  codeSystem: string;
+  releaseVersion: string;
   shortDescription: string;
   longDescription: string | null;
   chapter: string | null;
@@ -257,6 +260,8 @@ export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch,
       "id",
       "code",
       "normalizedCode",
+      "codeSystem",
+      "releaseVersion",
       "shortDescription",
       "longDescription",
       "chapter",
@@ -269,6 +274,8 @@ export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch,
         "id",
         "code",
         "normalizedCode",
+        "codeSystem",
+        "releaseVersion",
         "shortDescription",
         "longDescription",
         "chapter",

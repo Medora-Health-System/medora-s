@@ -15,9 +15,14 @@ import {
 } from "../encounters/encounter-sign-lock.util";
 import {
   buildDiagnosisCandidate,
+  formatIcd10CmDisplayCode,
+  mapIcd10ExactnessToDisplayResolution,
+  parseProductUiLanguage,
   type DiagnosisBillingCodeSource,
   DIAGNOSIS_INVALID_ICD_FORMAT,
   isIcd10CmLikeCodeFormat,
+  type Icd10SelectableDisplayResolution,
+  type ProductUiLanguage,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import type {
@@ -27,6 +32,7 @@ import type {
   RemoveDiagnosisDto,
 } from "./dto";
 import { resolveDiagnosisOnsetInput } from "./diagnosis-onset.util";
+import { Icd10TerminologyService } from "./icd10-terminology.service";
 
 const diagnosisInclude = {
   patient: {
@@ -40,7 +46,10 @@ const diagnosisInclude = {
     select: {
       id: true,
       code: true,
+      codeSystem: true,
+      releaseVersion: true,
       shortDescription: true,
+      longDescription: true,
       isBillable: true,
     },
   },
@@ -63,7 +72,8 @@ function assertNonCatalogIcdFormat(code: string): void {
 export class DiagnosesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly terminology: Icd10TerminologyService,
   ) {}
 
   private async nextSortOrder(encounterId: string): Promise<number> {
@@ -283,8 +293,105 @@ export class DiagnosesService {
       metadata: { listByPatient: true },
     });
 
+    const locale = this.parseOptionalProductUiLocale(query.locale);
     const enriched = await this.attachDiagnosisCreatorDisplay(facilityId, items);
-    return { items: enriched, total };
+    const presented = await this.attachDiagnosisPresentation(locale, enriched);
+    return { items: presented, total };
+  }
+
+  private parseOptionalProductUiLocale(raw: string | undefined): ProductUiLanguage | null {
+    if (raw == null || raw.trim() === "") return null;
+    const locale = parseProductUiLanguage(raw);
+    if (!locale) {
+      throw new BadRequestException("Query parameter locale must be en, fr, or es");
+    }
+    return locale;
+  }
+
+  /**
+   * Live presentation only. Does not mutate Diagnosis.description / code / icd10CatalogId.
+   */
+  private async attachDiagnosisPresentation<
+    T extends {
+      code: string;
+      description: string | null;
+      icd10Catalog: {
+        id: string;
+        code: string;
+        codeSystem: string;
+        releaseVersion: string;
+        shortDescription: string;
+        longDescription: string | null;
+      } | null;
+    },
+  >(
+    locale: ProductUiLanguage | null,
+    rows: T[],
+  ): Promise<
+    Array<
+      T & {
+        displayLabel: string;
+        displayResolution: Icd10SelectableDisplayResolution;
+        codeSystem: string | null;
+        releaseVersion: string | null;
+      }
+    >
+  > {
+    if (rows.length === 0) return [];
+    if (!locale) {
+      return rows.map((row) => {
+        const code = formatIcd10CmDisplayCode(row.code) || row.code;
+        return {
+          ...row,
+          displayLabel: code,
+          displayResolution: "UNLOCALIZED_CODE" as const,
+          codeSystem: row.icd10Catalog?.codeSystem ?? null,
+          releaseVersion: row.icd10Catalog?.releaseVersion ?? null,
+        };
+      });
+    }
+
+    const catalogRows = rows
+      .map((row) => row.icd10Catalog)
+      .filter((catalog): catalog is NonNullable<T["icd10Catalog"]> => catalog != null);
+
+    const displays = await this.terminology.resolveDisplaysForCatalogRows({
+      locale,
+      catalogRows,
+    });
+
+    return rows.map((row) => {
+      const catalog = row.icd10Catalog;
+      if (catalog) {
+        const display = displays.get(catalog.id);
+        return {
+          ...row,
+          displayLabel: display?.displayName ?? (formatIcd10CmDisplayCode(row.code) || row.code),
+          displayResolution: display
+            ? mapIcd10ExactnessToDisplayResolution(display.exactness)
+            : "UNLOCALIZED_CODE",
+          codeSystem: catalog.codeSystem,
+          releaseVersion: catalog.releaseVersion,
+        };
+      }
+      if (locale === "en" && row.description?.trim()) {
+        return {
+          ...row,
+          displayLabel: row.description.trim(),
+          displayResolution: "EXACT_SOURCE_LABEL" as const,
+          codeSystem: null,
+          releaseVersion: null,
+        };
+      }
+      const code = formatIcd10CmDisplayCode(row.code) || row.code;
+      return {
+        ...row,
+        displayLabel: code,
+        displayResolution: "UNLOCALIZED_CODE" as const,
+        codeSystem: null,
+        releaseVersion: null,
+      };
+    });
   }
 
   private displayNameFromUser(u: { firstName: string | null; lastName: string | null }): string {

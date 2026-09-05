@@ -22,7 +22,10 @@ import {
   RemoveDiagnosisModal,
   type RemoveDiagnosisConfirmPayload,
 } from "@/components/diagnosis/RemoveDiagnosisModal";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import {
+  formatIcd10ServerResolvedOneLineDisplay,
+  isExactIcd10SelectableDisplayResolution,
+} from "@medora/shared";
 import { productUiBcp47Tag } from "@/i18n/config";
 import {
   diagnosisOrdersDiagnosisCardShellStyle,
@@ -36,6 +39,8 @@ type DxRow = {
   id: string;
   code: string;
   description: string | null;
+  displayLabel: string;
+  displayResolution: string;
   onsetDate: string | null;
   onsetPrecision: string | null;
   sortOrder: number;
@@ -49,6 +54,21 @@ type DxRow = {
     at: string;
   } | null;
 };
+
+function diagnosisRowOneLine(row: Pick<DxRow, "code" | "displayLabel" | "displayResolution">) {
+  return formatIcd10ServerResolvedOneLineDisplay({
+    code: row.code,
+    displayLabel: row.displayLabel,
+    displayResolution: row.displayResolution,
+  });
+}
+
+/** Exact label only. UNLOCALIZED_CODE keeps the canonical code in the code column — never CODE — CODE. */
+function diagnosisRowExactLabel(row: Pick<DxRow, "code" | "displayLabel" | "displayResolution">): string | null {
+  if (!isExactIcd10SelectableDisplayResolution(row.displayResolution)) return null;
+  const primary = diagnosisRowOneLine(row).primary.trim();
+  return primary || null;
+}
 
 type PendingAdd =
   | { kind: "catalog"; hit: Icd10SearchHit }
@@ -98,7 +118,10 @@ export function EncounterDiagnosticsPanel({
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch(`/patients/${patientId}/diagnoses?status=ACTIVE&limit=200`, { facilityId });
+      const data = await apiFetch(
+        `/patients/${patientId}/diagnoses?status=ACTIVE&limit=200&locale=${encodeURIComponent(language)}`,
+        { facilityId }
+      );
       const items = Array.isArray((data as { items?: unknown }).items)
         ? (data as { items: Record<string, unknown>[] }).items
         : [];
@@ -110,6 +133,8 @@ export function EncounterDiagnosticsPanel({
             id: String(d.id),
             code: String(d.code ?? ""),
             description: (d.description as string | null) ?? null,
+            displayLabel: typeof d.displayLabel === "string" ? d.displayLabel : String(d.code ?? ""),
+            displayResolution: typeof d.displayResolution === "string" ? d.displayResolution : "UNLOCALIZED_CODE",
             onsetDate: (d.onsetDate as string | null) ?? null,
             onsetPrecision: typeof d.onsetPrecision === "string" ? d.onsetPrecision : null,
             sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
@@ -126,7 +151,7 @@ export function EncounterDiagnosticsPanel({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, patientId, facilityId]);
+  }, [encounterId, patientId, facilityId, language]);
 
   useEffect(() => {
     void load();
@@ -481,8 +506,7 @@ export function EncounterDiagnosticsPanel({
                   </td>
                   <td style={{ padding: "12px 14px", color: "#334155", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                     <div>
-                      {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) ||
-                        "—"}
+                      {diagnosisRowExactLabel(r) ?? "—"}
                     </div>
                     <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{documentedLine(r)}</div>
                   </td>
@@ -631,7 +655,7 @@ export function EncounterDiagnosticsPanel({
                     overflowWrap: "anywhere",
                   }}
                 >
-                  {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
+                  {diagnosisRowExactLabel(r) ?? "—"}
                 </p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>{documentedLine(r)}</p>
                 <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
