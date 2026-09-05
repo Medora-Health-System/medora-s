@@ -99,12 +99,12 @@ describe("MEDUI.ES.1B.3 diagnosis zero-leak", () => {
     expect(label).not.toMatch(/sepsis/i);
   });
 
-  it("hypothetical es diagnosis display is code, not EN or FR", () => {
+  it("es diagnosis display is Spanish overlay, not EN or FR", () => {
     const label = getLocalizedDiagnosisDisplayLabel(
       { code: "R07.9", description: "Chest pain, unspecified" },
       "es"
     );
-    expect(label).toBe("R07.9");
+    expect(label).toBe("Dolor torácico no especificado");
     expect(label).not.toMatch(/chest pain/i);
     expect(label).not.toMatch(/douleur/i);
   });
@@ -167,10 +167,11 @@ describe("MEDUI.ES.1B.3 radiology / lab / pharmacy catalog display", () => {
     expect(line).not.toMatch(/\boral\b/i);
   });
 
-  it("hypothetical es catalog display is code, not EN or FR", () => {
+  it("ES catalog display is Spanish overlay or code, not EN or FR", () => {
+    expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("Hemograma completo");
+    expect(getCatalogSearchItemDisplayLabel(IMAGING_ITEM, "es")).toBe("TC de cráneo");
+    expect(getCatalogSearchItemDisplayLabel(MED_ITEM, "es")).toBe("Metformina 500 mg, comprimido oral");
     for (const item of [LAB_ITEM, IMAGING_ITEM, MED_ITEM]) {
-      expect(getCatalogSearchItemDisplayLabel(item, "es")).toBe(item.code);
-      expect(getCatalogSearchItemSecondaryLine(item, "es")).toBe(item.code);
       expect(getCatalogSearchItemDisplayLabel(item, "es")).not.toBe(item.displayNameEn);
       expect(getCatalogSearchItemDisplayLabel(item, "es")).not.toBe(item.displayNameFr);
     }
@@ -205,7 +206,7 @@ describe("MEDUI.ES.1B.3 order composer persist/reload + print", () => {
     expect(label).not.toContain("Scanner");
   });
 
-  it("unsupported es order chrome is code, not EN/FR", () => {
+  it("es order chrome uses governed Spanish or code, not EN/FR", () => {
     const label = getOrderItemDisplayLabelForLanguage(
       {
         catalogItemType: "MEDICATION",
@@ -214,7 +215,7 @@ describe("MEDUI.ES.1B.3 order composer persist/reload + print", () => {
       "es",
       tEn
     );
-    expect(label).toBe("MET500");
+    expect(label).toBe("Metformina");
     expect(label).not.toBe("Metformin");
     expect(label).not.toBe("Metformine");
   });
@@ -264,7 +265,7 @@ describe("MEDUI.ES.1B.3 composer/dental source isolation", () => {
 
   it("SharedCatalogAutocomplete does not render lab/imaging secondaryText as EN chrome", () => {
     const src = webSource("components/catalog/SharedCatalogAutocomplete.tsx");
-    expect(src).toContain("getCatalogSearchItemSecondaryLine");
+    expect(src).toContain("getCatalogResultOneLineDisplay");
     expect(src).not.toMatch(/item\.type === "MEDICATION"[\s\S]*: item\.secondaryText/);
   });
 

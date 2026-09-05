@@ -58,7 +58,7 @@ export function isHiddenSpanishPlaceholder(value: string): boolean {
 }
 
 /** How catalog search / order labels pick EN vs FR stored fields. */
-export type CatalogLabelStrategy = "en_strict" | "fr_preferred" | "unlocalized";
+export type CatalogLabelStrategy = "en_strict" | "fr_preferred" | "es_preferred" | "unlocalized";
 
 /**
  * Catalog clinical-display maps currently exist only for EN (FR→EN normalization)
@@ -99,7 +99,7 @@ export const PRODUCT_UI_LOCALE_REGISTRY: Record<ProductUiLanguage, ProductUiLoca
     code: "es",
     bcp47: "es-419",
     nativeLabel: "Español",
-    catalogLabelStrategy: "unlocalized",
+    catalogLabelStrategy: "es_preferred",
     medicationClinicalDisplayLocale: null,
     publiclySelectable: true,
   },
@@ -229,10 +229,11 @@ export function adaptProductUiToMedicationClinicalDisplayLocale(
  */
 export function adaptProductUiToCatalogLabelStrategy(
   raw: string | null | undefined
-): "en_strict" | "fr_preferred" | null {
+): "en_strict" | "fr_preferred" | "es_preferred" | null {
   const parsed = parseProductUiLanguage(raw);
   if (parsed === "en") return "en_strict";
   if (parsed === "fr") return "fr_preferred";
+  if (parsed === "es") return "es_preferred";
   return null;
 }
 
@@ -324,13 +325,14 @@ export const UNLOCALIZED_CATALOG_SOURCE = "UNLOCALIZED_SOURCE";
 export type CatalogDisplayLabelFields = {
   displayNameEn?: string | null;
   displayNameFr?: string | null;
+  displayNameEs?: string | null;
   code?: string | null;
 };
 
 /**
  * User-facing catalog label for the active product UI locale.
- * EN uses EN only; FR uses FR only. Missing localized text → code / UNLOCALIZED_SOURCE.
- * Hidden Spanish (`es`) never receives EN or FR labels.
+ * EN uses EN only; FR uses FR only; ES uses ES only.
+ * Missing localized text → code / UNLOCALIZED_SOURCE. Never cross-language fallback.
  * Omitted locale is the F-boundary: product default EN, then EN-only.
  */
 export function pickCatalogDisplayLabelForProductUi(
@@ -341,9 +343,11 @@ export function pickCatalogDisplayLabelForProductUi(
   const code = fields.code?.trim() || "";
   const en = fields.displayNameEn?.trim() || "";
   const fr = fields.displayNameFr?.trim() || "";
+  const es = fields.displayNameEs?.trim() || "";
 
   if (parsed === "en") return en || code || UNLOCALIZED_CATALOG_SOURCE;
   if (parsed === "fr") return fr || code || UNLOCALIZED_CATALOG_SOURCE;
+  if (parsed === "es") return es || code || UNLOCALIZED_CATALOG_SOURCE;
 
   if (rawLocale != null && String(rawLocale).trim() !== "") {
     return code || UNLOCALIZED_CATALOG_SOURCE;

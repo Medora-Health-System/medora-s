@@ -23,6 +23,7 @@ import {
   type ProviderRoundingModeStep,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { pickProductUiCopy } from "@/i18n/config";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { fetchClinicalDocumentationEntries } from "@/lib/clinicalDocumentationApi";
@@ -1124,8 +1125,12 @@ export function InpatientProviderWorkspacePanel({
                 onChange={(next) => {
                   setPlanSticky(next);
                   if (next.length) {
-                    const labels = PLAN_STICKY_OPTIONS.filter((o) => next.includes(o.code)).map(
-                      (o) => o.display
+                    const labels = PLAN_STICKY_OPTIONS.filter((o) => next.includes(o.code)).map((o) =>
+                      pickProductUiCopy(
+                        language,
+                        { en: o.display, fr: o.displayFr, es: o.displayEs },
+                        o.displayEs ?? o.code
+                      )
                     );
                     setProblemPlan((prev) =>
                       prev

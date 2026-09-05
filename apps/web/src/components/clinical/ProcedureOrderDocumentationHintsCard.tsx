@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { useI18n } from "@/lib/i18n";
-import { collectProcedureOrderDocumentationHints, ENTERPRISE_PROCEDURE_CATALOG } from "@medora/shared";
+import { collectProcedureOrderDocumentationHints, ENTERPRISE_PROCEDURE_CATALOG, resolveEnterpriseProcedureDisplayName } from "@medora/shared";
 import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
 import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import { ProcedureOrderDocumentationLinkage } from "@/components/clinical/ProcedureOrderDocumentationLinkage";
@@ -145,10 +145,9 @@ export function ProcedureOrderDocumentationHintsCard({
       <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10 }}>
         {hints.map((hint) => {
           const catalogEntry = ENTERPRISE_PROCEDURE_CATALOG.find((row) => row.id === hint.enterpriseProcedureId);
-          const label =
-            language === "fr"
-              ? catalogEntry?.displayNameFr ?? hint.enterpriseProcedureId
-              : catalogEntry?.displayNameEn ?? hint.enterpriseProcedureId;
+          const label = catalogEntry
+            ? resolveEnterpriseProcedureDisplayName(catalogEntry, language)
+            : hint.enterpriseProcedureId;
           return (
             <li key={hint.orderItemId} style={{ fontSize: 12, color: "#334155" }}>
               <div style={{ fontWeight: 600, color: "#0f172a" }}>{label}</div>

@@ -21,6 +21,20 @@ const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
   "doppler leg": ["US_VENOUS_DOPPLER_LE", "DOPPLER_VEIN"],
   "xray ankle": ["XR_ANKLE"],
   "mri brain": ["MRI_BRAIN"],
+  cadera: ["XR_HIP"],
+  "radiografía de cadera": ["XR_HIP"],
+  "radiografia de cadera": ["XR_HIP"],
+  pie: ["XR_FOOT"],
+  "radiografía de pie": ["XR_FOOT"],
+  mano: ["XR_HAND"],
+  rodilla: ["XR_KNEE"],
+  tórax: ["XR_CHEST"],
+  torax: ["XR_CHEST"],
+  "radiografía de tórax": ["XR_CHEST"],
+  abdomen: ["XR_ABDOMEN", "US_ABDOMEN", "US_ABD", "CT_ABDOMEN_PELVIS"],
+  cráneo: ["CT_HEAD_WO_CONTRAST", "CT_HEAD"],
+  craneo: ["CT_HEAD_WO_CONTRAST", "CT_HEAD"],
+  cabeza: ["CT_HEAD_WO_CONTRAST", "CT_HEAD", "MRI_BRAIN"],
 };
 
 const imagingClassifierInclude = {

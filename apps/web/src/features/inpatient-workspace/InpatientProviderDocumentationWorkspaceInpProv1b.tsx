@@ -39,7 +39,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import {
   pickCatalogDisplayLabelForProductUi,
-  pickLegacyBilingualStoredPair,
+  pickProductUiCopy,
   productUiBcp47Tag,
 } from "@/i18n/config";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -1445,10 +1445,11 @@ export function InpatientProviderDocumentationWorkspaceInpProv1b({
                 <p style={{ margin: 0, ...META }}>{t(`${I18N}.smartPhrases.appendHint`)}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                   {PLAN_STICKY_OPTIONS.map((option) => {
-                    const display = pickLegacyBilingualStoredPair(language, {
-                      en: option.display,
-                      fr: option.displayFr,
-                    }).value;
+                    const display = pickProductUiCopy(
+                      language,
+                      { en: option.display, fr: option.displayFr, es: option.displayEs },
+                      option.code
+                    );
                     return (
                       <button
                         key={option.code}

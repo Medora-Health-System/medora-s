@@ -1,7 +1,7 @@
 import type { ChartExportManifest } from "./chart-export.service";
 import { ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION } from "./chart-export.service";
 import { escapeHtml, renderEncounterChartExportHtml } from "./chart-export-html.util";
-import { computeObservationStaySummaryForExport } from "@medora/shared";
+import { computeObservationStaySummaryForExport, serializeVaccineAdministrationDocumentationForMarNotes } from "@medora/shared";
 import { DENTAL_PLAN_ACCEPTANCE_LEGAL_SOURCE } from "./chart-export-print-chrome";
 
 function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExportManifest {
@@ -518,8 +518,10 @@ describe("chart-export-html.util", () => {
     expect(html).not.toContain("Volet");
     expect(html).not.toContain("Réalisée le");
     expect(html).not.toContain("Performed at");
-    expect(html).toContain("Reduction (documented)");
+    expect(html).toContain("REDUCTION");
+    expect(html).not.toContain("Reduction (documented)");
     expect(html).not.toContain("Réduction (documentée)");
+    expect(html).not.toContain("UNLOCALIZED_SOURCE");
   });
 
   it("MEDUI.ES.1J.B dental board HTML title follows locale and keeps authored notes", () => {
@@ -589,5 +591,62 @@ describe("chart-export-html.util", () => {
     expect(htmlEs).not.toContain("Revue des antécédents");
     expect(htmlEs).not.toContain("Aceptación del plan");
     expect(htmlEs).not.toContain("Acceptance of the plan");
+  });
+
+  it("MEDUI.TRILANG.1 ES chart export regenerates vaccine MAR notes in Spanish", () => {
+    const notes = serializeVaccineAdministrationDocumentationForMarNotes({
+      vaccineProductId: "product-tdap",
+      catalogCode: "TDAP_VACCINE_0.5_ML_INJECTABLE_INJECTABLEINTRAMUSCULAR",
+      vaccineDisplayName: "Tdap vaccine",
+      dose: "0.5",
+      unit: "mL",
+      route: "IM",
+      site: "right_deltoid",
+      laterality: "right",
+      lotNumber: "U8653BA",
+      expirationDate: "2027-09-01",
+      manufacturerId: "sanofi_pasteur",
+      manufacturerDisplayName: "Sanofi Pasteur",
+      visGiven: true,
+      visRecipient: "patient",
+      visDate: "2026-06-14",
+      visEditionDate: "2026-06-14",
+      allergiesVerified: true,
+      fiveRightsConfirmed: true,
+      educationReviewed: true,
+      reviewedWith: "patient",
+      reviewedTopics: ["reason_for_medication", "signs_of_allergic_reaction", "precautions"],
+      understandingConfirmed: true,
+      amountWasted: "",
+      administeredAt: "2026-06-14T15:30:00.000Z",
+      administeredBy: "Elizabeth Posada",
+      administeredByCredentials: "RN",
+    });
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        medicationAdministrations: [
+          {
+            id: "mar-vax-1",
+            orderItemId: "oi-1",
+            medicationLabelSnapshot: "Tdap vaccine",
+            route: "IM",
+            doseValue: "0.5",
+            doseUnit: "mL",
+            administeredQuantity: "0.5",
+            administeredAt: "2026-06-14T15:30:00.000Z",
+            administeredByDisplayFr: "Elizabeth Posada RN",
+            marAction: "administered",
+            notes,
+            governanceSummary: null,
+          },
+        ],
+      }),
+      { locale: "es" }
+    );
+    expect(html).toContain("administrado por vía");
+    expect(html).not.toMatch(/\bTdap vaccine 0\.5 mL IM administered\b/i);
+    expect(html).not.toContain("Vaccine information statement");
+    expect(html).not.toContain("Fiche d'information vaccinale");
+    expect(html).not.toContain("UNLOCALIZED_SOURCE");
   });
 });

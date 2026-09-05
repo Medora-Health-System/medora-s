@@ -1,6 +1,7 @@
 /**
  * Structured IV fluid order entry (K.10B.8A — provider bag/rate picker).
  */
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import { isIvFluidMedicationLabel } from "./ivFluidOrderDirections.js";
 import {
   STANDARD_FLUID_BAG_SIZES_ML,
@@ -35,15 +36,33 @@ export const FLUID_ORDER_ENTRY_TYPE_OPTIONS: ReadonlyArray<{
   code: FluidOrderEntryTypeCode;
   labelFr: string;
   labelEn: string;
+  labelEs: string;
 }> = [
-  { code: "NS", labelFr: "Chlorure de sodium 0,9 % (NS)", labelEn: "Normal Saline / NS" },
-  { code: "LR", labelFr: "Ringer lactate (LR)", labelEn: "Lactated Ringer's / LR" },
-  { code: "D5W", labelFr: "D5W", labelEn: "D5W" },
-  { code: "D5NS", labelFr: "D5NS", labelEn: "D5NS" },
-  { code: "D10W", labelFr: "D10W", labelEn: "D10W" },
-  { code: "D50W", labelFr: "D50W", labelEn: "D50W" },
-  { code: "HALF_NS", labelFr: "NS 0,45 %", labelEn: "0.45% NS" },
+  {
+    code: "NS",
+    labelFr: "Chlorure de sodium 0,9 % (NS)",
+    labelEn: "Normal Saline / NS",
+    labelEs: "Cloruro de sodio 0,9 % (NS)",
+  },
+  {
+    code: "LR",
+    labelFr: "Ringer lactate (LR)",
+    labelEn: "Lactated Ringer's / LR",
+    labelEs: "Lactato de Ringer (LR)",
+  },
+  { code: "D5W", labelFr: "D5W", labelEn: "D5W", labelEs: "D5W" },
+  { code: "D5NS", labelFr: "D5NS", labelEn: "D5NS", labelEs: "D5NS" },
+  { code: "D10W", labelFr: "D10W", labelEn: "D10W", labelEs: "D10W" },
+  { code: "D50W", labelFr: "D50W", labelEn: "D50W", labelEs: "D50W" },
+  { code: "HALF_NS", labelFr: "NS 0,45 %", labelEn: "0.45% NS", labelEs: "NS 0,45 %" },
 ] as const;
+
+export function resolveFluidOrderEntryTypeDisplay(
+  opt: (typeof FLUID_ORDER_ENTRY_TYPE_OPTIONS)[number],
+  locale: string | null | undefined
+): string {
+  return pickProductUiCopy(locale, { en: opt.labelEn, fr: opt.labelFr, es: opt.labelEs }, opt.labelEs);
+}
 
 export function fluidOrderEntryTypeLabel(code: FluidOrderEntryTypeCode): string {
   switch (code) {

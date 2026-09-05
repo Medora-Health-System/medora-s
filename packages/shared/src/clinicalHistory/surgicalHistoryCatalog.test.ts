@@ -3,6 +3,7 @@ import {
   applySurgicalHistoryCatalogSelection,
   searchSurgicalHistoryCatalog,
   surgicalHistoryById,
+  resolveSurgicalHistoryDisplayName,
   SURGICAL_HISTORY_CATALOG,
   SURGICAL_HISTORY_SEARCH_MIN_CHARS,
 } from "./surgicalHistoryCatalog.js";
@@ -34,9 +35,14 @@ describe("surgicalHistoryCatalog (TRIAGE.2A)", () => {
     expect(searchSurgicalHistoryCatalog(undefined as unknown as string, "en")).toEqual([]);
   });
 
-  it("finds appendectomy by English alias", () => {
-    const hits = searchSurgicalHistoryCatalog("append", "en");
+  it("finds appendectomy by Spanish alias and displays Spanish only", () => {
+    const hits = searchSurgicalHistoryCatalog("apendicectomia", "es");
     expect(hits.some((h) => h.id === "appendectomy")).toBe(true);
+    expect(new Set(hits.map((h) => h.id)).size).toBe(hits.length);
+    const entry = surgicalHistoryById("appendectomy")!;
+    expect(resolveSurgicalHistoryDisplayName(entry, "es")).toBe("Apendicectomía");
+    expect(resolveSurgicalHistoryDisplayName(entry, "en")).toBe("Appendectomy");
+    expect(resolveSurgicalHistoryDisplayName(entry, "fr")).toBe("Appendicectomie");
   });
 
   it("finds cholecystectomy by French label", () => {

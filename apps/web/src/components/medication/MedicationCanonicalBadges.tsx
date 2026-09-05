@@ -11,7 +11,7 @@ function chipStyle(kind: "neutral" | "warn" | "danger" | "ok"): CSSProperties {
   return { background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0" };
 }
 
-/** Read-only canonical master badges for medication search rows (Phase 19C.2). */
+/** Read-only canonical master badges for medication search rows (Phase 19C.2). Aliases stay search-only. */
 export function MedicationCanonicalBadges({ item }: { item: CatalogSearchItem }) {
   const { t } = useI18n();
   const badges = item.metadata?.canonicalReadOnly?.badges;
@@ -31,11 +31,7 @@ export function MedicationCanonicalBadges({ item }: { item: CatalogSearchItem })
     chips.push({ key: "ndc-m", label: t("pharmacyMedicationSearch.badgeNdcMissing"), kind: "warn" });
   }
 
-  const aliases = item.metadata?.canonicalReadOnly?.canonicalAliases;
-  const aliasHint =
-    aliases && aliases.length > 0
-      ? `${t("pharmacyMedicationSearch.canonicalAliases")} : ${aliases.slice(0, 3).join(", ")}`
-      : null;
+  if (chips.length === 0) return null;
 
   return (
     <div style={{ marginTop: 4 }}>
@@ -55,7 +51,6 @@ export function MedicationCanonicalBadges({ item }: { item: CatalogSearchItem })
           </span>
         ))}
       </div>
-      {aliasHint ? <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{aliasHint}</div> : null}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import {
   buildClinicalDataRecentHighlights,
   formatClinicalDocumentationDetailInline,
+  selectClinicalDocumentationCardTitle,
 } from "@medora/shared";
 import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
 import { useI18n } from "@/lib/i18n";
@@ -59,7 +60,10 @@ export function EmergencyClinicalDataRecentFeed({
   };
 
   const titleFor = (item: (typeof feed)[number]) =>
-    language === "fr" ? item.formTitleFr : item.formTitleEn;
+    selectClinicalDocumentationCardTitle(
+      { cardId: item.cardId, cardTitleEn: item.formTitleEn, cardTitleFr: item.formTitleFr },
+      locale
+    );
 
   return (
     <section

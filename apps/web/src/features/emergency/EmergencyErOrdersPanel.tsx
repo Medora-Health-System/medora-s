@@ -424,16 +424,20 @@ function eventLinePrimaryTitle(
   tr: (k: string) => string,
   orders: Pick<OrderRow, "id" | "items">[]
 ): string {
+  const fromEncounter = resolveOrderEventTitleFromEncounterOrders(e, language, tr, orders).trim();
+  if (language === "es") {
+    if (fromEncounter) return fromEncounter;
+    return e.orderId.trim();
+  }
   const en = typeof e.lineLabelEn === "string" ? e.lineLabelEn.trim() : "";
   const fr = typeof e.lineLabelFr === "string" ? e.lineLabelFr.trim() : "";
-  const fromEncounter = resolveOrderEventTitleFromEncounterOrders(e, language, tr, orders).trim();
-  const apiPreferred = language === "fr" ? fr || en : en;
+  const apiPreferred = language === "fr" ? fr : en;
   const apiOk = apiPreferred.length > 0 && !isLikelyGenericOrderLineTitle(apiPreferred);
   if (apiOk) return apiPreferred;
   if (fromEncounter) return fromEncounter;
   if (apiPreferred) return apiPreferred;
   const legacy = e.order?.displayName?.trim();
-  if (legacy) return legacy;
+  if (language !== "fr" && legacy) return legacy;
   return e.orderId.trim();
 }
 

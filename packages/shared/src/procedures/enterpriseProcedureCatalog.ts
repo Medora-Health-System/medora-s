@@ -1,6 +1,7 @@
 import type { DocumentedProcedureType } from "../schemas/encounterProcedureTypes.js";
 import type { EnterpriseProcedureChargeMapping } from "./enterpriseProcedureBillingReadinessTypes.js";
 import { pickCatalogDisplayLabelForProductUi, pickProductUiCopy } from "../i18n/productUiLocale.js";
+import { lookupGovernedCatalogEsLabel } from "../i18n/clinicalCatalogEsDisplay.js";
 
 export const ENTERPRISE_PROCEDURE_CARE_SETTINGS = [
   "ED",
@@ -834,6 +835,7 @@ export function resolveEnterpriseProcedureDisplayName(
   return pickCatalogDisplayLabelForProductUi(locale, {
     displayNameEn: procedureDef.displayNameEn,
     displayNameFr: procedureDef.displayNameFr,
+    displayNameEs: lookupGovernedCatalogEsLabel("CARE_PROCEDURE", procedureDef.id),
     code: procedureDef.id,
   });
 }

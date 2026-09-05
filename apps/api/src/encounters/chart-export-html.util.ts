@@ -14,6 +14,8 @@ import {
   selectClinicalDocumentationPayloadSummary,
   resolveInternalProductUiLanguageOrDefault,
   pickLegacyBilingualStoredPair,
+  lookupGovernedCatalogEsLabel,
+  parseProductUiLanguage,
   type ClinicalDocumentationSummaryLocale,
   type ProductUiLanguage,
 } from "@medora/shared";
@@ -113,16 +115,40 @@ const PROCEDURE_EXPORT_LABELS = {
 
 export type ChartExportHtmlLocale = ProductUiLanguage;
 
-function bilingualSummaryLocale(locale: ProductUiLanguage): ClinicalDocumentationSummaryLocale {
-  return locale === "fr" ? "fr" : "en";
-}
-
-function pickBilingualSource(locale: ProductUiLanguage, en?: string | null, fr?: string | null): string {
+function pickStoredCatalogOrAuthoredDisplay(
+  locale: ProductUiLanguage,
+  en?: string | null,
+  fr?: string | null,
+  canonicalCode?: string | null
+): string {
+  const parsed = parseProductUiLanguage(locale);
+  const code = canonicalCode?.trim() ?? "";
+  if (parsed === "es") {
+    const overlay = code ? lookupGovernedCatalogEsLabel("CARE_PROCEDURE", code) : "";
+    return overlay || code || "—";
+  }
   const picked = pickLegacyBilingualStoredPair(locale, {
     en: (en ?? "").trim(),
     fr: (fr ?? "").trim(),
   });
-  return picked.value.trim() || "—";
+  if (picked.kind === "localized" && picked.value.trim()) return picked.value.trim();
+  return code || "—";
+}
+
+function pickAuthoredBilingualNarrative(
+  locale: ProductUiLanguage,
+  en?: string | null,
+  fr?: string | null
+): string | undefined {
+  const parsed = parseProductUiLanguage(locale);
+  if (parsed === "es") return undefined;
+  const picked = pickLegacyBilingualStoredPair(locale, {
+    en: (en ?? "").trim(),
+    fr: (fr ?? "").trim(),
+  });
+  if (picked.kind !== "localized") return undefined;
+  const text = picked.value.trim();
+  return text || undefined;
 }
 
 function formatHumanScalar(value: unknown): string {
@@ -186,9 +212,21 @@ function renderProcedureExportEntry(
   const labels = PROCEDURE_EXPORT_LABELS[locale];
   if (entry.eventType === "PROCEDURE_DOCUMENTED" && (entry.procedureNameFr || entry.procedureNameEn)) {
     const performedWhen = entry.performedAtIso ?? entry.documentedAtIso ?? entry.createdAt;
-    const procedureName = pickBilingualSource(locale, entry.procedureNameEn, entry.procedureNameFr);
-    const clinicalSummaryRaw = pickBilingualSource(locale, entry.clinicalSummaryEn, entry.clinicalSummaryFr);
-    const clinicalSummary = clinicalSummaryRaw === "—" ? undefined : clinicalSummaryRaw;
+    const payload = entry.payloadJson as { procedureType?: unknown } | null | undefined;
+    const canonical =
+      entry.canonicalProcedureType?.trim() ||
+      (typeof payload?.procedureType === "string" ? payload.procedureType.trim() : "");
+    const procedureName = pickStoredCatalogOrAuthoredDisplay(
+      locale,
+      entry.procedureNameEn,
+      entry.procedureNameFr,
+      canonical
+    );
+    const clinicalSummary = pickAuthoredBilingualNarrative(
+      locale,
+      entry.clinicalSummaryEn,
+      entry.clinicalSummaryFr
+    );
     const statusLabel = entry.status === "COMPLETED" ? labels.completed : entry.status ?? "—";
     const roleLabel =
       entry.documentationRole === "NURSING"
@@ -474,7 +512,7 @@ export function renderEncounterChartExportHtml(
         ? `<p class="muted">${esc(NO_DATA)}</p>`
         : `<ul>${(enc.clinicalDocumentationEntries ?? [])
             .map((entry) => {
-              const edocLocale: ClinicalDocumentationSummaryLocale = bilingualSummaryLocale(locale);
+              const edocLocale: ClinicalDocumentationSummaryLocale = locale;
               const title = selectClinicalDocumentationCardTitle(entry, edocLocale);
               const summaryLines = selectClinicalDocumentationPayloadSummary(entry, edocLocale);
               const summary =
@@ -642,7 +680,7 @@ export function renderEncounterChartExportHtml(
       ${manifest.medicationAdministrations
         .map((m) => ({
           id: m.id,
-          note: sanitizeMarAdministrationVisibleNote(m.notes, bilingualSummaryLocale(locale)),
+          note: sanitizeMarAdministrationVisibleNote(m.notes, locale),
         }))
         .filter((m) => m.note.trim())
         .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.note)}</div>`)

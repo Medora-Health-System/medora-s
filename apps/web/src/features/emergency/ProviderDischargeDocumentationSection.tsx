@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { DictationFieldLabel } from "@/components/clinical/DictationFieldLabel";
 import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacyApi";
-import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import { formatDiagnosisOneLineDisplay } from "@/features/emergency/diagnosisFrenchDisplayLabels";
 import {
   applyProviderDischargeTemplateToCardByDiagnosis,
   ensureProviderDischargeCardForRef,
@@ -125,7 +125,8 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
   onApplyTemplate: (docId: string, overwriteExisting: boolean) => void;
 }) {
   const { t, language } = useI18n();
-  const cardTitle = `${doc.code} — ${getLocalizedDiagnosisDisplayLabel({ code: doc.code, description: doc.displayName }, language)}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
+  const dxLine = formatDiagnosisOneLineDisplay({ code: doc.code, description: doc.displayName }, language);
+  const cardTitle = `${dxLine.primary}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
 
   const onMedicationPick = (med: MedicationSearchItem) => {
     const displayName = medicationSearchLabel(med, language, t);
@@ -817,7 +818,13 @@ export function ProviderDischargeDocumentationSection({
                     style={{ marginTop: 2, flexShrink: 0 }}
                   />
                   <span style={{ wordBreak: "break-word", minWidth: 0, flex: 1 }}>
-                    {dx.code} — {getLocalizedDiagnosisDisplayLabel({ code: dx.code, description: dx.description }, language)}
+                    {(() => {
+                      const line = formatDiagnosisOneLineDisplay(
+                        { code: dx.code, description: dx.description },
+                        language
+                      );
+                      return line.primary;
+                    })()}
                   </span>
                 </label>
               ))}

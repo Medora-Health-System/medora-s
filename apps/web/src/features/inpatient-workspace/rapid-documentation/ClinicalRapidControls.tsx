@@ -11,7 +11,7 @@ import {
   type ClinicalRapidOptionV1,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
-import { pickLegacyBilingualStoredPair, productUiBcp47Tag } from "@/i18n/config";
+import { pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 import { resolveNursingAdmissionOptionLabel } from "../nursingAdmissionOptionI18n";
 
 const chipBase: CSSProperties = {
@@ -52,10 +52,11 @@ function optionLabel(
   const catalog = resolveNursingAdmissionOptionLabel(t, opt.code);
   if (catalog !== opt.code) return catalog;
   if ("displayFr" in opt && "display" in opt) {
-    return pickLegacyBilingualStoredPair(language, {
-      en: opt.display,
-      fr: opt.displayFr,
-    }).value;
+    return pickProductUiCopy(
+      language,
+      { en: opt.display, fr: opt.displayFr, es: opt.displayEs },
+      opt.code
+    );
   }
   return opt.label;
 }

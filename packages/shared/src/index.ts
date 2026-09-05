@@ -1,6 +1,7 @@
 export * from "./constants/roles.js";
 export * from "./constants/languages.js";
 export * from "./i18n/productUiLocale.js";
+export * from "./i18n/clinicalCatalogEsDisplay.js";
 export * from "./i18n/terminology/esMedicalTerminology.js";
 export * from "./auth/professionResolver.js";
 export * from "./auth/clinicalDepartmentRegistry.js";

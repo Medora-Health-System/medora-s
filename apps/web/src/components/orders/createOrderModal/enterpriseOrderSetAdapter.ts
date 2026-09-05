@@ -27,7 +27,11 @@ import {
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemRef,
 } from "@medora/shared";
-import type { SupportedLanguage } from "@/i18n/config";
+import {
+  parseProductUiLanguage,
+  type SupportedLanguage,
+} from "@/i18n/config";
+import { CLINICAL_CATALOG_ES_ORDER_SET_WARNING } from "@medora/shared";
 
 export type OrderSetKey = EnterpriseOrderSetCode;
 
@@ -150,7 +154,14 @@ export function orderSetWarningsForLocale(
   set: EnterpriseOrderSetDefinition,
   locale: SupportedLanguage
 ): string[] {
-  return set.warnings.map((warning) => (locale === "fr" ? warning.fr : warning.en));
+  const parsed = parseProductUiLanguage(locale);
+  return set.warnings
+    .map((warning) => {
+      if (parsed === "fr") return warning.fr;
+      if (parsed === "es") return CLINICAL_CATALOG_ES_ORDER_SET_WARNING[warning.en] ?? "";
+      return warning.en;
+    })
+    .filter((line) => line.trim().length > 0);
 }
 
 /** Legacy imaging audit mapping for retirement constants sync. */

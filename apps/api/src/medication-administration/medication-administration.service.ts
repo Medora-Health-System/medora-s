@@ -1254,7 +1254,7 @@ export class MedicationAdministrationService {
 
     let persistedNotes =
       marActionResolved === "administered" && data.injectionSite
-        ? mergeInjectionSiteIntoMarNotes(data.notes, data.injectionSite, "fr")
+        ? mergeInjectionSiteIntoMarNotes(data.notes, data.injectionSite)
         : data.notes?.trim()
           ? data.notes.trim()
           : null;
@@ -1270,7 +1270,6 @@ export class MedicationAdministrationService {
         prnIndication: parsePrnIndicationFromDirections(linkedMedicationLine?.notes),
         painScore: data.painScore ?? null,
         painLocation: data.painLocation,
-        locale: "fr",
       });
     }
 

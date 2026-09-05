@@ -1,3 +1,4 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import type { MarClinicalAction } from "./marClinicalAction.js";
 
 /** Stable ids persisted in MAR notes (`IM_INJECTION_SITE:<id>` line). */
@@ -50,11 +51,42 @@ export const imInjectionSiteLabelsEn: Record<ImInjectionSiteId, string> = {
   other: "Other / documented in notes",
 };
 
+export const imInjectionSiteLabelsEs: Record<ImInjectionSiteId, string> = {
+  right_deltoid: "Deltoides derecho",
+  left_deltoid: "Deltoides izquierdo",
+  right_vastus_lateralis: "Vasto lateral derecho",
+  left_vastus_lateralis: "Vasto lateral izquierdo",
+  right_ventrogluteal: "Ventroglúteo derecho",
+  left_ventrogluteal: "Ventroglúteo izquierdo",
+  right_dorsogluteal: "Dorsoglúteo derecho",
+  left_dorsogluteal: "Dorsoglúteo izquierdo",
+  other: "Otro / documentado en las notas",
+};
+
+export function resolveImInjectionSiteDisplay(
+  site: ImInjectionSiteId,
+  locale: string | null | undefined
+): string {
+  return pickProductUiCopy(
+    locale,
+    {
+      en: imInjectionSiteLabelsEn[site],
+      fr: imInjectionSiteLabelsFr[site],
+      es: imInjectionSiteLabelsEs[site],
+    },
+    imInjectionSiteLabelsEs[site]
+  );
+}
+
 const NOTE_INJECTION_SITE_PREFIXES = [
   "site d'injection :",
   "site d'injection:",
   "injection site:",
   "injection site :",
+  "sitio de inyección:",
+  "sitio de inyección :",
+  "sitio de inyeccion:",
+  "sitio de inyeccion :",
 ] as const;
 
 function normalizeRouteToken(route: string): string {
@@ -80,7 +112,7 @@ function labelToInjectionSiteId(label: string): ImInjectionSiteId | null {
   const t = label.trim();
   if (!t) return null;
   for (const id of imInjectionSiteValues) {
-    if (imInjectionSiteLabelsFr[id] === t || imInjectionSiteLabelsEn[id] === t) return id;
+    if (imInjectionSiteLabelsFr[id] === t || imInjectionSiteLabelsEn[id] === t || imInjectionSiteLabelsEs[id] === t) return id;
   }
   return null;
 }
@@ -119,7 +151,7 @@ export function extractMarUserFreeTextNotes(notes: string | null | undefined): s
     if (lower.startsWith("route :") || lower.startsWith("route:")) continue;
     if (trimmed.startsWith(IM_INJECTION_SITE_NOTE_PREFIX)) continue;
     if (trimmed.startsWith("MAR_PRN_") || trimmed.startsWith("MAR_PAIN_")) continue;
-    if (lower.startsWith("motif prn") || lower.startsWith("prn reason")) continue;
+    if (lower.startsWith("motif prn") || lower.startsWith("prn reason") || lower.startsWith("motivo prn")) continue;
     let isSiteLine = false;
     for (const prefix of NOTE_INJECTION_SITE_PREFIXES) {
       if (lower.startsWith(prefix)) {
@@ -135,23 +167,26 @@ export function extractMarUserFreeTextNotes(notes: string | null | undefined): s
 
 export function buildMarInjectionSiteNoteLine(
   injectionSite: ImInjectionSiteId,
-  locale: "fr" | "en" = "fr"
+  locale: string | null | undefined = "en"
 ): string {
-  const label =
-    locale === "en" ? imInjectionSiteLabelsEn[injectionSite] : imInjectionSiteLabelsFr[injectionSite];
-  const prefix = locale === "en" ? "Injection site:" : "Site d'injection :";
+  const label = resolveImInjectionSiteDisplay(injectionSite, locale);
+  const prefix = pickProductUiCopy(
+    locale,
+    { en: "Injection site:", fr: "Site d'injection :", es: "Sitio de inyección:" },
+    "Sitio de inyección:"
+  );
   return `${prefix} ${label}`;
 }
 
-/** Append human + machine injection-site lines to MAR notes when IM administered. */
+/** Append machine injection-site identity, plus a generated human line when locale is known. */
 export function mergeInjectionSiteIntoMarNotes(
   notes: string | null | undefined,
   injectionSite: ImInjectionSiteId | null | undefined,
-  locale: "fr" | "en" = "fr"
+  locale?: string | null
 ): string | null {
   const base = notes?.trim() ? notes.trim() : "";
   if (!injectionSite) return base || null;
-  const human = buildMarInjectionSiteNoteLine(injectionSite, locale);
+  const human = locale?.trim() ? buildMarInjectionSiteNoteLine(injectionSite, locale) : null;
   const machine = `${IM_INJECTION_SITE_NOTE_PREFIX}${injectionSite}`;
   const withoutExisting = base
     .split("\n")
@@ -164,7 +199,7 @@ export function mergeInjectionSiteIntoMarNotes(
     })
     .join("\n")
     .trim();
-  const parts = withoutExisting ? [withoutExisting, human, machine] : [human, machine];
+  const parts = [withoutExisting, human, machine].filter((p): p is string => Boolean(p?.trim()));
   return parts.join("\n");
 }
 

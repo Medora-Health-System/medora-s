@@ -44,6 +44,7 @@ import { erDispositionBadgeFromEncounterJson } from "@/features/emergency/erTrac
 import { fetchActiveInternalPlacement } from "@/features/emergency/internalPlacementApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { EdNursingDocumentationComposer } from "@/features/emergency/EdNursingDocumentationComposer";
+import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 
 const inputBase: CSSProperties = {
   width: "100%",
@@ -141,7 +142,7 @@ export function AdaptiveDispositionNursingSection({
   onSaved: () => void | Promise<void>;
   canEdit: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { userId } = useFacilityAndRoles();
   const badge = erDispositionBadgeFromEncounterJson(encounter);
   const pathway = useMemo(() => {
@@ -205,14 +206,16 @@ export function AdaptiveDispositionNursingSection({
       const lite = orders.flatMap((o) => {
         const items = o.items?.length ? o.items : [null];
         return items.map((item) => {
-          const display = [
-            item?.manualLabel,
-            item?.displayLabelEn,
-            item?.displayLabelFr,
-            o.type,
-          ]
-            .filter(Boolean)
-            .join(" ");
+          const display = getOrderItemDisplayLabelForLanguage(
+            {
+              catalogItemType: item?.catalogItemType,
+              displayLabelEn: item?.displayLabelEn,
+              displayLabelFr: item?.displayLabelFr,
+              manualLabel: item?.manualLabel,
+            },
+            language,
+            t
+          ) || String(o.type ?? "");
           return {
             category: o.type,
             status: item?.status ?? o.status,

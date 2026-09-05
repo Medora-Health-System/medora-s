@@ -51,70 +51,80 @@ export const SURGICAL_HISTORY_CATALOG: readonly SurgicalHistoryCatalogEntry[] = 
     id: "appendectomy",
     displayNameEn: "Appendectomy",
     displayNameFr: "Appendicectomie",
-    aliases: ["appendix", "appendice"],
+    aliases: ["appendix", "appendice", "apendicectomia", "apendicectomía"],
     category: "GENERAL",
   },
   {
     id: "cholecystectomy",
     displayNameEn: "Cholecystectomy",
     displayNameFr: "Cholécystectomie",
-    aliases: ["gallbladder", "vésicule", "vesicule"],
+    aliases: ["gallbladder", "vésicule", "vesicule", "colecistectomia", "colecistectomía"],
     category: "GENERAL",
   },
   {
     id: "c_section",
     displayNameEn: "C-section",
     displayNameFr: "Césarienne",
-    aliases: ["cesarean", "caesarean", "cesarienne"],
+    aliases: ["cesarean", "caesarean", "cesarienne", "cesarea", "cesárea"],
     category: "GYN",
   },
   {
     id: "hysterectomy",
     displayNameEn: "Hysterectomy",
     displayNameFr: "Hystérectomie",
-    aliases: ["hysterectomie"],
+    aliases: ["hysterectomie", "histerectomia", "histerectomía"],
     category: "GYN",
   },
   {
     id: "hernia_repair",
     displayNameEn: "Hernia repair",
     displayNameFr: "Cure de hernie",
-    aliases: ["hernia", "hernie"],
+    aliases: ["hernia", "hernie", "hernia inguinal"],
     category: "GENERAL",
   },
   {
     id: "tonsillectomy",
     displayNameEn: "Tonsillectomy",
     displayNameFr: "Amygdalectomie",
-    aliases: ["tonsils", "amygdales"],
+    aliases: ["tonsils", "amygdales", "amigdalectomia", "amigdalectomía"],
     category: "ENT",
   },
   {
     id: "orthopedic_surgery",
     displayNameEn: "Orthopedic surgery",
     displayNameFr: "Chirurgie orthopédique",
-    aliases: ["orthopedic", "orthopaedic", "fracture", "orthopedie", "orthopédie"],
+    aliases: ["orthopedic", "orthopaedic", "fracture", "orthopedie", "orthopédie", "ortopedica", "ortopédica"],
     category: "ORTHOPEDIC",
   },
   {
     id: "cardiac_surgery_stent",
     displayNameEn: "Cardiac surgery / stent",
     displayNameFr: "Chirurgie cardiaque / stent",
-    aliases: ["cardiac", "stent", "cabg", "bypass", "pontage", "cardiaque"],
+    aliases: ["cardiac", "stent", "cabg", "bypass", "pontage", "cardiaque", "cardiaca", "cardíaca"],
     category: "CARDIAC",
   },
   {
     id: "abdominal_surgery",
     displayNameEn: "Abdominal surgery",
     displayNameFr: "Chirurgie abdominale",
-    aliases: ["abdominal", "laparotomy", "laparotomie"],
+    aliases: ["abdominal", "laparotomy", "laparotomie", "laparotomia", "laparotomía"],
     category: "ABDOMINAL",
   },
   {
     id: "no_prior_surgery",
     displayNameEn: "No prior surgery",
     displayNameFr: "Pas de chirurgie antérieure",
-    aliases: ["none", "no prior", "no surgery", "aucune", "pas de chirurgie", "néant", "neant"],
+    aliases: [
+      "none",
+      "no prior",
+      "no surgery",
+      "aucune",
+      "pas de chirurgie",
+      "néant",
+      "neant",
+      "sin cirugia",
+      "sin cirugía",
+    ],
     category: "OTHER",
     mutuallyExclusiveGroup: "prior_surgery_status",
     replacesExisting: true,
@@ -123,10 +133,24 @@ export const SURGICAL_HISTORY_CATALOG: readonly SurgicalHistoryCatalogEntry[] = 
     id: "other",
     displayNameEn: "Other",
     displayNameFr: "Autre",
-    aliases: ["other", "autre"],
+    aliases: ["other", "autre", "otro"],
     category: "OTHER",
   },
 ] as const;
+
+const SURGICAL_HISTORY_DISPLAY_ES: Record<string, string> = {
+  appendectomy: "Apendicectomía",
+  cholecystectomy: "Colecistectomía",
+  c_section: "Cesárea",
+  hysterectomy: "Histerectomía",
+  hernia_repair: "Reparación de hernia",
+  tonsillectomy: "Amigdalectomía",
+  orthopedic_surgery: "Cirugía ortopédica",
+  cardiac_surgery_stent: "Cirugía cardíaca / stent",
+  abdominal_surgery: "Cirugía abdominal",
+  no_prior_surgery: "Sin cirugía previa",
+  other: "Otro",
+};
 
 export function normalizeSurgicalHistorySearchText(text: string): string {
   return text
@@ -145,6 +169,7 @@ export function resolveSurgicalHistoryDisplayName(
   return pickCatalogDisplayLabelForProductUi(locale, {
     displayNameEn: entry.displayNameEn,
     displayNameFr: entry.displayNameFr,
+    displayNameEs: SURGICAL_HISTORY_DISPLAY_ES[entry.id] ?? "",
     code: entry.id,
   });
 }
@@ -164,9 +189,9 @@ export function activeSurgicalHistoryCatalog(
 function searchableHaystack(entry: SurgicalHistoryCatalogEntry, locale: SurgicalHistorySearchLocale): string {
   const parts = [
     entry.id.replace(/_/g, " "),
-    resolveSurgicalHistoryDisplayName(entry, locale),
-    // Dual-field search index (legacy bilingual storage). Not product-UI identity coercion.
-    resolveSurgicalHistoryDisplayName(entry, locale === "en" ? "fr" : "en"),
+    entry.displayNameEn,
+    entry.displayNameFr,
+    SURGICAL_HISTORY_DISPLAY_ES[entry.id] ?? "",
     ...entry.aliases,
   ];
   return normalizeSurgicalHistorySearchText(parts.join(" "));

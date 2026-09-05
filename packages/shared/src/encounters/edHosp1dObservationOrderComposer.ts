@@ -20,6 +20,7 @@ import {
 import { canonicalCareProcedureByCode } from "../procedures/canonicalCareProcedureCatalog.js";
 import { isObservationHospitalDestinationIntent } from "./hospitalDestinationIntent.js";
 import { parseProductUiLanguage, pickCatalogDisplayLabelForProductUi, UNLOCALIZED_CATALOG_SOURCE } from "../i18n/productUiLocale.js";
+import { resolveClinicalCatalogDisplayLabel, lookupGovernedCatalogEsLabel, composeMedicationDisplayEs, medicationInnIdentityCandidate } from "../i18n/clinicalCatalogEsDisplay.js";
 
 export const ED_HOSP_1D_COMPOSER_OUTCOME = "OBSERVATION" as const;
 
@@ -752,11 +753,32 @@ export function existingOrderDisplayLabel(
   const first = items.find((item) => itemIsActiveForHydration(item));
   const catalog = first?.catalogLabTest ?? first?.catalogImagingStudy ?? first?.catalogMedication;
   const catalogBacked = Boolean(catalog || first?.enterpriseProcedureId);
-  const picked = pickCatalogDisplayLabelForProductUi(locale, {
+  const catalogKind =
+    first?.catalogItemType === "LAB_TEST"
+      ? "LAB_TEST"
+      : first?.catalogItemType === "IMAGING_STUDY"
+        ? "IMAGING_STUDY"
+        : first?.catalogMedication
+          ? "MEDICATION"
+          : first?.enterpriseProcedureId
+            ? "CARE_PROCEDURE"
+            : null;
+  const picked = resolveClinicalCatalogDisplayLabel(locale, {
     displayNameEn: firstNonEmptyLabel(first?.displayLabelEn, catalog?.displayNameEn),
     displayNameFr: firstNonEmptyLabel(first?.displayLabelFr, catalog?.displayNameFr),
     code: firstNonEmptyLabel(catalog?.code, first?.enterpriseProcedureId, String(order.type ?? "")),
+    catalogKind,
   });
+  const parsedLocale = parseProductUiLanguage(locale);
+  if (parsedLocale === "es" && catalogKind === "MEDICATION") {
+    const composed = composeMedicationDisplayEs({
+      genericName: medicationInnIdentityCandidate(
+        firstNonEmptyLabel(catalog?.name, catalog?.displayNameEn, first?.displayLabelEn)
+      ),
+      code: catalog?.code,
+    });
+    if (composed) return composed;
+  }
   if (picked && picked !== UNLOCALIZED_CATALOG_SOURCE) return picked;
   if (first?.enterpriseProcedureId) {
     const row = canonicalCareProcedureByCode(first.enterpriseProcedureId);
@@ -764,6 +786,7 @@ export function existingOrderDisplayLabel(
       return pickCatalogDisplayLabelForProductUi(locale, {
         displayNameEn: row.displayNameEn,
         displayNameFr: row.displayNameFr,
+        displayNameEs: lookupGovernedCatalogEsLabel("CARE_PROCEDURE", first.enterpriseProcedureId),
         code: first.enterpriseProcedureId,
       });
     }

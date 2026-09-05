@@ -8,13 +8,14 @@ import {
   TDAP_IM_INJECTION_SITES,
   validateTdapVaccineAdministrationForm,
   VACCINE_MANUFACTURER_CATALOG,
+  resolveVaccineManufacturerDisplay,
   type TdapEducationReviewedWith,
   type TdapEducationTopic,
   type TdapVaccineAdministrationForm,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
-import { pickLegacyBilingualStoredPair, resolveProductUiLanguageOrDefault } from "@/i18n/config";
+import { resolveProductUiLanguageOrDefault } from "@/i18n/config";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -211,7 +212,7 @@ export function TdapVaccineAdministrationForm({
           <option value="">—</option>
           {VACCINE_MANUFACTURER_CATALOG.map((m) => (
             <option key={m.id} value={m.id}>
-              {pickLegacyBilingualStoredPair(locale, { en: m.labelEn, fr: m.labelFr }).value}
+              {resolveVaccineManufacturerDisplay(m, locale)}
             </option>
           ))}
         </select>

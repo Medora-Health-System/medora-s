@@ -236,11 +236,14 @@ describe("MEDUI.ES.1K six-direction isolation", () => {
 });
 
 describe("MEDUI.ES.1K catalogs + print routing", () => {
-  it("ES catalog display uses code / UNLOCALIZED_SOURCE, never EN or FR labels", () => {
+  it("ES catalog display uses governed Spanish, never EN or FR labels", () => {
     expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
-      "R07.9"
+      "Dolor torácico no especificado"
     );
-    expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("CBC");
+    expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).not.toBe(
+      "Chest pain, unspecified"
+    );
+    expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("Hemograma completo");
     expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "en")).toBe("Complete Blood Count");
     expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "fr")).toBe("Numération formule sanguine");
     expect(
@@ -365,6 +368,19 @@ const REACHABLE_PUBLIC_UI_PREFIXES = [
   "clinic",
   "dental",
   "billing",
+  "adminHub",
+  "publicHealthSummary",
+  "publicHealthModule",
+  "publicHealthNational",
+  "publicHealthVaccinationsPage",
+  "diseaseReports",
+  "adminUsers",
+  "adminAudit",
+  "clinicalSafetyGuardrails",
+  "providerDischargeDocumentation19Y",
+  "medicationKnowledgeExpansionWave2",
+  "facilityIdentityD4c7i",
+  "facilityServiceConfigD4c9",
 ] as const;
 
 function classifyRemainingEsPlaceholder(path: string): Es1kPlaceholderClass {
@@ -408,15 +424,12 @@ function classifyRemainingEsPlaceholder(path: string): Es1kPlaceholderClass {
     path.startsWith("catalogAdmin") ||
     path.startsWith("handbook") ||
     path.startsWith("mspp") ||
-    path.startsWith("adminUsers") ||
-    path.startsWith("adminAudit") ||
     path.startsWith("adminMsppAccess") ||
     path.startsWith("catalogAudit") ||
     path.startsWith("systemHealth") ||
     path.startsWith("medicationRxNormReview") ||
     path.startsWith("medicationInventoryStaging") ||
     path.startsWith("reportsOps") ||
-    path.startsWith("diseaseReports") ||
     path.startsWith("medicationPhase17Pilot")
   ) {
     return "NON_PUBLIC_TOOLING";
@@ -443,7 +456,20 @@ function isReachableUiChromeFamily(path: string): boolean {
     path.startsWith("enterpriseInterdisciplinaryCarePlansD4b6.") ||
     path.startsWith("encounterClinicTab.") ||
     path.startsWith("nursingAssessmentTab.") ||
-    path.startsWith("encounterTriageTab.")
+    path.startsWith("encounterTriageTab.") ||
+    path.startsWith("adminHub.") ||
+    path.startsWith("publicHealthSummary.") ||
+    path.startsWith("publicHealthModule.") ||
+    path.startsWith("publicHealthNational.") ||
+    path.startsWith("publicHealthVaccinationsPage.") ||
+    path.startsWith("diseaseReports.") ||
+    path.startsWith("adminUsers.") ||
+    path.startsWith("adminAudit.") ||
+    path.startsWith("clinicalSafetyGuardrails.") ||
+    path.startsWith("providerDischargeDocumentation19Y.") ||
+    path.startsWith("medicationKnowledgeExpansionWave2.") ||
+    path.startsWith("facilityIdentityD4c7i.") ||
+    path.startsWith("facilityServiceConfigD4c9.")
   );
 }
 
@@ -457,7 +483,7 @@ describe("MEDUI.ES.1K prior overlays remain composed", () => {
     for (const value of leaves.values()) {
       if (isHiddenSpanishPlaceholder(value)) placeholders += 1;
     }
-    expect(placeholders).toBe(25105);
+    expect(placeholders).toBe(24342);
     expect(placeholders).toBeLessThan(leaves.size);
   });
 });
@@ -539,7 +565,7 @@ describe("MEDUI.ES.1K remaining placeholder classification", () => {
     expect(byClass.LEGAL_REVIEW_REQUIRED).toBe(53);
     expect(remainingModal, remainingModal.join("\n")).toEqual([]);
     expect(remainingRx, remainingRx.join("\n")).toEqual([]);
-    expect(placeholders).toBe(25105);
+    expect(placeholders).toBe(24342);
     expect(reachableUiInUnlocalized, "reachable UI still in UNLOCALIZED_SOURCE").toBe(0);
     console.log("MEDUI.ES.1K_PLACEHOLDER_CLASSES", JSON.stringify(byClass));
   });

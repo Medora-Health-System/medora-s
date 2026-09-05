@@ -3,6 +3,10 @@
  */
 
 import { pickCatalogDisplayLabelForProductUi } from "../../i18n/productUiLocale.js";
+import {
+  lookupGovernedCatalogEsLabel,
+  lookupOrderSetItemDisplayEs,
+} from "../../i18n/clinicalCatalogEsDisplay.js";
 
 export const ENTERPRISE_ORDER_SET_CATEGORIES = [
   "CARDIAC",
@@ -146,6 +150,7 @@ export function resolveEnterpriseOrderSetDisplayName(
   return pickCatalogDisplayLabelForProductUi(locale, {
     displayNameEn: set.displayNameEn,
     displayNameFr: set.displayNameFr,
+    displayNameEs: lookupGovernedCatalogEsLabel("ORDER_SET", set.code),
     code: set.code,
   });
 }
@@ -154,9 +159,11 @@ export function resolveEnterpriseOrderSetItemDisplayName(
   item: EnterpriseOrderSetItemRef,
   locale: string
 ): string {
+  const code = item.catalogCode ?? item.enterpriseProcedureCode ?? item.key;
   return pickCatalogDisplayLabelForProductUi(locale, {
     displayNameEn: item.displayNameEn,
     displayNameFr: item.displayNameFr,
-    code: item.catalogCode ?? item.enterpriseProcedureCode ?? item.key,
+    displayNameEs: lookupOrderSetItemDisplayEs(item.displayNameEn, code),
+    code,
   });
 }

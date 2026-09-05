@@ -51,6 +51,8 @@ import { MEDUI_ES_1I_OVERLAY } from "./meduiEs1iClinicDentalBillingAncillaryOver
 import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 import { MEDUI_ES_1K_OVERLAY } from "./meduiEs1kSafeChromeOverlay";
 import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverlay";
+import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
+import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -160,6 +162,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const es1jbKeys = new Set(Object.keys(MEDUI_ES_1JB_OVERLAY));
     const es1kKeys = new Set(Object.keys(MEDUI_ES_1K_OVERLAY));
     const es1kPublicKeys = new Set(Object.keys(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY));
+    const es1k1Keys = new Set(Object.keys(MEDUI_ES_1K1_OVERLAY));
+    const esTrilangKeys = new Set(Object.keys(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY));
     const governedKeys = new Set([
       ...es1eKeys,
       ...es1fKeys,
@@ -169,6 +173,8 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       ...es1jbKeys,
       ...es1kKeys,
       ...es1kPublicKeys,
+      ...es1k1Keys,
+      ...esTrilangKeys,
     ]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
@@ -199,6 +205,10 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_ES_1K_OVERLAY[path]);
       } else if (es1kPublicKeys.has(path)) {
         expect(value, path).toBe(MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path]);
+      } else if (es1k1Keys.has(path)) {
+        expect(value, path).toBe(MEDUI_ES_1K1_OVERLAY[path]);
+      } else if (esTrilangKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY[path]);
       } else {
         expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
         expect(value).toBe(hiddenSpanishPlaceholder(path));
@@ -344,12 +354,12 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
 
   it("clinical catalog ES display never uses EN/FR labels", () => {
     expect(getLocalizedDiagnosisDisplayLabel({ code: "R07.9", description: "Chest pain, unspecified" }, "es")).toBe(
-      "R07.9"
+      "Dolor torácico no especificado"
     );
-    expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("CBC");
+    expect(getCatalogSearchItemDisplayLabel(LAB_ITEM, "es")).toBe("Hemograma completo");
     expect(getCatalogSearchItemSecondaryLine(LAB_ITEM, "es")).toBe("CBC");
-    expect(getCatalogSearchItemDisplayLabel(IMAGING_ITEM, "es")).toBe("CT_HEAD");
-    expect(getCatalogSearchItemDisplayLabel(MED_ITEM, "es")).toBe("MET500");
+    expect(getCatalogSearchItemDisplayLabel(IMAGING_ITEM, "es")).toBe("TC de cráneo");
+    expect(getCatalogSearchItemDisplayLabel(MED_ITEM, "es")).toBe("Metformina 500 mg, comprimido oral");
     expect(getCatalogSearchItemSecondaryLine(MED_ITEM, "es")).toBe("MET500");
     expect(catalogSearchItemFullDisplayLine(LAB_ITEM, "es")).not.toContain("Complete Blood Count");
     expect(catalogSearchItemFullDisplayLine(LAB_ITEM, "es")).not.toContain("Numération");
@@ -360,17 +370,17 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         "es",
         tEs
       )
-    ).toBe("CBC");
+    ).toBe("Hemograma completo");
     expect(chartSummaryOrderItemLineLabel({ displayLabelEn: "Glucose", displayLabelFr: "Glucose plasmatique" } as never, "es")).toBe(
       "—"
     );
   });
 
-  it("search may use EN/FR aliases while ES display stays unlocalized", () => {
+  it("search may use EN/FR aliases while ES display stays active-locale", () => {
     const hits = searchSurgicalHistoryCatalog("appendicectomie", "en");
     expect(hits.length).toBeGreaterThan(0);
     const display = resolveSurgicalHistoryDisplayName(hits[0]!, "es");
-    expect(display).toBe(hits[0]!.id);
+    expect(display).toBe("Apendicectomía");
     expect(display).not.toBe(hits[0]!.displayNameEn);
     expect(display).not.toBe(hits[0]!.displayNameFr);
     expect(pickCatalogDisplayLabelForProductUi("es", {
@@ -396,7 +406,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       },
       "es"
     );
-    expect(reloaded).toBe("CBC");
+    expect(reloaded).toBe("Hemograma completo");
     expect(reloaded).not.toBe("Complete Blood Count");
     expect(reloaded).not.toBe("Numération formule sanguine");
     const printEs = printT("es", "printOutput.discharge.documentH1");

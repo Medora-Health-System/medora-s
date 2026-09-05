@@ -68,6 +68,7 @@ function orderSetSearchHaystack(set: EnterpriseOrderSetDefinition): string {
     set.code,
     set.displayNameEn,
     set.displayNameFr,
+    resolveEnterpriseOrderSetDisplayName(set, "es"),
     set.clinicalDomain,
     set.category,
     ...set.indicationKeywords,

@@ -4,6 +4,7 @@
  */
 
 import type { ContinuousInfusionEventType } from "./continuousInfusionLifecycleGovernance.js";
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import { resolveIcuMarTimelineInfusionEventLabel } from "../mar/icuMarTimelineDisplay.js";
 import type { IcuMarTimelineDisplayLocale } from "../mar/icuMarTimelineDisplay.js";
 
@@ -454,15 +455,15 @@ export function resolveMedicationInfusionEncounterSummaryStatusLabel(
 ): string {
   switch (status) {
     case "RUNNING":
-      return locale === "fr" ? "Perfusion en cours" : "Infusion running";
+      return pickProductUiCopy(locale, { en: "Infusion running", fr: "Perfusion en cours", es: "Infusión en curso" }, "Infusión en curso");
     case "PAUSED":
-      return locale === "fr" ? "En pause" : "Paused";
+      return pickProductUiCopy(locale, { en: "Paused", fr: "En pause", es: "En pausa" }, "En pausa");
     case "STOPPED":
       return resolveIcuMarTimelineInfusionEventLabel("INFUSION_STOP", locale);
     case "COMPLETED":
-      return locale === "fr" ? "Perfusion terminée" : "Infusion completed";
+      return pickProductUiCopy(locale, { en: "Infusion completed", fr: "Perfusion terminée", es: "Infusión completada" }, "Infusión completada");
     default:
-      return locale === "fr" ? "Perfusion" : "Infusion";
+      return pickProductUiCopy(locale, { en: "Infusion", fr: "Perfusion", es: "Infusión" }, "Infusión");
   }
 }
 
@@ -474,10 +475,10 @@ export function resolveMedicationInfusionStopReasonSummaryLabel(
   if (!raw) return null;
   const normalized = raw.toUpperCase();
   if (normalized === "COMPLETED") {
-    return locale === "fr" ? "Perfusion terminée" : "Infusion completed";
+    return pickProductUiCopy(locale, { en: "Infusion completed", fr: "Perfusion terminée", es: "Infusión completada" }, "Infusión completada");
   }
   if (normalized === "ORDER_CANCELLED") {
-    return locale === "fr" ? "Ordonnance annulée" : "Order cancelled";
+    return pickProductUiCopy(locale, { en: "Order cancelled", fr: "Ordonnance annulée", es: "Orden anulada" }, "Orden anulada");
   }
   if (/^(RATE_CHANGE|PAUSE|RESTART|BAG_CHANGE|PUMP_CHANGE|LINE_CHANGE|INFUSING|STOPPED|COMPLETED)$/.test(normalized)) {
     return null;

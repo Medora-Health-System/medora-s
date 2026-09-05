@@ -1,3 +1,4 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import type { MarClinicalAction } from "./marClinicalAction.js";
 import {
   normalizeMedicationFrequencyFromSig,
@@ -332,17 +333,17 @@ export function parseMarPrnAdministrationFromNotes(
 /** Compact MAR cell summary e.g. "Pain 8/10" or "Nausea". */
 export function formatPrnMarAdministrationCellSummary(
   notes: string | null | undefined,
-  locale: "fr" | "en" = "fr"
+  locale: string | null | undefined = "en"
 ): string | null {
   const parsed = parseMarPrnAdministrationFromNotes(notes);
   if (parsed.painScore != null) {
-    const painWord = locale === "en" ? "Pain" : "Douleur";
+    const painWord = pickProductUiCopy(locale, { en: "Pain", fr: "Douleur", es: "Dolor" }, "Dolor");
     return `${painWord} ${parsed.painScore}/10`;
   }
   if (parsed.reasonCode) {
-    return marPrnReasonLabel(parsed.reasonCode, locale);
+    return marPrnReasonLabel(parsed.reasonCode, locale ?? "en");
   }
-  const fromLegacyLabel = formatMarPrnReasonForLocale({ label: parsed.reasonLabel }, locale);
+  const fromLegacyLabel = formatMarPrnReasonForLocale({ label: parsed.reasonLabel }, locale ?? "en");
   if (fromLegacyLabel) return fromLegacyLabel;
   return parsed.reasonLabel?.trim() || null;
 }
@@ -354,14 +355,14 @@ export function mergePrnAdministrationIntoMarNotes(input: {
   prnIndication?: string | null;
   painScore?: number | null;
   painLocation?: string | null;
-  locale?: "fr" | "en";
+  locale?: string | null;
 }): string {
-  const locale = input.locale ?? "fr";
+  const locale = input.locale?.trim() || null;
   const base = extractMarUserFreeTextNotes(input.notes);
+  const authoredOther = input.prnReasonCode === "other" ? input.prnReasonOther?.trim() || "" : "";
   const reasonLabel =
-    input.prnReasonCode === "other"
-      ? input.prnReasonOther?.trim() || marPrnReasonLabel("other", locale)
-      : marPrnReasonLabel(input.prnReasonCode, locale);
+    authoredOther ||
+    (locale ? marPrnReasonLabel(input.prnReasonCode, locale) : input.prnReasonCode);
 
   const machineLines = [
     `${MAR_PRN_REASON_NOTE_PREFIX}${input.prnReasonCode}`,
@@ -377,8 +378,17 @@ export function mergePrnAdministrationIntoMarNotes(input: {
     machineLines.push(`${MAR_PAIN_LOCATION_NOTE_PREFIX}${input.painLocation.trim()}`);
   }
 
-  const humanReason =
-    locale === "en" ? `PRN reason: ${reasonLabel}` : `Motif PRN : ${reasonLabel}`;
+  const humanReason = locale
+    ? pickProductUiCopy(
+        locale,
+        {
+          en: `PRN reason: ${reasonLabel}`,
+          fr: `Motif PRN : ${reasonLabel}`,
+          es: `Motivo PRN: ${reasonLabel}`,
+        },
+        `Motivo PRN: ${reasonLabel}`
+      )
+    : null;
   const parts = [base, humanReason, ...machineLines].filter((p) => p?.trim());
   return parts.join("\n");
 }

@@ -182,6 +182,18 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_HARDENING.1", () => {
     expect(vaccineAdministrationNoteIsMonolingual(note, "fr")).toBe(true);
   });
 
+  it("20b — vaccine note ES has no EN/FR generated-text leakage", () => {
+    const note = buildVaccineAdministrationAuditNote(doc(), "es");
+    expect(note).toContain("administrado por vía");
+    expect(note).toContain("deltoides derecho");
+    expect(note).toContain("Sanofi Pasteur");
+    expect(vaccineAdministrationNoteIsMonolingual(note, "es")).toBe(true);
+    expect(note).not.toMatch(/\badministered\b/i);
+    expect(note).not.toContain("Vaccine information statement");
+    expect(note).not.toContain("Fiche d'information vaccinale");
+    expect(String(serializeVaccineAdministrationDocumentation(doc()).generatedNoteEs)).toContain("administrado");
+  });
+
   it("21 — generic vaccine workflow applies to influenza", () => {
     const label = resolveVaccineAdministrationDisplayName({
       catalogCode: "INFLUENZA_VACCINE_INJECTABLE_INTRAMUSCULAR",

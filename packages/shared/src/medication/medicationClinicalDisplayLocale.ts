@@ -5,6 +5,7 @@
 
 import { looksFrenchLocalizedText } from "./medicationLocalizationValidation.js";
 import { parseProductUiLanguage } from "../i18n/productUiLocale.js";
+import { resolveMedicationClinicalDisplayEs } from "../i18n/clinicalCatalogEsDisplay.js";
 
 export type MedicationClinicalDisplayLocale = string;
 
@@ -133,6 +134,36 @@ const FREQUENCY_FR_TO_EN: Record<string, string> = {
   qd: "once daily",
 };
 
+const THERAPEUTIC_CLASS_TO_ES: Record<string, string> = {
+  AINS: "AINE",
+  Analgésique: "Analgésico",
+  "Analgésique / antipyrétique": "Analgésico / antipirético",
+  Antibiotique: "Antibiótico",
+  Antihypertenseur: "Antihipertensivo",
+  Antidiabétique: "Antidiabético",
+  Anticoagulant: "Anticoagulante",
+  Corticostéroide: "Corticosteroide",
+  Diurétique: "Diurético",
+  Bronchodilatateur: "Broncodilatador",
+  Antiémétique: "Antiemético",
+  Antiémetique: "Antiemético",
+};
+
+const FREQUENCY_TO_ES: Record<string, string> = {
+  quotidien: "diario",
+  "1 fois par jour": "una vez al día",
+  "deux fois par jour": "dos veces al día",
+  "trois fois par jour": "tres veces al día",
+  daily: "diario",
+  "once daily": "una vez al día",
+  "twice daily": "dos veces al día",
+  "three times daily": "tres veces al día",
+  bid: "dos veces al día",
+  tid: "tres veces al día",
+  qid: "cuatro veces al día",
+  qd: "una vez al día",
+};
+
 function normalizeLookupKey(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -177,7 +208,14 @@ export function resolveMedicationClinicalDisplayValue(
   if (!raw) return "";
   const parsed = parseProductUiLanguage(locale);
   if (parsed === "fr") return raw;
-  if (parsed === "es") return "";
+  if (parsed === "es") {
+    if (field === "dosageForm" || field === "route") {
+      return resolveMedicationClinicalDisplayEs(raw, field);
+    }
+    if (field === "therapeuticClass") return THERAPEUTIC_CLASS_TO_ES[raw] ?? "";
+    if (field === "frequency") return FREQUENCY_TO_ES[normalizeLookupKey(raw)] ?? "";
+    return "";
+  }
 
   if (field) {
     return mapFrToEnForClinicalField(raw, field);

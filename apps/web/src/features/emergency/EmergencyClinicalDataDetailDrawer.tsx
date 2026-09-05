@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import {
   buildClinicalDocumentationDetailRows,
   getClinicalDocumentationCardById,
+  selectClinicalDocumentationCardTitle,
 } from "@medora/shared";
 import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
 import { useI18n } from "@/lib/i18n";
@@ -48,7 +49,7 @@ export function EmergencyClinicalDataDetailDrawer({
 
   if (!open || !entry) return null;
 
-  const title = locale === "fr" ? entry.cardTitleFr : entry.cardTitleEn;
+  const title = selectClinicalDocumentationCardTitle(entry, locale);
   const when = formatClinicalInstantForFacility(entry.createdAt, facilityTimeZone, language);
   const status = entry.voidedAt
     ? t("emergencyClinicalData.summary.status.voided")

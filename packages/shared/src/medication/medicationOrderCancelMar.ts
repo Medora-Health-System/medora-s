@@ -1,3 +1,4 @@
+import { pickProductUiCopy } from "../i18n/productUiLocale.js";
 import { formatMarShiftTimelineClinicianDisplay } from "./marShiftTimeline.js";
 import {
   isTerminalMedicationDoseStatus,
@@ -163,7 +164,7 @@ export function buildMarCanceledTimelineCellDisplay(input: {
   medicationLabel: string | null;
   route: string | null;
   cancellationReason: string | null;
-  locale?: "en" | "fr";
+  locale?: string | null;
 }): {
   primaryText: string;
   secondaryText: string;
@@ -171,14 +172,18 @@ export function buildMarCanceledTimelineCellDisplay(input: {
   hoverStatus: string;
 } {
   const locale = input.locale ?? "fr";
-  const label = input.medicationLabel?.trim() || (locale === "en" ? "Medication" : "Médicament");
+  const label =
+    input.medicationLabel?.trim() ||
+    pickProductUiCopy(locale, { en: "Medication", fr: "Médicament", es: "Medicamento" }, "Medicamento");
   const route = input.route?.trim().toUpperCase() || null;
-  const canceledLabel = locale === "en" ? "CANCELED" : "ANNULÉ";
+  const canceledLabel = pickProductUiCopy(locale, { en: "CANCELED", fr: "ANNULÉ", es: "ANULADO" }, "ANULADO");
   const reason = input.cancellationReason?.trim();
   return {
     primaryText: label.split(/\s+/)[0] ?? label,
     secondaryText: route ? `${canceledLabel} · ${route}` : canceledLabel,
-    tertiaryText: reason ?? (locale === "en" ? "Order canceled" : "Ordonnance annulée"),
-    hoverStatus: locale === "en" ? "Canceled" : "Annulé",
+    tertiaryText:
+      reason ??
+      pickProductUiCopy(locale, { en: "Order canceled", fr: "Ordonnance annulée", es: "Orden anulada" }, "Orden anulada"),
+    hoverStatus: pickProductUiCopy(locale, { en: "Canceled", fr: "Annulé", es: "Anulado" }, "Anulado"),
   };
 }

@@ -16,8 +16,15 @@ const LAB_ALIAS_CODE_MAP: Record<string, string[]> = {
   cmp: ["CMP", "ER_CMP"],
   bmp: ["BMP", "ER_BMP"],
   trop: ["TROPONIN", "TROP", "ER_TROP"],
+  troponina: ["TROPONIN", "TROP", "ER_TROP"],
   hcg: ["URINE_HCG", "SERUM_HCG", "HCG_URINE", "HCG_BETA", "ER_UHCG"],
   "type screen": ["TYPE_SCREEN", "ER_BLOOD_TYPE"],
+  orina: ["UA"],
+  "análisis de orina": ["UA"],
+  hemograma: ["CBC", "ER_CBC"],
+  "hemograma completo": ["CBC", "ER_CBC"],
+  glucosa: ["GLU", "GLUCOSE_POC"],
+  creatinina: ["CREAT"],
 };
 
 const labClassifierInclude = {

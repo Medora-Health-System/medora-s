@@ -16,6 +16,7 @@ export type ClinicalRapidOptionV1 = {
   code: string;
   display: string;
   displayFr: string;
+  displayEs?: string;
   category?: string | null;
   severity?: "info" | "warning" | "urgent" | null;
   requiresDetail?: boolean;
@@ -385,18 +386,18 @@ export const PROVIDER_INTERVAL_EVENT_OPTIONS: ClinicalRapidOptionV1[] = [
 ];
 
 export const PLAN_STICKY_OPTIONS: ClinicalRapidOptionV1[] = [
-  { code: "CONTINUE_MGMT", display: "Continue current management", displayFr: "Poursuivre la prise en charge actuelle" },
-  { code: "MONITOR", display: "Monitor clinical status", displayFr: "Surveiller l’état clinique" },
-  { code: "TREND_LABS", display: "Trend laboratory values", displayFr: "Suivre les valeurs de laboratoire" },
-  { code: "REPEAT_IMAGING", display: "Repeat imaging if indicated", displayFr: "Répéter l’imagerie si indiqué" },
-  { code: "CONSULT", display: "Consult requested", displayFr: "Avis demandé" },
-  { code: "MED_ADJUST", display: "Medication adjustment", displayFr: "Ajustement médicamenteux" },
-  { code: "IV_FLUIDS", display: "IV fluids", displayFr: "Perfusion IV" },
-  { code: "PAIN_CONTROL", display: "Pain control", displayFr: "Contrôle de la douleur" },
-  { code: "DVT_PROPHYLAXIS", display: "DVT prophylaxis", displayFr: "Prophylaxie MTEV" },
-  { code: "FALL_PRECAUTIONS", display: "Fall precautions", displayFr: "Précautions de chute" },
-  { code: "DISCHARGE_PLANNING", display: "Discharge planning", displayFr: "Planification de sortie" },
-  { code: "OTHER", display: "Other", displayFr: "Autre", requiresComment: true },
+  { code: "CONTINUE_MGMT", display: "Continue current management", displayFr: "Poursuivre la prise en charge actuelle", displayEs: "Continuar el manejo actual" },
+  { code: "MONITOR", display: "Monitor clinical status", displayFr: "Surveiller l’état clinique", displayEs: "Vigilar el estado clínico" },
+  { code: "TREND_LABS", display: "Trend laboratory values", displayFr: "Suivre les valeurs de laboratoire", displayEs: "Seguir los valores de laboratorio" },
+  { code: "REPEAT_IMAGING", display: "Repeat imaging if indicated", displayFr: "Répéter l’imagerie si indiqué", displayEs: "Repetir imagen si está indicado" },
+  { code: "CONSULT", display: "Consult requested", displayFr: "Avis demandé", displayEs: "Interconsulta solicitada" },
+  { code: "MED_ADJUST", display: "Medication adjustment", displayFr: "Ajustement médicamenteux", displayEs: "Ajuste de medicación" },
+  { code: "IV_FLUIDS", display: "IV fluids", displayFr: "Perfusion IV", displayEs: "Líquidos IV" },
+  { code: "PAIN_CONTROL", display: "Pain control", displayFr: "Contrôle de la douleur", displayEs: "Control del dolor" },
+  { code: "DVT_PROPHYLAXIS", display: "DVT prophylaxis", displayFr: "Prophylaxie MTEV", displayEs: "Profilaxis de TEV" },
+  { code: "FALL_PRECAUTIONS", display: "Fall precautions", displayFr: "Précautions de chute", displayEs: "Precauciones de caída" },
+  { code: "DISCHARGE_PLANNING", display: "Discharge planning", displayFr: "Planification de sortie", displayEs: "Planificación del alta" },
+  { code: "OTHER", display: "Other", displayFr: "Autre", displayEs: "Otro", requiresComment: true },
 ];
 
 export const ADDITIONAL_DOC_CATEGORIES = [
