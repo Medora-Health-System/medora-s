@@ -31,6 +31,11 @@ export const ICD10_P3F_SMOKE_CODES = [
   "R11.12",
   "L03",
   "L03.90",
+  "L98.431",
+  "S31.106A",
+  "T78.070A",
+  "G35.A",
+  "QA0.0101",
 ] as const;
 
 export const ICD10_P3F_SMOKE_LOCALES = ["en", "fr", "es"] as const;

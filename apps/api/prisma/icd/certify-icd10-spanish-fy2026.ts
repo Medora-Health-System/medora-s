@@ -1,6 +1,5 @@
 /**
- * FY2026 Spanish diagnosis certification. Honest source-limited coverage.
- * Does not claim 74,719/74,719 when the Ministry table cannot supply it.
+ * FY2026 Spanish diagnosis certification.
  *
  *   pnpm --filter @medora/api run icd:certify-spanish-fy2026 -- --release=FY2026
  */
@@ -8,6 +7,11 @@ import { PrismaClient } from "@prisma/client";
 import { normalizeIcd10CodeForLookup, resolveIcd10DiagnosisDisplay } from "@medora/shared";
 import { collectIcd10MultilingualCertification } from "./certify-icd10-multilingual";
 import { ICD10_CM_FY2026_MANIFEST } from "./icd10-cm-release-manifest";
+import {
+  buildIcd10CatalogSearchMatch,
+  buildIcd10CatalogSearchSelectSql,
+  type Icd10CatalogSearchRow,
+} from "../../src/diagnoses/icd10-catalog-search.query";
 
 const ADVERSARIAL = [
   "A42.1",
@@ -29,6 +33,14 @@ const ADVERSARIAL = [
   "R10.10",
   "G35",
   "G35.A",
+  "L98.431",
+  "L98.A111",
+  "S31.106A",
+  "S31.606A",
+  "T78.070A",
+  "T36.AX1A",
+  "QA0.0101",
+  "R10.A1",
   "S030XXA",
   "T141",
 ] as const;
@@ -150,6 +162,47 @@ async function main() {
       console.log(`SPAIN_ONLY ${code} usSelectable=${row?.isSelectable === true ? "YES" : "NO"}`);
     }
 
+    const smokeQueries: Array<{ q: string; expectCode: string; kind: string }> = [
+      { q: "S31.106A", expectCode: "S31.106A", kind: "code" },
+      { q: "SCN2A", expectCode: "QA0.0101", kind: "es-term" },
+      { q: "G35.A", expectCode: "G35.A", kind: "code" },
+      { q: "abdominal pain of multiple sites", expectCode: "R10.85", kind: "en-alias" },
+      { q: "flanco derecho", expectCode: "S31.106A", kind: "es-term" },
+    ];
+    let smokeFail = 0;
+    for (const smoke of smokeQueries) {
+      const match = buildIcd10CatalogSearchMatch(smoke.q);
+      if (!match) {
+        console.log(`SMOKE ${smoke.kind} q=${smoke.q} NO_MATCH`);
+        smokeFail += 1;
+        continue;
+      }
+      const hits = await prisma.$queryRaw<Icd10CatalogSearchRow[]>(
+        buildIcd10CatalogSearchSelectSql(match, 25, { releaseVersion }),
+      );
+      const hit = hits.find((row) => row.code === smoke.expectCode);
+      const resolved = hit
+        ? resolveIcd10DiagnosisDisplay({
+            codeSystem: hit.codeSystem,
+            releaseVersion: hit.releaseVersion,
+            code: hit.code,
+            locale: "es",
+            catalog: hit,
+            terminologyRows: termsByCatalog.get(hit.id) ?? [],
+          })
+        : null;
+      const codes = hits.map((row) => row.code);
+      const unique = new Set(codes).size === codes.length;
+      const esOk =
+        resolved?.localized === true &&
+        resolved.exactness !== "UNLOCALIZED_CODE" &&
+        !/abdominal pain|nausea|vomiting/i.test(resolved.displayName);
+      console.log(
+        `SMOKE ${smoke.kind} q=${smoke.q} found=${hit ? "YES" : "NO"} unique=${unique ? "YES" : "NO"} localized=${resolved?.localized === true ? "YES" : "NO"} display=${resolved?.displayName ?? ""}`,
+      );
+      if (!hit || !unique || !esOk) smokeFail += 1;
+    }
+
     console.log(`RELEASE=${counts.release}`);
     console.log(`EN_COVERAGE=${counts.enExact}/${counts.totalSearchable}`);
     console.log(`ES_EXACT_COVERAGE=${counts.esExact}/${counts.totalSearchable}`);
@@ -172,7 +225,8 @@ async function main() {
       counts.canonicalCodeMutations === 0;
     console.log(`SPANISH_SAFETY=${safety ? "PASS" : "FAIL"}`);
     console.log(`SPANISH_COMPLETE=${counts.esExact === counts.totalSearchable ? "YES" : "NO"}`);
-    process.exitCode = safety ? 0 : 1;
+    console.log(`SEARCH_SMOKE=${smokeFail === 0 ? "PASS" : "FAIL"}`);
+    process.exitCode = safety && smokeFail === 0 ? 0 : 1;
   } finally {
     await prisma.$disconnect();
   }

@@ -23,6 +23,9 @@ export const ICD10_CIE10ES_SOURCE_ID = "CIE10ES_MS_DIAG_2026";
 export const ICD10_CIE10ES_TERMINOLOGY_VERSION = "CIE10ES.6.2026";
 export const ICD10_CIE10ES_ARTIFACT_SHA256 =
   "3695159d8f9a5a77e7ecdcee29657debbee4ed74b470a6d6143e99c80a5782fc";
+/** Medora-governed FY2026 Spanish gap-closure set (not CIE-10-ES / not machine source). */
+export const ICD10_FY2026_ES_GAP_SOURCE_ID = "MEDORA_DX_GOVERNED_FY2026_ES_GAP";
+export const ICD10_FY2026_ES_GAP_TERMINOLOGY_VERSION = "MEDORA.TRILANG.DX.P3F7.ES.GAP.1";
 
 export type Icd10TerminologyLabelRegister = "CLINICIAN_PREFERRED" | "CONSUMER";
 export type Icd10TerminologyProvenance = "OFFICIAL_SOURCE" | "LICENSED_VENDOR" | "MEDORA_GOVERNED";
