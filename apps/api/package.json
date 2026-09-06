@@ -87,6 +87,7 @@
     "icd:import-licensed-terminology": "ts-node --transpile-only prisma/icd/import-icd10-licensed-terminology.ts",
     "icd:build-cie10es-fy2026": "ts-node --transpile-only prisma/icd/build-cie10es-fy2026-artifact.ts",
     "icd:fy2026-es-gap-governed": "ts-node --transpile-only prisma/icd/build-fy2026-es-gap-governed.ts",
+    "icd:fy2027-es-terminology": "ts-node --transpile-only prisma/icd/build-fy2027-es-terminology.ts",
     "icd:certify-spanish-fy2026": "ts-node --transpile-only prisma/icd/certify-icd10-spanish-fy2026.ts",
     "icd:certify-spanish-fy2027-gap": "ts-node --transpile-only prisma/icd/certify-icd10-spanish-fy2027-gap.ts",
     "icd:validate-national-sources": "ts-node --transpile-only prisma/icd/validate-icd10-national-sources.ts",

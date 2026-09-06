@@ -1,0 +1,977 @@
+{
+  "releaseVersion": "FY2027",
+  "count": 194,
+  "kind": "NEW_OR_DESCRIPTION_CHANGED",
+  "codes": [
+    {
+      "code": "C78.31",
+      "shortDescription": "Secondary malignant neoplasm of larynx",
+      "family": "C78"
+    },
+    {
+      "code": "C78.32",
+      "shortDescription": "Secondary malignant neoplasm of pharynx",
+      "family": "C78"
+    },
+    {
+      "code": "C79.83",
+      "shortDescription": "Secondary malignant neoplasm of oral cavity",
+      "family": "C79"
+    },
+    {
+      "code": "D69.11",
+      "shortDescription": "Glanzmann thrombasthenia",
+      "family": "D69"
+    },
+    {
+      "code": "D69.19",
+      "shortDescription": "Other qualitative platelet defects",
+      "family": "D69"
+    },
+    {
+      "code": "E89.830",
+      "shortDescription": "Post bariatric hypoglycemia",
+      "family": "E89"
+    },
+    {
+      "code": "E89.838",
+      "shortDescription": "Other postprocedural hypoglycemia",
+      "family": "E89"
+    },
+    {
+      "code": "F64.A",
+      "shortDescription": "Gender identity disorder, in remission",
+      "family": "F64"
+    },
+    {
+      "code": "I42.00",
+      "shortDescription": "Dilated cardiomyopathy, unspecified",
+      "family": "I42"
+    },
+    {
+      "code": "I42.01",
+      "shortDescription": "Familial-genetic dilated cardiomyopathy",
+      "family": "I42"
+    },
+    {
+      "code": "I42.09",
+      "shortDescription": "Other dilated cardiomyopathy",
+      "family": "I42"
+    },
+    {
+      "code": "I42.81",
+      "shortDescription": "Arrhythmogenic cardiomyopathy",
+      "family": "I42"
+    },
+    {
+      "code": "I42.89",
+      "shortDescription": "Other cardiomyopathies not elsewhere classified",
+      "family": "I42"
+    },
+    {
+      "code": "I47.22",
+      "shortDescription": "Catecholaminergic polymorphic ventricular tachycardia [CPVT]",
+      "family": "I47"
+    },
+    {
+      "code": "I49.81",
+      "shortDescription": "Brugada syndrome",
+      "family": "I49"
+    },
+    {
+      "code": "I49.82",
+      "shortDescription": "Ventricular bigeminy",
+      "family": "I49"
+    },
+    {
+      "code": "I49.89",
+      "shortDescription": "Other specified cardiac arrhythmias not elsewhere classified",
+      "family": "I49"
+    },
+    {
+      "code": "J34.830",
+      "shortDescription": "Odontogenic sinusitis, maxillary sinus",
+      "family": "J34"
+    },
+    {
+      "code": "J34.831",
+      "shortDescription": "Odontogenic sinusitis, ethmoid sinus",
+      "family": "J34"
+    },
+    {
+      "code": "J34.832",
+      "shortDescription": "Odontogenic sinusitis, frontal sinus",
+      "family": "J34"
+    },
+    {
+      "code": "J34.833",
+      "shortDescription": "Odontogenic sinusitis, sphenoid sinus",
+      "family": "J34"
+    },
+    {
+      "code": "J34.839",
+      "shortDescription": "Odontogenic sinusitis, unspecified",
+      "family": "J34"
+    },
+    {
+      "code": "J4B",
+      "shortDescription": "Pulmonary mycetoma",
+      "family": "J4B"
+    },
+    {
+      "code": "K31.B",
+      "shortDescription": "Hypertrophic pyloric stenosis, in childhood",
+      "family": "K31"
+    },
+    {
+      "code": "K6A.01",
+      "shortDescription": "Prevesical abscess",
+      "family": "K6A"
+    },
+    {
+      "code": "K6A.09",
+      "shortDescription": "Other pelvic abscess",
+      "family": "K6A"
+    },
+    {
+      "code": "K6A.8",
+      "shortDescription": "Other diseases of the pelvis, not elsewhere classified",
+      "family": "K6A"
+    },
+    {
+      "code": "K74.0A",
+      "shortDescription": "Hepatic fibrosis, moderate fibrosis",
+      "family": "K74"
+    },
+    {
+      "code": "K76.83",
+      "shortDescription": "Intestinal failure-associated liver disease",
+      "family": "K76"
+    },
+    {
+      "code": "L02.232",
+      "shortDescription": "Carbuncle of back [any part, except buttock and flank]",
+      "family": "L02"
+    },
+    {
+      "code": "L02.237",
+      "shortDescription": "Carbuncle of flank",
+      "family": "L02"
+    },
+    {
+      "code": "L03.312",
+      "shortDescription": "Cellulitis of back [any part except buttock and flank]",
+      "family": "L03"
+    },
+    {
+      "code": "L03.322",
+      "shortDescription": "Acute lymphangitis of back",
+      "family": "L03"
+    },
+    {
+      "code": "M04.3",
+      "shortDescription": "VEXAS syndrome",
+      "family": "M04"
+    },
+    {
+      "code": "M67.A01",
+      "shortDescription": "Plantar fasciitis, right foot",
+      "family": "M67"
+    },
+    {
+      "code": "M67.A02",
+      "shortDescription": "Plantar fasciitis, left foot",
+      "family": "M67"
+    },
+    {
+      "code": "M67.A09",
+      "shortDescription": "Plantar fasciitis, unspecified foot",
+      "family": "M67"
+    },
+    {
+      "code": "M72.20",
+      "shortDescription": "Plantar fascial fibromatosis, unspecified foot",
+      "family": "M72"
+    },
+    {
+      "code": "M72.21",
+      "shortDescription": "Plantar fascial fibromatosis, right foot",
+      "family": "M72"
+    },
+    {
+      "code": "M72.22",
+      "shortDescription": "Plantar fascial fibromatosis, left foot",
+      "family": "M72"
+    },
+    {
+      "code": "M86.8X11",
+      "shortDescription": "Other osteomyelitis, right shoulder",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X12",
+      "shortDescription": "Other osteomyelitis, left shoulder",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X19",
+      "shortDescription": "Other osteomyelitis, unspecified shoulder",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X21",
+      "shortDescription": "Other osteomyelitis, right upper arm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X22",
+      "shortDescription": "Other osteomyelitis, left upper arm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X29",
+      "shortDescription": "Other osteomyelitis, unspecified upper arm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X31",
+      "shortDescription": "Other osteomyelitis, right forearm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X32",
+      "shortDescription": "Other osteomyelitis, left forearm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X39",
+      "shortDescription": "Other osteomyelitis, unspecified forearm",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X41",
+      "shortDescription": "Other osteomyelitis, right hand",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X42",
+      "shortDescription": "Other osteomyelitis, left hand",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X49",
+      "shortDescription": "Other osteomyelitis, unspecified hand",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X51",
+      "shortDescription": "Other osteomyelitis, right thigh",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X52",
+      "shortDescription": "Other osteomyelitis, left thigh",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X59",
+      "shortDescription": "Other osteomyelitis, unspecified thigh",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X61",
+      "shortDescription": "Other osteomyelitis, right lower leg",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X62",
+      "shortDescription": "Other osteomyelitis, left lower leg",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X69",
+      "shortDescription": "Other osteomyelitis, unspecified lower leg",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X71",
+      "shortDescription": "Other osteomyelitis, right ankle and foot",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X72",
+      "shortDescription": "Other osteomyelitis, left ankle and foot",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X79",
+      "shortDescription": "Other osteomyelitis, unspecified ankle and foot",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X80",
+      "shortDescription": "Other osteomyelitis, skull",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X81",
+      "shortDescription": "Other osteomyelitis, face and sinuses",
+      "family": "M86"
+    },
+    {
+      "code": "M86.8X89",
+      "shortDescription": "Other osteomyelitis, other site",
+      "family": "M86"
+    },
+    {
+      "code": "N99.860",
+      "shortDescription": "Intraoperative and postprocedural nipple ischemia",
+      "family": "N99"
+    },
+    {
+      "code": "N99.861",
+      "shortDescription": "Intraoperative and postprocedural nipple necrosis",
+      "family": "N99"
+    },
+    {
+      "code": "O00.121",
+      "shortDescription": "Right interstit ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.122",
+      "shortDescription": "Left interstit ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.129",
+      "shortDescription": "Unsp interstit ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.131",
+      "shortDescription": "Right interstit ectopic pregnancy with uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.132",
+      "shortDescription": "Left interstit ectopic pregnancy with intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.139",
+      "shortDescription": "Unsp interstit ectopic pregnancy with uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.31",
+      "shortDescription": "Cesarean scar ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.32",
+      "shortDescription": "Cesarean scar ectopic pregnancy with intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.41",
+      "shortDescription": "Cervical ectopic pregnancy without intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.42",
+      "shortDescription": "Cervical ectopic pregnancy with intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.511",
+      "shortDescription": "Right cornual ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.512",
+      "shortDescription": "Left cornual ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.519",
+      "shortDescription": "Unsp cornual ectopic pregnancy without uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.521",
+      "shortDescription": "Right cornual ectopic pregnancy with intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.522",
+      "shortDescription": "Left cornual ectopic pregnancy with intrauterine pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O00.529",
+      "shortDescription": "Unspecified cornual ectopic pregnancy with uterin pregnancy",
+      "family": "O00"
+    },
+    {
+      "code": "O31.40X0",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,unsp",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X1",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,fts1",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X2",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,fts2",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X3",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,fts3",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X4",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,fts4",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X5",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,fts5",
+      "family": "O31"
+    },
+    {
+      "code": "O31.40X9",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,unsp tri,oth",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X0",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,unsp",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X1",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,fts1",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X2",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,fts2",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X3",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,fts3",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X4",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,fts4",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X5",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,1st tri,fts5",
+      "family": "O31"
+    },
+    {
+      "code": "O31.41X9",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more, 1st tri, oth",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X0",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,unsp",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X1",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,fts1",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X2",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,fts2",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X3",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,fts3",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X4",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,fts4",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X5",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,2nd tri,fts5",
+      "family": "O31"
+    },
+    {
+      "code": "O31.42X9",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more, 2nd tri, oth",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X0",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,unsp",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X1",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,fts1",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X2",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,fts2",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X3",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,fts3",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X4",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,fts4",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X5",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more,3rd tri,fts5",
+      "family": "O31"
+    },
+    {
+      "code": "O31.43X9",
+      "shortDescription": "Cont preg aft vanishing twin syn 1 fts or more, 3rd tri, oth",
+      "family": "O31"
+    },
+    {
+      "code": "Q87.A",
+      "shortDescription": "Loeys-Dietz syndrome",
+      "family": "Q87"
+    },
+    {
+      "code": "QA1.71",
+      "shortDescription": "Lynch syndrome",
+      "family": "QA1"
+    },
+    {
+      "code": "QA1.790",
+      "shortDescription": "Familial cancer syndrome with pathogenic BRCA1 mutation",
+      "family": "QA1"
+    },
+    {
+      "code": "QA1.791",
+      "shortDescription": "Familial cancer syndrome with pathogenic BRCA2 mutation",
+      "family": "QA1"
+    },
+    {
+      "code": "QA1.792",
+      "shortDescription": "Li Fraumeni syndrome",
+      "family": "QA1"
+    },
+    {
+      "code": "QA1.798",
+      "shortDescription": "Other inherited neoplm predisposition synd of mult systems",
+      "family": "QA1"
+    },
+    {
+      "code": "R78.72",
+      "shortDescription": "Abnormal gadolinium level in blood",
+      "family": "R78"
+    },
+    {
+      "code": "T52.811A",
+      "shortDescription": "Toxic effect of alkenes, accidental (unintentional), init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.811D",
+      "shortDescription": "Toxic effect of alkenes, accidental (unintentional), subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.811S",
+      "shortDescription": "Toxic effect of alkenes, accidental (unintentional), sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.812A",
+      "shortDescription": "Toxic effect of alkenes, self-harm, initial encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.812D",
+      "shortDescription": "Toxic effect of alkenes, self-harm, subsequent encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.812S",
+      "shortDescription": "Toxic effect of alkenes, intentional self-harm, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.813A",
+      "shortDescription": "Toxic effect of alkenes, assault, initial encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.813D",
+      "shortDescription": "Toxic effect of alkenes, assault, subsequent encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.813S",
+      "shortDescription": "Toxic effect of alkenes, assault, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.814A",
+      "shortDescription": "Toxic effect of alkenes, undetermined, initial encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.814D",
+      "shortDescription": "Toxic effect of alkenes, undetermined, subsequent encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.814S",
+      "shortDescription": "Toxic effect of alkenes, undetermined, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.821A",
+      "shortDescription": "Toxic effect of cycloparaffins, accidental, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.821D",
+      "shortDescription": "Toxic effect of cycloparaffins, accidental, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.821S",
+      "shortDescription": "Toxic effect of cycloparaffins, accidental, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.822A",
+      "shortDescription": "Toxic effect of cycloparaffins, self-harm, initial encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.822D",
+      "shortDescription": "Toxic effect of cycloparaffins, self-harm, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.822S",
+      "shortDescription": "Toxic effect of cycloparaffins, self-harm, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.823A",
+      "shortDescription": "Toxic effect of cycloparaffins, assault, initial encounter",
+      "family": "T52"
+    },
+    {
+      "code": "T52.823D",
+      "shortDescription": "Toxic effect of cycloparaffins, assault, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.823S",
+      "shortDescription": "Toxic effect of cycloparaffins, assault, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.824A",
+      "shortDescription": "Toxic effect of cycloparaffins, undetermined, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.824D",
+      "shortDescription": "Toxic effect of cycloparaffins, undetermined, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.824S",
+      "shortDescription": "Toxic effect of cycloparaffins, undetermined, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.891A",
+      "shortDescription": "Toxic effect of other organic solvents, accidental, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.891D",
+      "shortDescription": "Toxic effect of other organic solvents, accidental, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.891S",
+      "shortDescription": "Toxic effect of other organic solvents, accidental, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.892A",
+      "shortDescription": "Toxic effect of other organic solvents, self-harm, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.892D",
+      "shortDescription": "Toxic effect of other organic solvents, self-harm, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.892S",
+      "shortDescription": "Toxic effect of other organic solvents, self-harm, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.893A",
+      "shortDescription": "Toxic effect of other organic solvents, assault, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.893D",
+      "shortDescription": "Toxic effect of other organic solvents, assault, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.893S",
+      "shortDescription": "Toxic effect of other organic solvents, assault, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T52.894A",
+      "shortDescription": "Toxic effect of other organic solvents, undetermined, init",
+      "family": "T52"
+    },
+    {
+      "code": "T52.894D",
+      "shortDescription": "Toxic effect of other organic solvents, undetermined, subs",
+      "family": "T52"
+    },
+    {
+      "code": "T52.894S",
+      "shortDescription": "Toxic effect of other organic solvents, undet, sequela",
+      "family": "T52"
+    },
+    {
+      "code": "T59.821A",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, acc, init",
+      "family": "T59"
+    },
+    {
+      "code": "T59.821D",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, acc, subs",
+      "family": "T59"
+    },
+    {
+      "code": "T59.821S",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, acc, sequela",
+      "family": "T59"
+    },
+    {
+      "code": "T59.822A",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, self-harm, init",
+      "family": "T59"
+    },
+    {
+      "code": "T59.822D",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, self-harm, subs",
+      "family": "T59"
+    },
+    {
+      "code": "T59.822S",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, slf-hrm, sequela",
+      "family": "T59"
+    },
+    {
+      "code": "T59.823A",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, assault, init",
+      "family": "T59"
+    },
+    {
+      "code": "T59.823D",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, assault, subs",
+      "family": "T59"
+    },
+    {
+      "code": "T59.823S",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, assault, sequela",
+      "family": "T59"
+    },
+    {
+      "code": "T59.824A",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, undet, init",
+      "family": "T59"
+    },
+    {
+      "code": "T59.824D",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, undet, subs",
+      "family": "T59"
+    },
+    {
+      "code": "T59.824S",
+      "shortDescription": "Toxic effect of hexamethylene diisocyanate, undet, sequela",
+      "family": "T59"
+    },
+    {
+      "code": "T65.851A",
+      "shortDescription": "Toxic effect of medetomidine, accidental, init",
+      "family": "T65"
+    },
+    {
+      "code": "T65.851D",
+      "shortDescription": "Toxic effect of medetomidine, accidental, subs",
+      "family": "T65"
+    },
+    {
+      "code": "T65.851S",
+      "shortDescription": "Toxic effect of medetomidine, accidental, sequela",
+      "family": "T65"
+    },
+    {
+      "code": "T65.852A",
+      "shortDescription": "Toxic effect of medetomidine, self-harm, initial encounter",
+      "family": "T65"
+    },
+    {
+      "code": "T65.852D",
+      "shortDescription": "Toxic effect of medetomidine, self-harm, subs",
+      "family": "T65"
+    },
+    {
+      "code": "T65.852S",
+      "shortDescription": "Toxic effect of medetomidine, intentional self-harm, sequela",
+      "family": "T65"
+    },
+    {
+      "code": "T65.853A",
+      "shortDescription": "Toxic effect of medetomidine, assault, initial encounter",
+      "family": "T65"
+    },
+    {
+      "code": "T65.853D",
+      "shortDescription": "Toxic effect of medetomidine, assault, subsequent encounter",
+      "family": "T65"
+    },
+    {
+      "code": "T65.853S",
+      "shortDescription": "Toxic effect of medetomidine, assault, sequela",
+      "family": "T65"
+    },
+    {
+      "code": "T65.854A",
+      "shortDescription": "Toxic effect of medetomidine, undetermined, init",
+      "family": "T65"
+    },
+    {
+      "code": "T65.854D",
+      "shortDescription": "Toxic effect of medetomidine, undetermined, subs",
+      "family": "T65"
+    },
+    {
+      "code": "T65.854S",
+      "shortDescription": "Toxic effect of medetomidine, undetermined, sequela",
+      "family": "T65"
+    },
+    {
+      "code": "Z29.14",
+      "shortDescription": "Encounter for prophylactic rabies immune globulin",
+      "family": "Z29"
+    },
+    {
+      "code": "Z68.18",
+      "shortDescription": "Body mass index [BMI] 18.4 or less, adult",
+      "family": "Z68"
+    },
+    {
+      "code": "Z68.19",
+      "shortDescription": "Body mass index [BMI] 18.5-19.9, adult",
+      "family": "Z68"
+    },
+    {
+      "code": "Z77.013",
+      "shortDescription": "Contact with and (suspected) exposure to gadolinium",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.32",
+      "shortDescription": "Contact with and exposure to burn pits in war theater",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.33",
+      "shortDescription": "Contact with and (suspected) exposure to Agent Orange",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.40",
+      "shortDescription": "Contact with and exposure to unspecified blast overpressure",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.41",
+      "shortDescription": "Contact with and exposure to low-level blast overpressure",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.42",
+      "shortDescription": "Contact with and exposure to high-level blast overpressure",
+      "family": "Z77"
+    },
+    {
+      "code": "Z77.49",
+      "shortDescription": "Contact with and exposure to other blast overpressure",
+      "family": "Z77"
+    },
+    {
+      "code": "Z86.17",
+      "shortDescription": "Personal history of Clostridioides difficile infection",
+      "family": "Z86"
+    },
+    {
+      "code": "Z87.8901",
+      "shortDescription": "Personal history of social gender transition",
+      "family": "Z87"
+    },
+    {
+      "code": "Z87.8902",
+      "shortDescription": "Personal history of medical gender transition",
+      "family": "Z87"
+    },
+    {
+      "code": "Z87.8903",
+      "shortDescription": "Personal history of surgical gender transition",
+      "family": "Z87"
+    },
+    {
+      "code": "Z87.8904",
+      "shortDescription": "Personal history of intersex surgery",
+      "family": "Z87"
+    },
+    {
+      "code": "Z87.8909",
+      "shortDescription": "Personal history of unspecified gender transition",
+      "family": "Z87"
+    },
+    {
+      "code": "Z87.893",
+      "shortDescription": "Personal history of gender detransition",
+      "family": "Z87"
+    }
+  ]
+}
