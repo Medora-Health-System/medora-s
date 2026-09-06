@@ -28,7 +28,7 @@ import {
   type Icd10MultilingualCertificationCounts,
   type Icd10TerminologyDisplayRow,
 } from "@medora/shared";
-import { ICD10_CM_FY2026_MANIFEST } from "./icd10-cm-release-manifest";
+import { resolveIcd10CmReleaseManifest } from "./icd10-cm-release-manifest";
 
 const CODE_SYSTEM = ICD10_CM_CODE_SYSTEM;
 const R11_FAMILY = ["R11.0", "R11.1", "R11.2", "R11.10", "R11.11", "R11.12"] as const;
@@ -44,6 +44,14 @@ function preferOfficialRelease(versions: string[]): string | null {
   return nonSample ?? versions[0] ?? null;
 }
 
+function expectedBillableRowsForRelease(release: string, catalogSelectable: number): number {
+  try {
+    return resolveIcd10CmReleaseManifest(release).expectedBillableRows;
+  } catch {
+    return catalogSelectable;
+  }
+}
+
 export async function collectIcd10MultilingualCertification(
   prisma: PrismaClient,
   options?: { releaseVersion?: string },
@@ -57,6 +65,11 @@ export async function collectIcd10MultilingualCertification(
     options?.releaseVersion ??
     preferOfficialRelease(releaseRows.map((row) => row.releaseVersion)) ??
     "NONE";
+  if (!options?.releaseVersion) {
+    console.warn(
+      "RELEASE was inferred from catalog rows. Production cutover must pass --release=<intended> and must not silently assume FY2026.",
+    );
+  }
   const releaseFilter = release === "NONE" ? undefined : release;
 
   const catalog = await prisma.icd10DiagnosisCode.findMany({
@@ -304,7 +317,7 @@ export async function collectIcd10MultilingualCertification(
     aliasUsedAsDisplay,
     consumerUsedAsClinician,
     canonicalCodeMutations: Number(linkedMismatches[0]?.n ?? 0),
-    expectedBillableRows: ICD10_CM_FY2026_MANIFEST.expectedBillableRows,
+    expectedBillableRows: expectedBillableRowsForRelease(release, searchable.length),
   };
 }
 
@@ -312,6 +325,7 @@ function printReport(counts: Icd10MultilingualCertificationCounts) {
   const gates = evaluateIcd10MultilingualCertification(counts);
   const lines = [
     `RELEASE=${counts.release}`,
+    `EXPECTED_BILLABLE_ROWS=${counts.expectedBillableRows}`,
     `TOTAL_SEARCHABLE=${counts.totalSearchable}`,
     `EN_EXACT=${counts.enExact}`,
     `FR_EXACT=${counts.frExact}`,
@@ -354,7 +368,8 @@ function parseCli(argv: string[]): {
 }
 
 function printUsage() {
-  console.log("Usage: icd:certify-multilingual --gate=safety|coverage [--release=FY2026]");
+  console.log("Usage: icd:certify-multilingual --gate=safety|coverage --release=<FY2026|...>");
+  console.log("  Production must pass --release explicitly. Do not assume FY2026 after a newer catalog is active.");
   console.log("  --gate=safety     architecture/safety only (exit 1 on fail)");
   console.log("  --gate=coverage   full EN/FR/ES exact coverage (exit 2 on fail; expected FAIL today)");
   console.log("  no --gate         report both; exit 1 if safety fails, exit 2 if only coverage fails");

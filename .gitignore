@@ -54,6 +54,8 @@ apps/api/prisma/data/icd10-releases/**/*.zip
 !apps/api/prisma/data/icd10-releases/**/.gitkeep
 reports/icd10/
 apps/api/reports/icd10/
+apps/api/prisma/icd/p3f3-*.json
+apps/api/prisma/icd/p3f3-*.md
 
 # Local RxNorm / NLM release artifacts (operator-supplied; not committed)
 .local-data/
