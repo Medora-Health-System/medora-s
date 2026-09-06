@@ -52,3 +52,24 @@ pnpm --filter @medora/api icd:search
 Summaries are written under `apps/api/prisma/icd/certification-summaries/`.
 
 Place downloaded artifacts under `.cache/` (gitignored) or any secure operator path.
+
+## Licensed FR/ES clinician terminology (not in git)
+
+There is no in-repo full French or Spanish U.S. ICD-10-CM clinician dictionary.
+
+To ingest an operator-licensed artifact (CSV or JSONL):
+
+```bash
+pnpm --filter @medora/api run icd:import-licensed-terminology -- \
+  --file /secure/path/vendor-fr-fy2026.jsonl \
+  --release=FY2026 \
+  --dry-run
+```
+
+`--release=` is required (do not omit it; FY2026 is not assumed). Default apply chunk size is 500 (`--chunk-size=`).
+
+Required record fields: `code`, `locale` (`fr`|`es`), `label`, `sourceId`, `terminologyVersion`, `provenance`.
+Do not commit licensed source files, license keys, or vendor dumps.
+WHO CIM / CIE / ICD-10-CA / ICD-10-AM must not be imported as if they were exact U.S. ICD-10-CM wording.
+
+See `apps/api/prisma/icd/P3F-PRODUCTION-CUTOVER-RUNBOOK.md`.

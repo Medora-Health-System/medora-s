@@ -84,6 +84,7 @@
     "icd:certify-multilingual:safety": "ts-node --transpile-only prisma/icd/certify-icd10-multilingual.ts --gate=safety",
     "icd:certify-multilingual:coverage": "ts-node --transpile-only prisma/icd/certify-icd10-multilingual.ts --gate=coverage",
     "icd:seed-governed-terminology": "ts-node --transpile-only prisma/icd/seed-icd10-governed-terminology.ts",
+    "icd:import-licensed-terminology": "ts-node --transpile-only prisma/icd/import-icd10-licensed-terminology.ts",
     "clinical:templates:enterprise-certify": "ts-node --transpile-only prisma/icd/certify-enterprise-templates.ts",
     "clinical:composite-guidance:enterprise-certify": "ts-node --transpile-only prisma/icd/certify-enterprise-composite-guidance.ts",
     "clinical:discharge:enterprise-certify": "ts-node --transpile-only prisma/icd/certify-enterprise-discharge.ts",
