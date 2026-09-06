@@ -176,11 +176,24 @@ describe("Icd10CatalogService P3 search presentation", () => {
       { $queryRaw: queryRaw } as never,
       { resolveDisplaysForCatalogRows } as unknown as Icd10TerminologyService,
     );
-    const result = await service.search("a", "es", 50);
+    const result = await service.search("ab", "es", 50);
     expect(result.items).toHaveLength(50);
     expect(queryRaw).toHaveBeenCalledTimes(1);
     expect(resolveDisplaysForCatalogRows).toHaveBeenCalledTimes(1);
     expect(resolveDisplaysForCatalogRows.mock.calls[0][0].catalogRows).toHaveLength(50);
+  });
+
+  it("does not query the catalog for a 1-character non-code search", async () => {
+    const queryRaw = jest.fn();
+    const resolveDisplaysForCatalogRows = jest.fn();
+    const service = new Icd10CatalogService(
+      { $queryRaw: queryRaw } as never,
+      { resolveDisplaysForCatalogRows } as unknown as Icd10TerminologyService,
+    );
+    const result = await service.search("a", "es", 50);
+    expect(result.items).toHaveLength(0);
+    expect(queryRaw).not.toHaveBeenCalled();
+    expect(resolveDisplaysForCatalogRows).not.toHaveBeenCalled();
   });
 
   it("skips terminology for EN while still using one catalog query", async () => {
