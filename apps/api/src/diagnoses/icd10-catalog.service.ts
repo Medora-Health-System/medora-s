@@ -56,15 +56,20 @@ export class Icd10CatalogService {
       return { items: [] as const, limit: take };
     }
 
-    const match = buildIcd10CatalogSearchMatch(raw);
+    const match = buildIcd10CatalogSearchMatch(raw, locale);
     if (!match) {
       return { items: [] as const, limit: take };
     }
 
     const releaseVersion = resolveSearchReleaseVersion(options);
-    const catalogItems = await this.prisma.$queryRaw<Icd10CatalogSearchRow[]>(
-      buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion }),
-    );
+    const selectSql = buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion, locale });
+    const catalogItems =
+      typeof this.prisma.$transaction === "function"
+        ? await this.prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('jit', 'off', true)`;
+            return tx.$queryRaw<Icd10CatalogSearchRow[]>(selectSql);
+          })
+        : await this.prisma.$queryRaw<Icd10CatalogSearchRow[]>(selectSql);
 
     const displays = await this.terminology.resolveDisplaysForCatalogRows({
       locale,
