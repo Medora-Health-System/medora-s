@@ -33,12 +33,17 @@ function parseLimit(): number | undefined {
 
 async function main() {
   const file = getArg("file");
-  const release = getArg("release") ?? "2026";
+  const releaseArg = getArg("release");
   const dryRun = hasFlag("dry-run") || getArg("mode") === "dry-run" || getArg("mode") === "validate";
   if (!file) {
     console.error("Missing --file=/path/to/official-release.(zip|txt|csv)");
     process.exit(1);
   }
+  if (!releaseArg) {
+    console.error("Missing --release=<FY2026|FY2027|2026|2027>. Do not silently assume FY2026.");
+    process.exit(1);
+  }
+  const release = releaseArg;
 
   const validation = validateIcd10CmRelease({
     file,
@@ -98,6 +103,8 @@ async function main() {
         isSelectable: true,
         isActive: true,
         sourceChecksum: true,
+        effectiveFrom: true,
+        effectiveTo: true,
       },
     });
     const byCode = new Map(existing.map((r) => [r.code, r]));
@@ -117,7 +124,9 @@ async function main() {
         prev.isBillable === row.isBillable &&
         prev.isSelectable === row.isSelectable &&
         prev.isActive === row.isActive &&
-        prev.sourceChecksum === row.sourceChecksum;
+        prev.sourceChecksum === row.sourceChecksum &&
+        prev.effectiveFrom?.toISOString() === row.effectiveFrom.toISOString() &&
+        (prev.effectiveTo?.toISOString() ?? null) === (row.effectiveTo?.toISOString() ?? null);
       if (same) unchanged++;
       else toUpdate.push({ id: prev.id, row });
     }

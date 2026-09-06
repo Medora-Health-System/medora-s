@@ -183,6 +183,8 @@ export const ICD10_P3F3_ADVERSARIAL_CODES = [
   "R10.85",
   "R10.9",
   "R10.10",
+  "G35",
+  "G35.A",
   "S030XXA",
   "T141",
 ] as const;

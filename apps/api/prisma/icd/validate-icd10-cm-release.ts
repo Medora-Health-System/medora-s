@@ -43,6 +43,11 @@ function extractOrderFileFromZip(zipPath: string, preferredInnerFile: string): s
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
+    const preferredBase = basename(preferredInnerFile);
+    const exact = listing.find((p) => basename(p) === preferredBase);
+    if (exact) return exact;
+    const annual = listing.find((p) => /icd10cm-order-\d+\.txt$/i.test(p));
+    if (annual) return annual;
     if (listing[0]) return listing[0]!;
     throw new Error(`ZIP does not contain ${preferredInnerFile}`);
   } catch (e) {

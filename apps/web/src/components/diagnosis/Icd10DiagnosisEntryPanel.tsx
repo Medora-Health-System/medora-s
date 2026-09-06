@@ -36,6 +36,7 @@ export type Icd10DiagnosisEntryPanelProps = {
   saving?: boolean;
   /** Opens manual entry and prefills (e.g. common diagnosis shortcut from chart modal). */
   manualPrefill?: { code: string; description?: string } | null;
+  dateOfService?: string;
 };
 
 /**
@@ -55,6 +56,7 @@ export function Icd10DiagnosisEntryPanel({
   showOnsetNotes = false,
   saving = false,
   manualPrefill = null,
+  dateOfService,
 }: Icd10DiagnosisEntryPanelProps) {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
@@ -171,6 +173,7 @@ export function Icd10DiagnosisEntryPanel({
         alreadyAddedLabel={t("diagnosisEntry.alreadyAdded")}
         nonBillableLabel={t("diagnosisEntry.nonBillableCode")}
         onSelect={(hit) => void pickCatalog(hit)}
+        dateOfService={dateOfService}
       />
 
       <div>

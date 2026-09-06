@@ -39,25 +39,37 @@ export class DiagnosesController {
   async searchIcd10(
     @Query("q") q: string,
     @Query("locale") localeRaw: string | undefined,
-    @Query("limit") limitRaw: string | undefined
+    @Query("limit") limitRaw: string | undefined,
+    @Query("dateOfService") dateOfServiceRaw: string | undefined,
+    @Query("releaseVersion") releaseVersionRaw: string | undefined,
   ) {
     const locale = requireIcd10SearchLocale(localeRaw);
     const limit = limitRaw != null && limitRaw !== "" ? Number(limitRaw) : undefined;
     if (limit != null && (!Number.isFinite(limit) || limit < 1)) {
       throw new BadRequestException("Invalid limit");
     }
-    return this.icd10Catalog.search(q ?? "", locale, limit);
+    return this.icd10Catalog.search(q ?? "", locale, limit, {
+      dateOfService: dateOfServiceRaw,
+      releaseVersion: releaseVersionRaw,
+    });
   }
 
   /** Resolve one active catalog row by code (with or without dots). */
   @Get("icd10/by-code")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
-  async lookupIcd10ByCode(@Query("code") code: string) {
+  async lookupIcd10ByCode(
+    @Query("code") code: string,
+    @Query("dateOfService") dateOfServiceRaw: string | undefined,
+    @Query("releaseVersion") releaseVersionRaw: string | undefined,
+  ) {
     const c = code?.trim();
     if (!c) {
       throw new BadRequestException("Query parameter code is required");
     }
-    const row = await this.icd10Catalog.findByCode(c);
+    const row = await this.icd10Catalog.findByCode(c, {
+      dateOfService: dateOfServiceRaw,
+      releaseVersion: releaseVersionRaw,
+    });
     if (!row) {
       throw new NotFoundException("ICD-10 code not found in catalog");
     }

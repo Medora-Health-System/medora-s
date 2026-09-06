@@ -28,6 +28,7 @@ export type Icd10DiagnosisSearchAutocompleteProps = {
   selectedDiagnoses?: DiagnosisDuplicateRef[];
   onSelect: (hit: Icd10SearchHit, description: string) => void;
   testId?: string;
+  dateOfService?: string;
 };
 
 export function Icd10DiagnosisSearchAutocomplete({
@@ -43,6 +44,7 @@ export function Icd10DiagnosisSearchAutocomplete({
   selectedDiagnoses = [],
   onSelect,
   testId = "icd10-diagnosis-search-autocomplete",
+  dateOfService,
 }: Icd10DiagnosisSearchAutocompleteProps) {
   const [searchQ, setSearchQ] = useState("");
   const [searchHits, setSearchHits] = useState<Icd10SearchHit[]>([]);
@@ -69,7 +71,7 @@ export function Icd10DiagnosisSearchAutocomplete({
         const merged: Icd10SearchHit[] = [];
         const seen = new Set<string>();
         for (const apiQ of apiQueries) {
-          const res = await searchIcd10Catalog(apiQ, 25, language);
+          const res = await searchIcd10Catalog(apiQ, 25, language, dateOfService ? { dateOfService } : undefined);
           for (const hit of Array.isArray(res.items) ? res.items : []) {
             if (seen.has(hit.id)) continue;
             seen.add(hit.id);
@@ -110,7 +112,7 @@ export function Icd10DiagnosisSearchAutocomplete({
       cancelled = true;
       window.clearTimeout(tmr);
     };
-  }, [language, searchQ]);
+  }, [language, searchQ, dateOfService]);
 
   const pick = (hit: Icd10SearchHit) => {
     if (disabled) return;

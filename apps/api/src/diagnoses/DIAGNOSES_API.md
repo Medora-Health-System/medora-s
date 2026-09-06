@@ -7,16 +7,16 @@
 | POST | `/encounters/:encounterId/diagnoses` | RN, PROVIDER, ADMIN | Create diagnosis for encounter |
 | POST | `/encounters/:encounterId/diagnoses/reorder` | RN, PROVIDER, ADMIN | Set encounter diagnosis order (`orderedIds`) |
 | GET | `/patients/:patientId/diagnoses` | RN, PROVIDER, ADMIN | List diagnoses for patient |
-| GET | `/diagnoses/icd10/search` | RN, PROVIDER, ADMIN, BILLING | ICD-10-CM catalog search (`q`, required `locale=en\|fr\|es`, optional `limit`) — one row per ICD code; presentation via `displayLabel` / `displayResolution` |
+| GET | `/diagnoses/icd10/search` | RN, PROVIDER, ADMIN, BILLING | ICD-10-CM catalog search (`q`, required `locale=en\|fr\|es`, optional `limit`, optional `dateOfService`, optional `releaseVersion`) — one date-of-service release; presentation via `displayLabel` / `displayResolution` |
 | GET | `/diagnoses/icd10/by-code` | RN, PROVIDER, ADMIN, BILLING | Lookup one active catalog row (`code` query) |
 
 ### ICD-10 search pipeline
 
 1. **UI** — `Icd10DiagnosisEntryPanel` → `searchIcd10Catalog` (`chartApi.ts`). French UI may expand to English synonym queries (`diagnosisFrenchSearchAliases`); that is query expansion only, not a second catalog.
-2. **HTTP** — `GET /diagnoses/icd10/search?q=&locale=en|fr|es&limit=` → `DiagnosesController` → `Icd10CatalogService.search`. Missing/invalid `locale` is 400 (never silently English).
+2. **HTTP** — `GET /diagnoses/icd10/search?q=&locale=en|fr|es&limit=&dateOfService=` → `DiagnosesController` → `Icd10CatalogService.search`. Missing/invalid `locale` is 400 (never silently English).
 3. **Match** — `icd10-catalog-search.query.ts` builds OR predicates over `code` / `normalizedCode` / short / long / `searchText`, plus clinical synonym expansion (`icd10-clinical-query-expansion.ts`).
-4. **Catalog** — rows in `Icd10DiagnosisCode`. Uniqueness is `(codeSystem, releaseVersion, code)`, so the same ICD code can exist in `FY2026`, `UNSPECIFIED`, and `FY2026-MEDORA-DEV-SAMPLE`.
-5. **Release collapse** — `DISTINCT ON ("code")` keeps one catalog row per ICD code (official FY release preferred over `UNSPECIFIED` / DEV-SAMPLE). Aliases and synonym matches only widen predicates; they do not add extra visible rows.
+4. **Catalog** — rows in `Icd10DiagnosisCode`. Uniqueness is `(codeSystem, releaseVersion, code)`, so the same ICD code can exist in `FY2026`, `FY2027`, `UNSPECIFIED`, and `FY2026-MEDORA-DEV-SAMPLE`.
+5. **Release selection** — search filters `releaseVersion` by date of service (FY2026 through 2026-09-30, FY2027 from 2026-10-01). Do not collapse FY years by code. Aliases and synonym matches only widen predicates.
 6. **Ranking** — code exact → prefix → short description → expansion → long/token; prefer billable and initial-encounter (`A`) for trauma codes.
 7. **JSON** — `{ items: [...], limit }` with duplicate ICD codes = 0.
 

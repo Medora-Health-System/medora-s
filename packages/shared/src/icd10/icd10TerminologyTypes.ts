@@ -18,6 +18,11 @@ export const ICD10_GOVERNED_SEARCH_ALIAS_VERSION = "MEDORA.TRILANG.DX.P2.SEARCH_
 /** Stable Medora governed source identity. Not a file path. */
 export const ICD10_GOVERNED_SOURCE_ID = "MEDORA_DX_GOVERNED";
 export const ICD10_OFFICIAL_SOURCE_ID_FY2026 = "CDC_NCHS_FY2026";
+/** Ministerio de Sanidad CIE-10-ES Diagnósticos 6ª edición 2026 (product-approved display source). */
+export const ICD10_CIE10ES_SOURCE_ID = "CIE10ES_MS_DIAG_2026";
+export const ICD10_CIE10ES_TERMINOLOGY_VERSION = "CIE10ES.6.2026";
+export const ICD10_CIE10ES_ARTIFACT_SHA256 =
+  "3695159d8f9a5a77e7ecdcee29657debbee4ed74b470a6d6143e99c80a5782fc";
 
 export type Icd10TerminologyLabelRegister = "CLINICIAN_PREFERRED" | "CONSUMER";
 export type Icd10TerminologyProvenance = "OFFICIAL_SOURCE" | "LICENSED_VENDOR" | "MEDORA_GOVERNED";

@@ -298,6 +298,8 @@ export * from "./icd10Normalize.js";
 export * from "./icd10FormatGuardrail.js";
 export * from "./icd10/formatIcd10CmDisplayCode.js";
 export * from "./icd10/icd10TerminologyTypes.js";
+export * from "./icd10/icd10ReleaseSelection.js";
+export * from "./icd10/cie10esFy2026AllowSet.js";
 export * from "./icd10/icd10DisplayResolver.js";
 export * from "./icd10/icd10EffectiveRecompute.js";
 export * from "./icd10/icd10SelectableDisplay.js";

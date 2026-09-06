@@ -1,0 +1,2982 @@
+{
+  "release": "FY2026",
+  "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES",
+  "officialNewerEsSourceFound": false,
+  "count": 487,
+  "familyCounts": {
+    "B88": 2,
+    "C50": 3,
+    "D71": 3,
+    "E11": 1,
+    "E72": 7,
+    "E78": 3,
+    "E83": 6,
+    "E88": 6,
+    "G31": 1,
+    "G35": 8,
+    "G71": 1,
+    "H01": 9,
+    "H05": 4,
+    "H40": 4,
+    "I27": 4,
+    "L02": 2,
+    "L03": 2,
+    "L98": 112,
+    "M05": 1,
+    "N00": 2,
+    "N04": 2,
+    "N07": 1,
+    "Q87": 2,
+    "Q89": 2,
+    "Q99": 6,
+    "QA0": 13,
+    "R10": 14,
+    "R11": 1,
+    "R39": 4,
+    "R76": 2,
+    "S30": 30,
+    "S31": 108,
+    "T36": 18,
+    "T65": 12,
+    "T75": 6,
+    "T78": 39,
+    "W44": 3,
+    "W45": 3,
+    "Y36": 6,
+    "Y37": 6,
+    "Y93": 2,
+    "Z15": 5,
+    "Z40": 3,
+    "Z59": 3,
+    "Z77": 2,
+    "Z80": 1,
+    "Z84": 3,
+    "Z85": 1,
+    "Z86": 1,
+    "Z91": 7
+  },
+  "codes": [
+    {
+      "code": "B88.01",
+      "normalizedCode": "B8801",
+      "family": "B88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "B88.09",
+      "normalizedCode": "B8809",
+      "family": "B88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "C50.A0",
+      "normalizedCode": "C50A0",
+      "family": "C50",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "C50.A1",
+      "normalizedCode": "C50A1",
+      "family": "C50",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "C50.A2",
+      "normalizedCode": "C50A2",
+      "family": "C50",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "D71.1",
+      "normalizedCode": "D711",
+      "family": "D71",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "D71.8",
+      "normalizedCode": "D718",
+      "family": "D71",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "D71.9",
+      "normalizedCode": "D719",
+      "family": "D71",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E11.A",
+      "normalizedCode": "E11A",
+      "family": "E11",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.530",
+      "normalizedCode": "E72530",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.538",
+      "normalizedCode": "E72538",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.539",
+      "normalizedCode": "E72539",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.540",
+      "normalizedCode": "E72540",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.541",
+      "normalizedCode": "E72541",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.548",
+      "normalizedCode": "E72548",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E72.549",
+      "normalizedCode": "E72549",
+      "family": "E72",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E78.010",
+      "normalizedCode": "E78010",
+      "family": "E78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E78.011",
+      "normalizedCode": "E78011",
+      "family": "E78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E78.019",
+      "normalizedCode": "E78019",
+      "family": "E78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.820",
+      "normalizedCode": "E83820",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.821",
+      "normalizedCode": "E83821",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.822",
+      "normalizedCode": "E83822",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.823",
+      "normalizedCode": "E83823",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.824",
+      "normalizedCode": "E83824",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E83.825",
+      "normalizedCode": "E83825",
+      "family": "E83",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.10",
+      "normalizedCode": "E8810",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.11",
+      "normalizedCode": "E8811",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.12",
+      "normalizedCode": "E8812",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.13",
+      "normalizedCode": "E8813",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.14",
+      "normalizedCode": "E8814",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "E88.19",
+      "normalizedCode": "E8819",
+      "family": "E88",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G31.87",
+      "normalizedCode": "G3187",
+      "family": "G31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.A",
+      "normalizedCode": "G35A",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.B0",
+      "normalizedCode": "G35B0",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.B1",
+      "normalizedCode": "G35B1",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.B2",
+      "normalizedCode": "G35B2",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.C0",
+      "normalizedCode": "G35C0",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.C1",
+      "normalizedCode": "G35C1",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.C2",
+      "normalizedCode": "G35C2",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G35.D",
+      "normalizedCode": "G35D",
+      "family": "G35",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "G71.036",
+      "normalizedCode": "G71036",
+      "family": "G71",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.81",
+      "normalizedCode": "H0181",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.82",
+      "normalizedCode": "H0182",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.83",
+      "normalizedCode": "H0183",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.84",
+      "normalizedCode": "H0184",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.85",
+      "normalizedCode": "H0185",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.86",
+      "normalizedCode": "H0186",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.89",
+      "normalizedCode": "H0189",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.8A",
+      "normalizedCode": "H018A",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H01.8B",
+      "normalizedCode": "H018B",
+      "family": "H01",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H05.831",
+      "normalizedCode": "H05831",
+      "family": "H05",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H05.832",
+      "normalizedCode": "H05832",
+      "family": "H05",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H05.833",
+      "normalizedCode": "H05833",
+      "family": "H05",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H05.839",
+      "normalizedCode": "H05839",
+      "family": "H05",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H40.841",
+      "normalizedCode": "H40841",
+      "family": "H40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H40.842",
+      "normalizedCode": "H40842",
+      "family": "H40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H40.843",
+      "normalizedCode": "H40843",
+      "family": "H40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "H40.849",
+      "normalizedCode": "H40849",
+      "family": "H40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "I27.840",
+      "normalizedCode": "I27840",
+      "family": "I27",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "I27.841",
+      "normalizedCode": "I27841",
+      "family": "I27",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "I27.848",
+      "normalizedCode": "I27848",
+      "family": "I27",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "I27.849",
+      "normalizedCode": "I27849",
+      "family": "I27",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L02.217",
+      "normalizedCode": "L02217",
+      "family": "L02",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L02.227",
+      "normalizedCode": "L02227",
+      "family": "L02",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L03.31A",
+      "normalizedCode": "L0331A",
+      "family": "L03",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L03.32A",
+      "normalizedCode": "L0332A",
+      "family": "L03",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.431",
+      "normalizedCode": "L98431",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.432",
+      "normalizedCode": "L98432",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.433",
+      "normalizedCode": "L98433",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.434",
+      "normalizedCode": "L98434",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.435",
+      "normalizedCode": "L98435",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.436",
+      "normalizedCode": "L98436",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.438",
+      "normalizedCode": "L98438",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.439",
+      "normalizedCode": "L98439",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.441",
+      "normalizedCode": "L98441",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.442",
+      "normalizedCode": "L98442",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.443",
+      "normalizedCode": "L98443",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.444",
+      "normalizedCode": "L98444",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.445",
+      "normalizedCode": "L98445",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.446",
+      "normalizedCode": "L98446",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.448",
+      "normalizedCode": "L98448",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.449",
+      "normalizedCode": "L98449",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.451",
+      "normalizedCode": "L98451",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.452",
+      "normalizedCode": "L98452",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.453",
+      "normalizedCode": "L98453",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.454",
+      "normalizedCode": "L98454",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.455",
+      "normalizedCode": "L98455",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.456",
+      "normalizedCode": "L98456",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.458",
+      "normalizedCode": "L98458",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.459",
+      "normalizedCode": "L98459",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.461",
+      "normalizedCode": "L98461",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.462",
+      "normalizedCode": "L98462",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.463",
+      "normalizedCode": "L98463",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.464",
+      "normalizedCode": "L98464",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.465",
+      "normalizedCode": "L98465",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.466",
+      "normalizedCode": "L98466",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.468",
+      "normalizedCode": "L98468",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.469",
+      "normalizedCode": "L98469",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.471",
+      "normalizedCode": "L98471",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.472",
+      "normalizedCode": "L98472",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.473",
+      "normalizedCode": "L98473",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.474",
+      "normalizedCode": "L98474",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.475",
+      "normalizedCode": "L98475",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.476",
+      "normalizedCode": "L98476",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.478",
+      "normalizedCode": "L98478",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.479",
+      "normalizedCode": "L98479",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A111",
+      "normalizedCode": "L98A111",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A112",
+      "normalizedCode": "L98A112",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A113",
+      "normalizedCode": "L98A113",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A114",
+      "normalizedCode": "L98A114",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A115",
+      "normalizedCode": "L98A115",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A116",
+      "normalizedCode": "L98A116",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A118",
+      "normalizedCode": "L98A118",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A119",
+      "normalizedCode": "L98A119",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A121",
+      "normalizedCode": "L98A121",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A122",
+      "normalizedCode": "L98A122",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A123",
+      "normalizedCode": "L98A123",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A124",
+      "normalizedCode": "L98A124",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A125",
+      "normalizedCode": "L98A125",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A126",
+      "normalizedCode": "L98A126",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A128",
+      "normalizedCode": "L98A128",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A129",
+      "normalizedCode": "L98A129",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A191",
+      "normalizedCode": "L98A191",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A192",
+      "normalizedCode": "L98A192",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A193",
+      "normalizedCode": "L98A193",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A194",
+      "normalizedCode": "L98A194",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A195",
+      "normalizedCode": "L98A195",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A196",
+      "normalizedCode": "L98A196",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A198",
+      "normalizedCode": "L98A198",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A199",
+      "normalizedCode": "L98A199",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A211",
+      "normalizedCode": "L98A211",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A212",
+      "normalizedCode": "L98A212",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A213",
+      "normalizedCode": "L98A213",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A214",
+      "normalizedCode": "L98A214",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A215",
+      "normalizedCode": "L98A215",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A216",
+      "normalizedCode": "L98A216",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A218",
+      "normalizedCode": "L98A218",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A219",
+      "normalizedCode": "L98A219",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A221",
+      "normalizedCode": "L98A221",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A222",
+      "normalizedCode": "L98A222",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A223",
+      "normalizedCode": "L98A223",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A224",
+      "normalizedCode": "L98A224",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A225",
+      "normalizedCode": "L98A225",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A226",
+      "normalizedCode": "L98A226",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A228",
+      "normalizedCode": "L98A228",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A229",
+      "normalizedCode": "L98A229",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A291",
+      "normalizedCode": "L98A291",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A292",
+      "normalizedCode": "L98A292",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A293",
+      "normalizedCode": "L98A293",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A294",
+      "normalizedCode": "L98A294",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A295",
+      "normalizedCode": "L98A295",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A296",
+      "normalizedCode": "L98A296",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A298",
+      "normalizedCode": "L98A298",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A299",
+      "normalizedCode": "L98A299",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A311",
+      "normalizedCode": "L98A311",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A312",
+      "normalizedCode": "L98A312",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A313",
+      "normalizedCode": "L98A313",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A314",
+      "normalizedCode": "L98A314",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A315",
+      "normalizedCode": "L98A315",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A316",
+      "normalizedCode": "L98A316",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A318",
+      "normalizedCode": "L98A318",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A319",
+      "normalizedCode": "L98A319",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A321",
+      "normalizedCode": "L98A321",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A322",
+      "normalizedCode": "L98A322",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A323",
+      "normalizedCode": "L98A323",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A324",
+      "normalizedCode": "L98A324",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A325",
+      "normalizedCode": "L98A325",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A326",
+      "normalizedCode": "L98A326",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A328",
+      "normalizedCode": "L98A328",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A329",
+      "normalizedCode": "L98A329",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A391",
+      "normalizedCode": "L98A391",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A392",
+      "normalizedCode": "L98A392",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A393",
+      "normalizedCode": "L98A393",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A394",
+      "normalizedCode": "L98A394",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A395",
+      "normalizedCode": "L98A395",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A396",
+      "normalizedCode": "L98A396",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A398",
+      "normalizedCode": "L98A398",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "L98.A399",
+      "normalizedCode": "L98A399",
+      "family": "L98",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "M05.A",
+      "normalizedCode": "M05A",
+      "family": "M05",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "N00.B1",
+      "normalizedCode": "N00B1",
+      "family": "N00",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "N00.B2",
+      "normalizedCode": "N00B2",
+      "family": "N00",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "N04.B1",
+      "normalizedCode": "N04B1",
+      "family": "N04",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "N04.B2",
+      "normalizedCode": "N04B2",
+      "family": "N04",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "N07.B",
+      "normalizedCode": "N07B",
+      "family": "N07",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q87.87",
+      "normalizedCode": "Q8787",
+      "family": "Q87",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q87.88",
+      "normalizedCode": "Q8788",
+      "family": "Q87",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q89.81",
+      "normalizedCode": "Q8981",
+      "family": "Q89",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q89.89",
+      "normalizedCode": "Q8989",
+      "family": "Q89",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.811",
+      "normalizedCode": "Q99811",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.812",
+      "normalizedCode": "Q99812",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.813",
+      "normalizedCode": "Q99813",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.818",
+      "normalizedCode": "Q99818",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.819",
+      "normalizedCode": "Q99819",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Q99.89",
+      "normalizedCode": "Q9989",
+      "family": "Q99",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0101",
+      "normalizedCode": "QA00101",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0102",
+      "normalizedCode": "QA00102",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0109",
+      "normalizedCode": "QA00109",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.011",
+      "normalizedCode": "QA0011",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.012",
+      "normalizedCode": "QA0012",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0131",
+      "normalizedCode": "QA00131",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0139",
+      "normalizedCode": "QA00139",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0141",
+      "normalizedCode": "QA00141",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0142",
+      "normalizedCode": "QA00142",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0149",
+      "normalizedCode": "QA00149",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0151",
+      "normalizedCode": "QA00151",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.0159",
+      "normalizedCode": "QA00159",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "QA0.8",
+      "normalizedCode": "QA08",
+      "family": "QA0",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.20",
+      "normalizedCode": "R1020",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.21",
+      "normalizedCode": "R1021",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.22",
+      "normalizedCode": "R1022",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.23",
+      "normalizedCode": "R1023",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.24",
+      "normalizedCode": "R1024",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.85",
+      "normalizedCode": "R1085",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.8A1",
+      "normalizedCode": "R108A1",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.8A2",
+      "normalizedCode": "R108A2",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.8A3",
+      "normalizedCode": "R108A3",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.8A9",
+      "normalizedCode": "R108A9",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.A0",
+      "normalizedCode": "R10A0",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.A1",
+      "normalizedCode": "R10A1",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.A2",
+      "normalizedCode": "R10A2",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R10.A3",
+      "normalizedCode": "R10A3",
+      "family": "R10",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R11.16",
+      "normalizedCode": "R1116",
+      "family": "R11",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R39.851",
+      "normalizedCode": "R39851",
+      "family": "R39",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R39.852",
+      "normalizedCode": "R39852",
+      "family": "R39",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R39.853",
+      "normalizedCode": "R39853",
+      "family": "R39",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R39.859",
+      "normalizedCode": "R39859",
+      "family": "R39",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R76.81",
+      "normalizedCode": "R7681",
+      "family": "R76",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "R76.89",
+      "normalizedCode": "R7689",
+      "family": "R76",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.11XA",
+      "normalizedCode": "S3011XA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.11XD",
+      "normalizedCode": "S3011XD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.11XS",
+      "normalizedCode": "S3011XS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.12XA",
+      "normalizedCode": "S3012XA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.12XD",
+      "normalizedCode": "S3012XD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.12XS",
+      "normalizedCode": "S3012XS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.13XA",
+      "normalizedCode": "S3013XA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.13XD",
+      "normalizedCode": "S3013XD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.13XS",
+      "normalizedCode": "S3013XS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.81AA",
+      "normalizedCode": "S3081AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.81AD",
+      "normalizedCode": "S3081AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.81AS",
+      "normalizedCode": "S3081AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.82AA",
+      "normalizedCode": "S3082AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.82AD",
+      "normalizedCode": "S3082AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.82AS",
+      "normalizedCode": "S3082AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.84AA",
+      "normalizedCode": "S3084AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.84AD",
+      "normalizedCode": "S3084AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.84AS",
+      "normalizedCode": "S3084AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.85AA",
+      "normalizedCode": "S3085AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.85AD",
+      "normalizedCode": "S3085AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.85AS",
+      "normalizedCode": "S3085AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.86AA",
+      "normalizedCode": "S3086AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.86AD",
+      "normalizedCode": "S3086AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.86AS",
+      "normalizedCode": "S3086AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.87AA",
+      "normalizedCode": "S3087AA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.87AD",
+      "normalizedCode": "S3087AD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.87AS",
+      "normalizedCode": "S3087AS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.9AXA",
+      "normalizedCode": "S309AXA",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.9AXD",
+      "normalizedCode": "S309AXD",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S30.9AXS",
+      "normalizedCode": "S309AXS",
+      "family": "S30",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.106A",
+      "normalizedCode": "S31106A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.106D",
+      "normalizedCode": "S31106D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.106S",
+      "normalizedCode": "S31106S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.107A",
+      "normalizedCode": "S31107A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.107D",
+      "normalizedCode": "S31107D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.107S",
+      "normalizedCode": "S31107S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.10AA",
+      "normalizedCode": "S3110AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.10AD",
+      "normalizedCode": "S3110AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.10AS",
+      "normalizedCode": "S3110AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.116A",
+      "normalizedCode": "S31116A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.116D",
+      "normalizedCode": "S31116D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.116S",
+      "normalizedCode": "S31116S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.117A",
+      "normalizedCode": "S31117A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.117D",
+      "normalizedCode": "S31117D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.117S",
+      "normalizedCode": "S31117S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.11AA",
+      "normalizedCode": "S3111AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.11AD",
+      "normalizedCode": "S3111AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.11AS",
+      "normalizedCode": "S3111AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.126A",
+      "normalizedCode": "S31126A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.126D",
+      "normalizedCode": "S31126D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.126S",
+      "normalizedCode": "S31126S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.127A",
+      "normalizedCode": "S31127A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.127D",
+      "normalizedCode": "S31127D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.127S",
+      "normalizedCode": "S31127S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.12AA",
+      "normalizedCode": "S3112AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.12AD",
+      "normalizedCode": "S3112AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.12AS",
+      "normalizedCode": "S3112AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.136A",
+      "normalizedCode": "S31136A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.136D",
+      "normalizedCode": "S31136D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.136S",
+      "normalizedCode": "S31136S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.137A",
+      "normalizedCode": "S31137A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.137D",
+      "normalizedCode": "S31137D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.137S",
+      "normalizedCode": "S31137S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.13AA",
+      "normalizedCode": "S3113AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.13AD",
+      "normalizedCode": "S3113AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.13AS",
+      "normalizedCode": "S3113AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.146A",
+      "normalizedCode": "S31146A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.146D",
+      "normalizedCode": "S31146D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.146S",
+      "normalizedCode": "S31146S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.147A",
+      "normalizedCode": "S31147A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.147D",
+      "normalizedCode": "S31147D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.147S",
+      "normalizedCode": "S31147S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.14AA",
+      "normalizedCode": "S3114AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.14AD",
+      "normalizedCode": "S3114AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.14AS",
+      "normalizedCode": "S3114AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.156A",
+      "normalizedCode": "S31156A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.156D",
+      "normalizedCode": "S31156D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.156S",
+      "normalizedCode": "S31156S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.157A",
+      "normalizedCode": "S31157A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.157D",
+      "normalizedCode": "S31157D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.157S",
+      "normalizedCode": "S31157S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.15AA",
+      "normalizedCode": "S3115AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.15AD",
+      "normalizedCode": "S3115AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.15AS",
+      "normalizedCode": "S3115AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.606A",
+      "normalizedCode": "S31606A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.606D",
+      "normalizedCode": "S31606D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.606S",
+      "normalizedCode": "S31606S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.607A",
+      "normalizedCode": "S31607A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.607D",
+      "normalizedCode": "S31607D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.607S",
+      "normalizedCode": "S31607S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.60AA",
+      "normalizedCode": "S3160AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.60AD",
+      "normalizedCode": "S3160AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.60AS",
+      "normalizedCode": "S3160AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.616A",
+      "normalizedCode": "S31616A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.616D",
+      "normalizedCode": "S31616D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.616S",
+      "normalizedCode": "S31616S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.617A",
+      "normalizedCode": "S31617A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.617D",
+      "normalizedCode": "S31617D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.617S",
+      "normalizedCode": "S31617S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.61AA",
+      "normalizedCode": "S3161AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.61AD",
+      "normalizedCode": "S3161AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.61AS",
+      "normalizedCode": "S3161AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.626A",
+      "normalizedCode": "S31626A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.626D",
+      "normalizedCode": "S31626D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.626S",
+      "normalizedCode": "S31626S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.627A",
+      "normalizedCode": "S31627A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.627D",
+      "normalizedCode": "S31627D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.627S",
+      "normalizedCode": "S31627S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.62AA",
+      "normalizedCode": "S3162AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.62AD",
+      "normalizedCode": "S3162AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.62AS",
+      "normalizedCode": "S3162AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.636A",
+      "normalizedCode": "S31636A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.636D",
+      "normalizedCode": "S31636D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.636S",
+      "normalizedCode": "S31636S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.637A",
+      "normalizedCode": "S31637A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.637D",
+      "normalizedCode": "S31637D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.637S",
+      "normalizedCode": "S31637S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.63AA",
+      "normalizedCode": "S3163AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.63AD",
+      "normalizedCode": "S3163AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.63AS",
+      "normalizedCode": "S3163AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.646A",
+      "normalizedCode": "S31646A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.646D",
+      "normalizedCode": "S31646D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.646S",
+      "normalizedCode": "S31646S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.647A",
+      "normalizedCode": "S31647A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.647D",
+      "normalizedCode": "S31647D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.647S",
+      "normalizedCode": "S31647S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.64AA",
+      "normalizedCode": "S3164AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.64AD",
+      "normalizedCode": "S3164AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.64AS",
+      "normalizedCode": "S3164AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.656A",
+      "normalizedCode": "S31656A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.656D",
+      "normalizedCode": "S31656D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.656S",
+      "normalizedCode": "S31656S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.657A",
+      "normalizedCode": "S31657A",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.657D",
+      "normalizedCode": "S31657D",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.657S",
+      "normalizedCode": "S31657S",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.65AA",
+      "normalizedCode": "S3165AA",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.65AD",
+      "normalizedCode": "S3165AD",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "S31.65AS",
+      "normalizedCode": "S3165AS",
+      "family": "S31",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX1A",
+      "normalizedCode": "T36AX1A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX1D",
+      "normalizedCode": "T36AX1D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX1S",
+      "normalizedCode": "T36AX1S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX2A",
+      "normalizedCode": "T36AX2A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX2D",
+      "normalizedCode": "T36AX2D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX2S",
+      "normalizedCode": "T36AX2S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX3A",
+      "normalizedCode": "T36AX3A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX3D",
+      "normalizedCode": "T36AX3D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX3S",
+      "normalizedCode": "T36AX3S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX4A",
+      "normalizedCode": "T36AX4A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX4D",
+      "normalizedCode": "T36AX4D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX4S",
+      "normalizedCode": "T36AX4S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX5A",
+      "normalizedCode": "T36AX5A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX5D",
+      "normalizedCode": "T36AX5D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX5S",
+      "normalizedCode": "T36AX5S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX6A",
+      "normalizedCode": "T36AX6A",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX6D",
+      "normalizedCode": "T36AX6D",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T36.AX6S",
+      "normalizedCode": "T36AX6S",
+      "family": "T36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.841A",
+      "normalizedCode": "T65841A",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.841D",
+      "normalizedCode": "T65841D",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.841S",
+      "normalizedCode": "T65841S",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.842A",
+      "normalizedCode": "T65842A",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.842D",
+      "normalizedCode": "T65842D",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.842S",
+      "normalizedCode": "T65842S",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.843A",
+      "normalizedCode": "T65843A",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.843D",
+      "normalizedCode": "T65843D",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.843S",
+      "normalizedCode": "T65843S",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.844A",
+      "normalizedCode": "T65844A",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.844D",
+      "normalizedCode": "T65844D",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T65.844S",
+      "normalizedCode": "T65844S",
+      "family": "T65",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.830A",
+      "normalizedCode": "T75830A",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.830D",
+      "normalizedCode": "T75830D",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.830S",
+      "normalizedCode": "T75830S",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.838A",
+      "normalizedCode": "T75838A",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.838D",
+      "normalizedCode": "T75838D",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T75.838S",
+      "normalizedCode": "T75838S",
+      "family": "T75",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.070A",
+      "normalizedCode": "T78070A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.070D",
+      "normalizedCode": "T78070D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.070S",
+      "normalizedCode": "T78070S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.071A",
+      "normalizedCode": "T78071A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.071D",
+      "normalizedCode": "T78071D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.071S",
+      "normalizedCode": "T78071S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.079A",
+      "normalizedCode": "T78079A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.079D",
+      "normalizedCode": "T78079D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.079S",
+      "normalizedCode": "T78079S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.080A",
+      "normalizedCode": "T78080A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.080D",
+      "normalizedCode": "T78080D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.080S",
+      "normalizedCode": "T78080S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.081A",
+      "normalizedCode": "T78081A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.081D",
+      "normalizedCode": "T78081D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.081S",
+      "normalizedCode": "T78081S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.089A",
+      "normalizedCode": "T78089A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.089D",
+      "normalizedCode": "T78089D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.089S",
+      "normalizedCode": "T78089S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.110A",
+      "normalizedCode": "T78110A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.110D",
+      "normalizedCode": "T78110D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.110S",
+      "normalizedCode": "T78110S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.111A",
+      "normalizedCode": "T78111A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.111D",
+      "normalizedCode": "T78111D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.111S",
+      "normalizedCode": "T78111S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.119A",
+      "normalizedCode": "T78119A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.119D",
+      "normalizedCode": "T78119D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.119S",
+      "normalizedCode": "T78119S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.120A",
+      "normalizedCode": "T78120A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.120D",
+      "normalizedCode": "T78120D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.120S",
+      "normalizedCode": "T78120S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.121A",
+      "normalizedCode": "T78121A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.121D",
+      "normalizedCode": "T78121D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.121S",
+      "normalizedCode": "T78121S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.129A",
+      "normalizedCode": "T78129A",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.129D",
+      "normalizedCode": "T78129D",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.129S",
+      "normalizedCode": "T78129S",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.19XA",
+      "normalizedCode": "T7819XA",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.19XD",
+      "normalizedCode": "T7819XD",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "T78.19XS",
+      "normalizedCode": "T7819XS",
+      "family": "T78",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W44.H9XA",
+      "normalizedCode": "W44H9XA",
+      "family": "W44",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W44.H9XD",
+      "normalizedCode": "W44H9XD",
+      "family": "W44",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W44.H9XS",
+      "normalizedCode": "W44H9XS",
+      "family": "W44",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W45.3XXA",
+      "normalizedCode": "W453XXA",
+      "family": "W45",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W45.3XXD",
+      "normalizedCode": "W453XXD",
+      "family": "W45",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "W45.3XXS",
+      "normalizedCode": "W453XXS",
+      "family": "W45",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A1XA",
+      "normalizedCode": "Y36A1XA",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A1XD",
+      "normalizedCode": "Y36A1XD",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A1XS",
+      "normalizedCode": "Y36A1XS",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A2XA",
+      "normalizedCode": "Y36A2XA",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A2XD",
+      "normalizedCode": "Y36A2XD",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y36.A2XS",
+      "normalizedCode": "Y36A2XS",
+      "family": "Y36",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A1XA",
+      "normalizedCode": "Y37A1XA",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A1XD",
+      "normalizedCode": "Y37A1XD",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A1XS",
+      "normalizedCode": "Y37A1XS",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A2XA",
+      "normalizedCode": "Y37A2XA",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A2XD",
+      "normalizedCode": "Y37A2XD",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y37.A2XS",
+      "normalizedCode": "Y37A2XS",
+      "family": "Y37",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y93.L1",
+      "normalizedCode": "Y93L1",
+      "family": "Y93",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Y93.L9",
+      "normalizedCode": "Y93L9",
+      "family": "Y93",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z15.05",
+      "normalizedCode": "Z1505",
+      "family": "Z15",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z15.060",
+      "normalizedCode": "Z15060",
+      "family": "Z15",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z15.068",
+      "normalizedCode": "Z15068",
+      "family": "Z15",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z15.07",
+      "normalizedCode": "Z1507",
+      "family": "Z15",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z15.3",
+      "normalizedCode": "Z153",
+      "family": "Z15",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z40.81",
+      "normalizedCode": "Z4081",
+      "family": "Z40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z40.82",
+      "normalizedCode": "Z4082",
+      "family": "Z40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z40.89",
+      "normalizedCode": "Z4089",
+      "family": "Z40",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z59.861",
+      "normalizedCode": "Z59861",
+      "family": "Z59",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z59.868",
+      "normalizedCode": "Z59868",
+      "family": "Z59",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z59.869",
+      "normalizedCode": "Z59869",
+      "family": "Z59",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z77.31",
+      "normalizedCode": "Z7731",
+      "family": "Z77",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z77.39",
+      "normalizedCode": "Z7739",
+      "family": "Z77",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z80.44",
+      "normalizedCode": "Z8044",
+      "family": "Z80",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z84.11",
+      "normalizedCode": "Z8411",
+      "family": "Z84",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z84.19",
+      "normalizedCode": "Z8419",
+      "family": "Z84",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z84.A",
+      "normalizedCode": "Z84A",
+      "family": "Z84",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z85.4A",
+      "normalizedCode": "Z854A",
+      "family": "Z85",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z86.00A",
+      "normalizedCode": "Z8600A",
+      "family": "Z86",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0110",
+      "normalizedCode": "Z910110",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0111",
+      "normalizedCode": "Z910111",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0112",
+      "normalizedCode": "Z910112",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0120",
+      "normalizedCode": "Z910120",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0121",
+      "normalizedCode": "Z910121",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.0122",
+      "normalizedCode": "Z910122",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    },
+    {
+      "code": "Z91.B",
+      "normalizedCode": "Z91B",
+      "family": "Z91",
+      "reason": "FY2026_SELECTABLE_ABSENT_FROM_CIE10ES_2026_FINALES"
+    }
+  ]
+}

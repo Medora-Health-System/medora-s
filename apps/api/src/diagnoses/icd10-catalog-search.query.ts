@@ -12,14 +12,9 @@
  *
  * Duplicate source (production audit):
  *   @@unique([codeSystem, releaseVersion, code]) allows the same ICD code
- *   in FY2026, UNSPECIFIED, and FY2026-MEDORA-DEV-SAMPLE simultaneously.
- *   Match OR across short/long/searchText + approved clinician preferredLabel
- *   + approved search aliases does NOT multiply rows; multi-release
- *   catalog rows do. Alias/label match only widens predicates — it must not emit
- *   an extra visible row for the same ICD code, and must never replace
- *   selected shortDescription (source/debug field). P3 display is resolved
- *   after this query via batched Icd10TerminologyService.
- *   Collapse by `code` happens in the select builder (one official row per code).
+ *   in FY2026, FY2027, UNSPECIFIED, and FY2026-MEDORA-DEV-SAMPLE simultaneously.
+ *   Search MUST filter to the date-of-service release. Do not collapse
+ *   FY2026 and FY2027 by code. Alias/label match only widens predicates.
  *
  * Not the source of duplicates:
  *   COMMON_DIAGNOSES (UI shortcuts), search cache, autocomplete index,
@@ -68,12 +63,9 @@ function joinSqlOr(conditions: Prisma.Sql[]) {
 
 /**
  * Qualify the catalog PK explicitly.
- * Inner EXISTS must use "Icd10DiagnosisCode"."id".
- * Outer ranking EXISTS must use "one_per_code"."id".
- * Unqualified "id" binds to terminology/alias row id (both tables have id).
+ * EXISTS must use "Icd10DiagnosisCode"."id". Unqualified "id" binds to terminology/alias row id.
  */
 const ICD10_SEARCH_INNER_CATALOG_ID = Prisma.sql`"Icd10DiagnosisCode"."id"`;
-const ICD10_SEARCH_OUTER_CATALOG_ID = Prisma.sql`"one_per_code"."id"`;
 
 /** Approved CLINICIAN_PREFERRED labels only. Never CONSUMER. Never used as SELECT display. */
 function icd10ApprovedClinicianLabelExistsSql(pattern: string, catalogIdRef: Prisma.Sql): Prisma.Sql {
@@ -204,18 +196,18 @@ export function buildIcd10CatalogSearchMatch(rawInput: string): Icd10CatalogSear
     terminologyExactSql: Prisma.sql`EXISTS (
       SELECT 1
       FROM "Icd10DiagnosisTerminology" t
-      WHERE t."icd10CatalogId" = ${ICD10_SEARCH_OUTER_CATALOG_ID}
+      WHERE t."icd10CatalogId" = ${ICD10_SEARCH_INNER_CATALOG_ID}
         AND t."status" = 'APPROVED'
         AND t."labelRegister" = 'CLINICIAN_PREFERRED'
         AND LOWER(t."preferredLabel") = LOWER(${raw})
     )`,
     aliasMatchSql: pattern
-      ? icd10ApprovedSearchAliasExistsSql(pattern, ICD10_SEARCH_OUTER_CATALOG_ID)
+      ? icd10ApprovedSearchAliasExistsSql(pattern, ICD10_SEARCH_INNER_CATALOG_ID)
       : Prisma.sql`FALSE`,
   };
 }
 
-/** Visible result ranking across distinct ICD codes (release already collapsed). */
+/** Visible result ranking for one date-of-service release. */
 export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prisma.Sql {
   return Prisma.sql`
     CASE
@@ -248,12 +240,18 @@ export function icd10MatchQualityOrderSql(match: Icd10CatalogSearchMatch): Prism
 }
 
 /**
- * One visible row per ICD code.
- * Inner DISTINCT ON picks the preferred release (FY official > UNSPECIFIED > DEV-SAMPLE);
- * outer ORDER BY applies match-quality ranking across distinct codes.
+ * Search one ICD-10-CM release selected by date of service.
+ * Do not DISTINCT ON code across FY2026/FY2027.
  */
-export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch, take: number): Prisma.Sql {
-  const releasePick = icd10ReleasePreferenceOrderSql();
+export function buildIcd10CatalogSearchSelectSql(
+  match: Icd10CatalogSearchMatch,
+  take: number,
+  options: { releaseVersion: string },
+): Prisma.Sql {
+  const releaseVersion = options.releaseVersion.trim();
+  if (!releaseVersion) {
+    throw new Error("ICD10_SEARCH_REQUIRES_RELEASE_VERSION");
+  }
   const qualityOrder = icd10MatchQualityOrderSql(match);
   return Prisma.sql`
     SELECT
@@ -269,31 +267,11 @@ export function buildIcd10CatalogSearchSelectSql(match: Icd10CatalogSearchMatch,
       "isBillable",
       "effectiveYear",
       "codeSetVersion"
-    FROM (
-      SELECT DISTINCT ON ("code")
-        "id",
-        "code",
-        "normalizedCode",
-        "codeSystem",
-        "releaseVersion",
-        "shortDescription",
-        "longDescription",
-        "chapter",
-        "category",
-        "isBillable",
-        "effectiveYear",
-        "codeSetVersion"
-      FROM "Icd10DiagnosisCode"
-      WHERE "isActive" = TRUE
-        AND "isSelectable" = TRUE
-        AND (${match.matchSql})
-      ORDER BY
-        "code",
-        ${releasePick},
-        "isBillable" DESC,
-        COALESCE("releaseYear", 0) DESC,
-        "id" ASC
-    ) AS one_per_code
+    FROM "Icd10DiagnosisCode"
+    WHERE "isActive" = TRUE
+      AND "isSelectable" = TRUE
+      AND "releaseVersion" = ${releaseVersion}
+      AND (${match.matchSql})
     ORDER BY
       ${qualityOrder}
     LIMIT ${take}
