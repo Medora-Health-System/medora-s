@@ -306,6 +306,7 @@ export * from "./icd10/inspectGovernedIcd10ClinicianLabels.js";
 export * from "./icd10/icd10GovernedSearchAliases.js";
 export * from "./icd10/buildGovernedIcd10TerminologySeed.js";
 export * from "./icd10/licensedIcd10TerminologyArtifact.js";
+export * from "./icd10/nationalIcd10SourceValidation.js";
 export * from "./icd10/icd10P3fProductionSmokeMatrix.js";
 export * from "./icd10/icd10MultilingualCertification.js";
 export * from "./claimDiagnosisCodes.js";

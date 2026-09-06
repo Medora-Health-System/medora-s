@@ -147,7 +147,9 @@ export function inspectAdversarialCodes(input: {
     if (us && !us.selectable) notes.push("US category/header — must not supply child clinician labels");
     if (us?.selectable && !source) notes.push("missing from national source at this exact code");
     if (source && !us) notes.push("national code is not in the US catalog");
-    if (source && us && !us.selectable) notes.push("source terminal/final collides with US nonselectable parent");
+    if (source?.terminal && us && !us.selectable) {
+      notes.push("source terminal/final collides with US nonselectable parent");
+    }
     return {
       query,
       normalized,
