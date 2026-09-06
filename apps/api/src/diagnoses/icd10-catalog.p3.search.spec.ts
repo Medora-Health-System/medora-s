@@ -208,4 +208,20 @@ describe("Icd10CatalogService P3 search presentation", () => {
     expect(resolveDisplaysForCatalogRows).toHaveBeenCalledTimes(1);
     expect(result.items[0]!.displayResolution).toBe("EXACT_SOURCE_LABEL");
   });
+
+  it("selects FY2026 for DOS 2026-09-30 and FY2027 from 2026-10-01", async () => {
+    const queryRaw = jest.fn().mockResolvedValue([]);
+    const service = new Icd10CatalogService(
+      { $queryRaw: queryRaw } as never,
+      { resolveDisplaysForCatalogRows: jest.fn() } as unknown as Icd10TerminologyService,
+    );
+    await service.search("R10.85", "es", 25, { dateOfService: "2026-09-30" });
+    await service.search("R10.85", "es", 25, { dateOfService: "2026-10-01" });
+    await service.search("R10.85", "es", 25, { dateOfService: "2026-10-15" });
+    const releases = queryRaw.mock.calls.map((call) => {
+      const sql = call[0] as { values?: unknown[] };
+      return (sql.values ?? []).find((value) => value === "FY2026" || value === "FY2027");
+    });
+    expect(releases).toEqual(["FY2026", "FY2027", "FY2027"]);
+  });
 });

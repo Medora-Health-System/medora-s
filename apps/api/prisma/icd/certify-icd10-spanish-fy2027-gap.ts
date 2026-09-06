@@ -4,7 +4,7 @@
  *   pnpm --filter @medora/api run icd:certify-spanish-fy2027-gap -- --release=FY2027
  */
 import { PrismaClient } from "@prisma/client";
-import { ICD10_CM_CODE_SYSTEM } from "@medora/shared";
+import { ICD10_CM_CODE_SYSTEM, ICD10_FY2027_ES_CARRY_FORWARD_TERMINOLOGY_VERSION } from "@medora/shared";
 import { collectIcd10MultilingualCertification } from "./certify-icd10-multilingual";
 
 async function main() {
@@ -67,12 +67,22 @@ async function main() {
       else reviewRequired += 1;
     }
 
+    const fy2027Cf = await prisma.icd10DiagnosisTerminology.count({
+      where: {
+        codeSystem: ICD10_CM_CODE_SYSTEM,
+        releaseVersion: "FY2027",
+        locale: "es",
+        isEffective: true,
+        terminologyVersion: ICD10_FY2027_ES_CARRY_FORWARD_TERMINOLOGY_VERSION,
+      },
+    });
     console.log(`FY2027_SELECTABLE=${fy2027.totalSearchable}`);
     console.log(`FY2027_ES_EXACT=${fy2027.esExact}`);
     console.log(`FY2027_ES_CODE_ONLY=${fy2027.codeOnlyEs}`);
     console.log(`FY2027_CARRY_FORWARD_SAFE=${carryForwardSafe}`);
     console.log(`FY2027_REVIEW_REQUIRED=${reviewRequired}`);
-    console.log(`FY2027_CARRY_FORWARD_APPLIED=NO`);
+    console.log(`FY2027_CARRY_FORWARD_APPLIED=${fy2027Cf > 0 ? "YES" : "NO"}`);
+    console.log(`FY2027_CARRY_FORWARD_EFFECTIVE_ROWS=${fy2027Cf}`);
     console.log(`SAMPLE_MISSING=${fy2027Catalog.filter((row) => !fy2027ExactSet.has(row.normalizedCode)).slice(0, 8).map((row) => row.code).join(",")}`);
   } finally {
     await prisma.$disconnect();

@@ -26,6 +26,19 @@ export const ICD10_CIE10ES_ARTIFACT_SHA256 =
 /** Medora-governed FY2026 Spanish gap-closure set (not CIE-10-ES / not machine source). */
 export const ICD10_FY2026_ES_GAP_SOURCE_ID = "MEDORA_DX_GOVERNED_FY2026_ES_GAP";
 export const ICD10_FY2026_ES_GAP_TERMINOLOGY_VERSION = "MEDORA.TRILANG.DX.P3F7.ES.GAP.1";
+/** FY2027 carry-forward certification of unchanged FY2026 Spanish concepts. Does not mutate FY2026 rows. */
+export const ICD10_FY2027_ES_CARRY_FORWARD_TERMINOLOGY_VERSION = "MEDORA.TRILANG.DX.P3F8.ES.CF.1";
+/** Medora-governed FY2027 Spanish for new or description-changed codes. */
+export const ICD10_FY2027_ES_GAP_SOURCE_ID = "MEDORA_DX_GOVERNED_FY2027_ES_GAP";
+export const ICD10_FY2027_ES_GAP_TERMINOLOGY_VERSION = "MEDORA.TRILANG.DX.P3F8.ES.GAP.1";
+/**
+ * SHA-256 of `medora-p3f8-es-fy2027-combined.jsonl` emitted by
+ * `icd:fy2027-es-terminology --emit-from-sources` from the approved CIE-10-ES
+ * XLSX plus official FY2026/FY2027 order files (order-file sequence).
+ * Not a Prisma heap dump. Never commit the 74,879-row JSONL itself.
+ */
+export const ICD10_FY2027_ES_COMBINED_ARTIFACT_SHA256 =
+  "9445fd10dba09f3d234c136ddfa05b002f4d9f00e41036b6ec5b49be0a7a4ecc";
 
 export type Icd10TerminologyLabelRegister = "CLINICIAN_PREFERRED" | "CONSUMER";
 export type Icd10TerminologyProvenance = "OFFICIAL_SOURCE" | "LICENSED_VENDOR" | "MEDORA_GOVERNED";

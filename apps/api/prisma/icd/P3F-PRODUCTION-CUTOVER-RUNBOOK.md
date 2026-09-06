@@ -122,3 +122,182 @@ CSV or JSONL. Per record:
 Artifact-level `codeSystem` / `releaseVersion` may be omitted when `--release` is passed and every row is that release.
 
 Do **not** commit license keys, vendor dumps, or full FR/ES dictionaries.
+
+## P3-F.8-ES FY2027 Spanish production ingest (operator-only)
+
+Spanish FY2027 terminology is **not** imported on Railway start, seed, or migrate. Prisma seed loads `FY2026-MEDORA-DEV-SAMPLE` only. Production catalog + terminology require explicit operator commands. This pull request does **not** write production.
+
+Do **not** execute these writes from Cursor unless the operator has verified the production `DATABASE_URL` host/name (print host + database name only — never credentials), snapshot, and licensing.
+
+Never delete historical terminology rows. FY2026 catalog and FY2026 Spanish remain. FY2027 Spanish is additive for `releaseVersion=FY2027` only.
+
+Expected after a complete authorized ingest:
+
+| Release | EN exact | ES exact | ES code-only |
+|---|---|---|---|
+| FY2026 | 74,719 / 74,719 | 74,719 / 74,719 | 0 |
+| FY2027 | 74,879 / 74,879 | 74,879 / 74,879 | 0 |
+
+### 0. Pre-ingest production presence (mandatory — abort if any is missing)
+
+Terminology rows must never float without the matching canonical catalog. Query counts only (no secrets):
+
+```
+PRODUCTION_FY2026_CATALOG_PRESENT  — ICD-10-CM FY2026 selectable/billable = 74,719
+PRODUCTION_FY2027_CATALOG_PRESENT  — ICD-10-CM FY2027 selectable/billable = 74,879
+PRODUCTION_ES_FY2026_PRESENT       — FY2026 ES exact clinician labels = 74,719 (code-only = 0)
+PRODUCTION_ES_FY2027_PRESENT       — FY2027 ES exact clinician labels (expect 0 before this ingest; 74,879 after)
+```
+
+```
+pnpm --filter @medora/api run icd:certify-multilingual:coverage -- --release=FY2026
+pnpm --filter @medora/api run icd:certify-multilingual:coverage -- --release=FY2027
+```
+
+If `PRODUCTION_FY2027_CATALOG_PRESENT` is false (FY2027 selectable ≠ 74,879), **STOP**. Import the official FY2027 catalog first (`icd:dry-run` then `icd:import --release 2027` after ZIP SHA-256 matches `ICD10_CM_FY2027_MANIFEST.artifactSha256`). Do not ingest Spanish terminology for a missing canonical release.
+
+If `PRODUCTION_ES_FY2026_PRESENT` is false, **STOP**. Complete FY2026 Spanish (P3-F.7) before FY2027 Spanish. Do not carry-forward from an incomplete FY2026 set.
+
+If `PRODUCTION_ES_FY2027_PRESENT` is already 74,879 / 74,879, this ingest is a no-op candidate: dry-run must show `ROWS_REJECTED=0` and inserts = 0 (UNCHANGED). Do not delete and reload.
+
+### 1. Required source artifacts (operator local paths — never git)
+
+| Artifact | How obtained | Expected SHA-256 |
+|---|---|---|
+| CIE-10-ES 2026 workbook | Ministry `Diagnosticos_Tabla_Referencia_CIE10ES_2026.xlsx` | `3695159d8f9a5a77e7ecdcee29657debbee4ed74b470a6d6143e99c80a5782fc` (`ICD10_CIE10ES_ARTIFACT_SHA256`) |
+| Official FY2026 ICD-10-CM ZIP | CDC FTP `icd10cm-Code-Descriptions-2026.zip` (`ICD10_CM_FY2026_MANIFEST.sourceUrl`) | `a852eb91b3344ae38476e63816976ee1eeb94dcced7151118324f060e8499f88` |
+| Inner FY2026 order file | Unzip the FY2026 ZIP → `icd10cm-order-2026.txt` | `6dc95c9c7e96c734806e1682f4bf9df76251d60e99199bba0d375ba3dd11026b` |
+| Official FY2027 ICD-10-CM ZIP | CDC FTP `icd10cm-code-descriptions-2027.zip` (`ICD10_CM_FY2027_MANIFEST.sourceUrl`) | `93e3ad6004badf470c55bfe679b748ae88fd9b2b421851e409eec382c7713b9a` |
+| Inner FY2027 order file | Unzip the FY2027 ZIP → `icd10cm-code-descriptions-2027/icd10cm-order-2027.txt` | `38981fb2c1226e2b92393cef7d921d2293494dd184b5ad039dde08e4b364265f` |
+
+Do **not** commit the XLSX, CDC ZIP, order files, or the generated 74,879-row JSONL.
+
+### 2. Required SHA-256 checks (before build)
+
+```
+shasum -a 256 /secure/path/Diagnosticos_Tabla_Referencia_CIE10ES_2026.xlsx
+shasum -a 256 /secure/path/icd10cm-Code-Descriptions-2026.zip
+shasum -a 256 /secure/path/icd10cm-order-2026.txt
+shasum -a 256 /secure/path/icd10cm-code-descriptions-2027.zip
+shasum -a 256 /secure/path/icd10cm-order-2027.txt
+```
+
+Abort on any mismatch. The emit CLI also re-checks the XLSX and both order files and refuses approval on mismatch.
+
+### 3. Exact artifact-build command
+
+Build on a trusted workstation from **repository code + the five source checksums above**. This path does **not** read database terminology rows and does **not** use `/tmp` leftovers, the P3-F.7 worktree, or hand-edited JSONL.
+
+```
+pnpm --filter @medora/shared build
+pnpm --filter @medora/api run icd:fy2027-es-terminology -- \
+  --release=FY2027 \
+  --emit-from-sources \
+  --cie10es=/secure/path/Diagnosticos_Tabla_Referencia_CIE10ES_2026.xlsx \
+  --fy2026-us=/secure/path/icd10cm-order-2026.txt \
+  --fy2027-us=/secure/path/icd10cm-order-2027.txt \
+  --combined-out=/secure/path/medora-p3f8-es-fy2027-combined.jsonl \
+  --certify-semantics \
+  --approve-semantically-certified
+```
+
+Composition (must match CLI output):
+
+- `SOURCE_EXACT_ROWS=74118` (CIE-10-ES official, unchanged concepts)
+- `GOVERNED_CARRY_FORWARD_ROWS=567` (81 P2 `MEDORA_DX_GOVERNED` + 486 P3-F.7 gap)
+- `GOVERNED_NEW_CHANGED_ROWS=194` (190 new + 4 description-changed)
+- `TOTAL_ARTIFACT_ROWS=74879`
+- `DUPLICATE_CODES=0`
+- `SEMANTIC_PASS=194` `SEMANTIC_REVIEW_REQUIRED=0` `SEMANTIC_FAIL=0`
+
+### 4. Expected generated artifact SHA-256
+
+`ICD10_FY2027_ES_COMBINED_ARTIFACT_SHA256` =
+
+`9445fd10dba09f3d234c136ddfa05b002f4d9f00e41036b6ec5b49be0a7a4ecc`
+
+The CLI prints `ARTIFACT_SHA256` and `ARTIFACT_SHA_MATCH`. **STOP** if `ARTIFACT_SHA_MATCH=NO` or `TOTAL_ARTIFACT_ROWS≠74879`.
+
+Independent check:
+
+```
+shasum -a 256 /secure/path/medora-p3f8-es-fy2027-combined.jsonl
+```
+
+This SHA is the order-file sequence (carry-forward in FY2027 order-file order, then 194 governed). It is the production-reproducible digest. A localhost Prisma `findMany` dump of the same 74,879 records can differ in **row order only**.
+
+### 5. Expected rows
+
+`TOTAL_ARTIFACT_ROWS` must be **74879**. `74118 + 567 + 194 = 74879`.
+
+### 6. Production dry-run (zero writes)
+
+```
+pnpm --filter @medora/api run icd:import-licensed-terminology -- \
+  --file=/secure/path/medora-p3f8-es-fy2027-combined.jsonl \
+  --release=FY2027 \
+  --dry-run \
+  --allow-mixed-source-ids
+```
+
+`--allow-mixed-source-ids` is required: the file mixes CIE-10-ES, P2 governed, P3-F.7 gap carry-forward, and P3-F.8 governed `sourceId` / `terminologyVersion` values. `--release=FY2027` is required. Never pass `--release=FY2026`.
+
+### 7. Rejection gate
+
+Abort if any of:
+
+- `ROWS_REJECTED > 0`
+- `REJECTED_UNKNOWN_CODE > 0`
+- checksum of `--file` ≠ `9445fd10…`
+- `--release` is missing or not `FY2027`
+
+Do not `--allow-rejects`. Do not continue to apply.
+
+### 8. Actual ingest (same artifact, same SHA, FY2027 only)
+
+After dry-run is clean and snapshot exists:
+
+```
+pnpm --filter @medora/api run icd:import-licensed-terminology -- \
+  --file=/secure/path/medora-p3f8-es-fy2027-combined.jsonl \
+  --release=FY2027 \
+  --allow-mixed-source-ids
+```
+
+Importer is chunked/resumable. Do not delete FY2026 (or any historical) terminology to “make room”.
+
+### 9. Post-ingest certification
+
+```
+pnpm --filter @medora/api run icd:certify-multilingual:safety -- --release=FY2026
+pnpm --filter @medora/api run icd:certify-multilingual:coverage -- --release=FY2026
+pnpm --filter @medora/api run icd:certify-multilingual:safety -- --release=FY2027
+pnpm --filter @medora/api run icd:certify-multilingual:coverage -- --release=FY2027
+pnpm --filter @medora/api run icd:certify-spanish-fy2027-gap -- --release=FY2027
+```
+
+Required: safety zeros; FY2026 ES 74,719/74,719; FY2027 ES 74,879/74,879; ES code-only = 0 both releases. French coverage may remain incomplete — do not weaken that gate.
+
+### 10. FY2026 preservation check
+
+After FY2027 ingest, FY2026 must still certify:
+
+- EN = 74,719 / 74,719
+- ES = 74,719 / 74,719
+- ES code-only = 0
+- no FY2026 terminology row mutated (`terminologyVersion` / labels / provenance unchanged)
+
+### 11. FY2027 release-specific verification
+
+- EN = 74,879 / 74,879
+- ES = 74,879 / 74,879
+- ES code-only = 0
+- date of service 2026-09-30 → FY2026; 2026-10-01+ → FY2027
+- search must not use `DISTINCT ON ("code")` across releases
+- canonical `Diagnosis.code` / billing identity / signed history unchanged
+
+### 12. No deletion of historical terminology
+
+Do not `DELETE` / truncate `Icd10DiagnosisTerminology` or `Icd10DiagnosisCode` for FY2026 (or any prior release) as part of this cutover. Rollback is restore-snapshot, not row deletion.
+
+French coverage may remain incomplete. Spanish **implementation** is complete in this branch; Spanish **production** is complete only after this operator ingest + production browser smoke. `DX_COMPLETE` remains **NO** until French is complete.

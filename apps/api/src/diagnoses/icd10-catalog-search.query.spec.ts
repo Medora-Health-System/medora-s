@@ -25,6 +25,9 @@ describe("ICD-10 catalog search query architecture", () => {
     expect(text).toContain('"releaseVersion" =');
     expect(text).not.toContain('DISTINCT ON ("code")');
     expect(text).not.toContain("one_per_code");
+    const fy2027 = sqlText(buildIcd10CatalogSearchSelectSql(match!, 30, { releaseVersion: "FY2027" }));
+    expect(fy2027).toContain('"releaseVersion" =');
+    expect(fy2027).not.toContain('DISTINCT ON ("code")');
     expect(() => buildIcd10CatalogSearchSelectSql(match!, 30, { releaseVersion: "" })).toThrow(
       /ICD10_SEARCH_REQUIRES_RELEASE_VERSION/,
     );
