@@ -910,7 +910,8 @@ function encounterChar(code: string): string {
 async function searchCatalog(prisma: PrismaClient, q: string, take = 25): Promise<SearchRow[]> {
   const match = buildIcd10CatalogSearchMatch(q);
   if (!match) return [];
-  return prisma.$queryRaw<SearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take));
+  const releaseVersion = process.argv.find((a) => a.startsWith("--release="))?.slice("--release=".length).trim() || "FY2026";
+  return prisma.$queryRaw<SearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion }));
 }
 
 async function main() {

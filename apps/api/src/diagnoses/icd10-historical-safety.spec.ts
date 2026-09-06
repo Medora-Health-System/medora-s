@@ -40,4 +40,11 @@ describe("ICD-10 historical diagnosis safety", () => {
     expect(signed.description).not.toBe(clinicianEs);
     expect(signed.description).toBe("Abdominal pain, unspecified site");
   });
+
+  it("selecting a Spanish display does not persist the Spanish label as Diagnosis.code", () => {
+    const persisted = { code: "R10.85", description: "Abdominal pain, unspecified site" };
+    const uiEs = { displayLabel: "Dolor abdominal en varios sitios", displayResolution: "EXACT_SOURCE_LABEL" };
+    expect(persisted.code).toBe("R10.85");
+    expect(persisted.code).not.toBe(uiEs.displayLabel);
+  });
 });

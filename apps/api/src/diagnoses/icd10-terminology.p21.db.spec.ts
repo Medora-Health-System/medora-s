@@ -122,7 +122,9 @@ describeDb("MEDUI.TRILANG.DX.P2.1 disposable database certification", () => {
 
     const match = buildIcd10CatalogSearchMatch("dolor abdominal");
     expect(match).not.toBeNull();
-    const hits = await prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(match!, 30));
+    const hits = await prisma.$queryRaw<Icd10CatalogSearchRow[]>(
+      buildIcd10CatalogSearchSelectSql(match!, 30, { releaseVersion: P21_FIXTURE_RELEASE }),
+    );
     const r1085Hit = hits.find((row) => row.code === "R10.85");
     expect(r1085Hit).toBeDefined();
     expect(r1085Hit?.shortDescription).toContain("P21 fixture");
@@ -142,7 +144,9 @@ describeDb("MEDUI.TRILANG.DX.P2.1 disposable database certification", () => {
     expect(searchDisplay.display.displayName).not.toBe(r1085Hit!.shortDescription);
 
     const frHitMatch = buildIcd10CatalogSearchMatch("Douleur abdominale à plusieurs sites");
-    const frHits = await prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(frHitMatch!, 30));
+    const frHits = await prisma.$queryRaw<Icd10CatalogSearchRow[]>(
+      buildIcd10CatalogSearchSelectSql(frHitMatch!, 30, { releaseVersion: P21_FIXTURE_RELEASE }),
+    );
     const frR1085 = frHits.find((row) => row.code === "R10.85");
     expect(frR1085?.shortDescription).toContain("P21 fixture");
     const frTerms = await prisma.icd10DiagnosisTerminology.findMany({

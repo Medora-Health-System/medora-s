@@ -36,13 +36,8 @@ const CATEGORY_CHILD_PAIRS = [
   ["L03", "L03.90"],
   ["G43", "G43.D0"],
   ["G43", "G43.D1"],
+  ["G35", "G35.A"],
 ] as const;
-
-function preferOfficialRelease(versions: string[]): string | null {
-  if (versions.includes("FY2026")) return "FY2026";
-  const nonSample = versions.find((v) => !v.includes("DEV-SAMPLE") && v !== "UNSPECIFIED");
-  return nonSample ?? versions[0] ?? null;
-}
 
 function expectedBillableRowsForRelease(release: string, catalogSelectable: number): number {
   try {
@@ -61,15 +56,12 @@ export async function collectIcd10MultilingualCertification(
     where: { codeSystem: CODE_SYSTEM },
     _count: { _all: true },
   });
-  const release =
-    options?.releaseVersion ??
-    preferOfficialRelease(releaseRows.map((row) => row.releaseVersion)) ??
-    "NONE";
-  if (!options?.releaseVersion) {
-    console.warn(
-      "RELEASE was inferred from catalog rows. Production cutover must pass --release=<intended> and must not silently assume FY2026.",
+  if (!options?.releaseVersion?.trim()) {
+    throw new Error(
+      `ICD10_CERTIFIER_REQUIRES_EXPLICIT_RELEASE. Loaded: ${releaseRows.map((row) => row.releaseVersion).join(",") || "none"}. Pass --release=<FY2026|FY2027>.`,
     );
   }
+  const release = options.releaseVersion.trim();
   const releaseFilter = release === "NONE" ? undefined : release;
 
   const catalog = await prisma.icd10DiagnosisCode.findMany({
@@ -379,6 +371,11 @@ function printUsage() {
 async function main() {
   const { gate, releaseVersion } = parseCli(process.argv.slice(2));
   if (gate === "help") {
+    printUsage();
+    process.exitCode = 64;
+    return;
+  }
+  if (!releaseVersion) {
     printUsage();
     process.exitCode = 64;
     return;

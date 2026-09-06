@@ -1,6 +1,6 @@
 /**
  * Certify diagnosis search returns zero duplicate ICD codes.
- * Uses the production select builder (DISTINCT ON code).
+ * Uses the production select builder (one date-of-service release; no cross-year code collapse).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -33,7 +33,9 @@ async function search(
 ): Promise<Icd10CatalogSearchRow[]> {
   const match = buildIcd10CatalogSearchMatch(q);
   if (!match) return [];
-  return prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take));
+  const releaseVersion =
+    process.argv.find((a) => a.startsWith("--release="))?.slice("--release=".length).trim() || "FY2026";
+  return prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion }));
 }
 
 function duplicateCodes(rows: Icd10CatalogSearchRow[]): string[] {

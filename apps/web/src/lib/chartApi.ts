@@ -376,9 +376,12 @@ export type Icd10SearchHit = {
 export async function searchIcd10Catalog(
   q: string,
   limit = 30,
-  locale: "en" | "fr" | "es"
+  locale: "en" | "fr" | "es",
+  options?: { dateOfService?: string; releaseVersion?: string },
 ): Promise<{ items: Icd10SearchHit[] }> {
   const params = new URLSearchParams({ q: q.trim(), limit: String(limit), locale });
+  if (options?.dateOfService?.trim()) params.set("dateOfService", options.dateOfService.trim());
+  if (options?.releaseVersion?.trim()) params.set("releaseVersion", options.releaseVersion.trim());
   return apiFetch(`/diagnoses/icd10/search?${params.toString()}`) as Promise<{ items: Icd10SearchHit[] }>;
 }
 

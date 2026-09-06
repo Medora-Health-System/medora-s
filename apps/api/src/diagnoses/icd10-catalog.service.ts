@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import {
   mapIcd10ExactnessToDisplayResolution,
   normalizeIcd10CodeForLookup,
+  selectOfficialIcd10CmReleaseVersionForDateOfService,
   type ProductUiLanguage,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -20,6 +21,22 @@ export type Icd10CatalogSearchHit = Icd10CatalogSearchRow & {
   displayResolution: "EXACT_SOURCE_LABEL" | "EXACT_GOVERNED_LABEL" | "UNLOCALIZED_CODE";
 };
 
+export type Icd10CatalogSearchOptions = {
+  dateOfService?: string;
+  releaseVersion?: string;
+};
+
+function resolveSearchReleaseVersion(options?: Icd10CatalogSearchOptions): string {
+  try {
+    const explicit = options?.releaseVersion?.trim();
+    if (explicit) return explicit;
+    const date = options?.dateOfService?.trim() || new Date().toISOString().slice(0, 10);
+    return selectOfficialIcd10CmReleaseVersionForDateOfService(date);
+  } catch (err) {
+    throw new BadRequestException(err instanceof Error ? err.message : "Invalid ICD-10-CM date of service");
+  }
+}
+
 @Injectable()
 export class Icd10CatalogService {
   constructor(
@@ -27,7 +44,12 @@ export class Icd10CatalogService {
     private readonly terminology: Icd10TerminologyService,
   ) {}
 
-  async search(q: string, locale: ProductUiLanguage, limit = DEFAULT_SEARCH_LIMIT) {
+  async search(
+    q: string,
+    locale: ProductUiLanguage,
+    limit = DEFAULT_SEARCH_LIMIT,
+    options?: Icd10CatalogSearchOptions,
+  ) {
     const raw = q?.trim() ?? "";
     const take = Math.min(Math.max(1, limit), MAX_SEARCH_LIMIT);
     if (!raw) {
@@ -39,8 +61,9 @@ export class Icd10CatalogService {
       return { items: [] as const, limit: take };
     }
 
+    const releaseVersion = resolveSearchReleaseVersion(options);
     const catalogItems = await this.prisma.$queryRaw<Icd10CatalogSearchRow[]>(
-      buildIcd10CatalogSearchSelectSql(match, take),
+      buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion }),
     );
 
     const displays = await this.terminology.resolveDisplaysForCatalogRows({
@@ -69,10 +92,11 @@ export class Icd10CatalogService {
     return { items, limit: take };
   }
 
-  async findByCode(codeParam: string) {
+  async findByCode(codeParam: string, options?: Icd10CatalogSearchOptions) {
     const raw = codeParam?.trim() ?? "";
     if (!raw) return null;
     const norm = normalizeIcd10CodeForLookup(raw);
+    const releaseVersion = resolveSearchReleaseVersion(options);
     const select = {
       id: true,
       code: true,
@@ -84,27 +108,20 @@ export class Icd10CatalogService {
       isBillable: true,
       effectiveYear: true,
       codeSetVersion: true,
+      releaseVersion: true,
     } as const;
     const byNorm = await this.prisma.icd10DiagnosisCode.findFirst({
       where: {
         normalizedCode: norm,
         isActive: true,
         isSelectable: true,
-        NOT: { releaseVersion: { contains: "DEV-SAMPLE" } },
+        releaseVersion,
       },
-      orderBy: [{ releaseYear: "desc" }, { code: "asc" }],
       select,
     });
     if (byNorm) return byNorm;
-    const byNormAny = await this.prisma.icd10DiagnosisCode.findFirst({
-      where: { normalizedCode: norm, isActive: true, isSelectable: true },
-      orderBy: [{ releaseYear: "desc" }, { code: "asc" }],
-      select,
-    });
-    if (byNormAny) return byNormAny;
     return this.prisma.icd10DiagnosisCode.findFirst({
-      where: { code: raw, isActive: true, isSelectable: true },
-      orderBy: [{ releaseYear: "desc" }, { code: "asc" }],
+      where: { code: raw, isActive: true, isSelectable: true, releaseVersion },
       select,
     });
   }

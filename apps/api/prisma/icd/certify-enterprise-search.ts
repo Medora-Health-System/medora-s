@@ -26,7 +26,8 @@ const mode = arg("mode") ?? "search";
 async function search(prisma: PrismaClient, q: string, take = 50): Promise<Icd10CatalogSearchRow[]> {
   const match = buildIcd10CatalogSearchMatch(q);
   if (!match) return [];
-  return prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take));
+  const releaseVersion = arg("release") || "FY2026";
+  return prisma.$queryRaw<Icd10CatalogSearchRow[]>(buildIcd10CatalogSearchSelectSql(match, take, { releaseVersion }));
 }
 
 function duplicateCodes(rows: Icd10CatalogSearchRow[]): string[] {

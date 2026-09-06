@@ -1,6 +1,10 @@
 import { parseIcd10CmReleaseText, withDot } from "./parse-icd10-cm-release";
 import { selectScopedCodes, TENDON_SCOPE_FAMILIES, LIGAMENT_SCOPE_FAMILIES } from "./icd10-tendon-ligament-scope";
-import { ICD10_CM_FY2026_MANIFEST } from "./icd10-cm-release-manifest";
+import {
+  ICD10_CM_FY2026_MANIFEST,
+  ICD10_CM_FY2027_MANIFEST,
+  selectOfficialIcd10CmReleaseForDateOfService,
+} from "./icd10-cm-release-manifest";
 
 describe("parse-icd10-cm-release", () => {
   it("withDot preserves seventh characters", () => {
@@ -63,9 +67,20 @@ describe("parse-icd10-cm-release", () => {
     expect(tendon.map((r) => r.code)).not.toContain("R50.9");
   });
 
-  it("FY2026 manifest has non-empty authoritative checksum", () => {
+  it("FY2026 and FY2027 manifests have non-empty authoritative checksums and non-overlapping windows", () => {
     expect(ICD10_CM_FY2026_MANIFEST.artifactSha256).toHaveLength(64);
     expect(ICD10_CM_FY2026_MANIFEST.preferredInnerFileSha256).toHaveLength(64);
     expect(ICD10_CM_FY2026_MANIFEST.artifactFileName).toContain("2026");
+    expect(ICD10_CM_FY2026_MANIFEST.effectiveTo).toBe("2026-09-30");
+    expect(ICD10_CM_FY2026_MANIFEST.expectedBillableRows).toBe(74719);
+    expect(ICD10_CM_FY2027_MANIFEST.artifactSha256).toHaveLength(64);
+    expect(ICD10_CM_FY2027_MANIFEST.preferredInnerFileSha256).toHaveLength(64);
+    expect(ICD10_CM_FY2027_MANIFEST.effectiveFrom).toBe("2026-10-01");
+    expect(ICD10_CM_FY2027_MANIFEST.expectedBillableRows).toBe(74879);
+    expect(ICD10_CM_FY2026_MANIFEST.artifactSha256).not.toBe(ICD10_CM_FY2027_MANIFEST.artifactSha256);
+    expect(selectOfficialIcd10CmReleaseForDateOfService("2026-09-30").releaseVersion).toBe("FY2026");
+    expect(selectOfficialIcd10CmReleaseForDateOfService("2026-10-01").releaseVersion).toBe("FY2027");
+    expect(ICD10_CM_FY2026_MANIFEST.effectiveFrom).toBe("2025-10-01");
+    expect(ICD10_CM_FY2027_MANIFEST.effectiveTo).toBeNull();
   });
 });
