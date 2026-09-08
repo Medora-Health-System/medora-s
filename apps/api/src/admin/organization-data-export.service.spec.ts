@@ -18,7 +18,7 @@ jest.mock("../encounters/chart-export-html.util", () => ({
 const assertScope = assertFacilityAdminFacilityScope as jest.MockedFunction<typeof assertFacilityAdminFacilityScope>;
 
 function makeService(overrides?: {
-  organizationDataExport?: Partial<Record<"create" | "findMany" | "findFirst" | "findUnique" | "update", jest.Mock>>;
+  organizationDataExport?: Partial<Record<"create" | "findMany" | "findFirst" | "findUnique" | "update" | "updateMany", jest.Mock>>;
   queryRaw?: jest.Mock;
   chartManifest?: jest.Mock;
   storagePut?: jest.Mock;
@@ -42,6 +42,7 @@ function makeService(overrides?: {
       findFirst: overrides?.organizationDataExport?.findFirst ?? jest.fn(),
       findUnique: overrides?.organizationDataExport?.findUnique ?? jest.fn(),
       update: overrides?.organizationDataExport?.update ?? jest.fn().mockResolvedValue({}),
+      updateMany: overrides?.organizationDataExport?.updateMany ?? jest.fn().mockResolvedValue({ count: 1 }),
     },
     $queryRawUnsafe: overrides?.queryRaw ?? jest.fn().mockResolvedValue([]),
   };
@@ -425,8 +426,9 @@ describe("OrganizationDataExportService", () => {
       exportKeyWrappedJson: wrapped,
     });
     const update = jest.fn().mockResolvedValue({});
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const { service, prisma, storage } = makeService({
-      organizationDataExport: { findUnique, update },
+      organizationDataExport: { findUnique, update, updateMany },
     });
     jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
       zipBuffer: Buffer.from("zip-bytes", "utf8"),
@@ -477,8 +479,9 @@ describe("OrganizationDataExportService", () => {
       exportKeyWrappedJson: wrapped,
     });
     const update = jest.fn().mockResolvedValue({});
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const processCase = makeService({
-      organizationDataExport: { findUnique, update },
+      organizationDataExport: { findUnique, update, updateMany },
     });
     jest.spyOn(processCase.service as any, "buildPlaintextPackage").mockResolvedValue({
       zipBuffer: Buffer.from("zip-bytes", "utf8"),
@@ -489,9 +492,9 @@ describe("OrganizationDataExportService", () => {
 
     await (processCase.service as any).processQueuedExport("exp-1");
 
-    expect(processCase.prisma.organizationDataExport.update).toHaveBeenCalledWith(
+    expect(processCase.prisma.organizationDataExport.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "exp-1" },
+        where: expect.objectContaining({ id: "exp-1" }),
         data: expect.objectContaining({
           status: OrganizationDataExportStatus.FAILED,
           failureCode: "EXPORT_PROCESSING_FAILED",
@@ -512,12 +515,13 @@ describe("OrganizationDataExportService", () => {
       exportKeyWrappedJson: wrapped,
     });
     const update = jest.fn().mockResolvedValue({});
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
     const storagePut = jest.fn().mockImplementation(async (_id, _facilityId, _fileName, encryptedArtifact: Buffer) => ({
       objectKey: "obj-key",
       sizeBytes: encryptedArtifact.length,
     }));
     const { service, prisma, storage } = makeService({
-      organizationDataExport: { findUnique, update },
+      organizationDataExport: { findUnique, update, updateMany },
       storagePut,
     });
     jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
@@ -1236,5 +1240,474 @@ describe("OrganizationDataExportService", () => {
     expect(result.failureMessage).toBe("Export failed (EXPORT_PROCESSING_FAILED).");
     expect(result.failureMessage).not.toContain("s3://");
     expect(result.failureMessage).not.toContain("obj-55");
+  });
+
+  it("EXP-56: QUEUED to PROCESSING claim transition occurs only once", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    const { service, prisma } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-56",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update: jest.fn().mockResolvedValue({}),
+      },
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-56", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-56");
+    await (service as any).processQueuedExport("exp-56");
+    const claimCalls = prisma.organizationDataExport.updateMany.mock.calls.filter(
+      (call) => call[0]?.data?.status === OrganizationDataExportStatus.PROCESSING
+    );
+    expect(claimCalls).toHaveLength(2);
+    expect(claimCalls[0]?.[0]?.where?.status).toBe(OrganizationDataExportStatus.QUEUED);
+    expect(claimCalls[0]?.[0]?.data?.status).toBe(OrganizationDataExportStatus.PROCESSING);
+  });
+
+  it("EXP-57: duplicate processing attempt cannot claim already claimed export", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    const storagePut = jest.fn().mockResolvedValue({ objectKey: "obj-57", sizeBytes: 16 });
+    const { service, storage } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-57",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update: jest.fn().mockResolvedValue({}),
+      },
+      storagePut,
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-57", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-57");
+    await (service as any).processQueuedExport("exp-57");
+    expect(storage.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("EXP-58: put and completed persistence succeed, completed audit emitted after persistence, no cleanup", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const update = jest.fn().mockResolvedValue({});
+    const { service, prisma, storage, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-58",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update,
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-58", sizeBytes: 24 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-58", "utf8"),
+      patientCount: 2,
+      encounterCount: 2,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-58");
+    const completedUpdateOrder = update.mock.invocationCallOrder[0] ?? 0;
+    const completedAuditOrder = audit.log.mock.calls
+      .map((call, idx) => ({ idx, action: call[0] }))
+      .find(({ action }) => action === AuditAction.ORGANIZATION_EXPORT_COMPLETED);
+    const completedAuditCallOrder = completedAuditOrder ? audit.log.mock.invocationCallOrder[completedAuditOrder.idx] : 0;
+    expect(completedUpdateOrder).toBeGreaterThan(0);
+    expect(completedAuditCallOrder).toBeGreaterThan(completedUpdateOrder);
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+
+  it("EXP-59: put succeeds but completed DB update fails, cleanup attempted, failed path used, no completed audit", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const update = jest.fn().mockRejectedValue(new Error("db completed update failed"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 1 });
+    const { service, prisma, storage, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-59",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update,
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-59", sizeBytes: 20 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-59", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-59");
+    expect(storage.delete).toHaveBeenCalledWith("obj-59", "exp-59");
+    expect(prisma.organizationDataExport.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: OrganizationDataExportStatus.FAILED,
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_COMPLETED,
+      "OrganizationDataExport",
+      expect.anything()
+    );
+  });
+
+  it("EXP-60: cleanup targets only the exact current object key", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const { service, storage } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-60",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany: jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 1 }),
+        update: jest.fn().mockRejectedValue(new Error("db write fail")),
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-60-current-only", sizeBytes: 21 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-60", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-60");
+    expect(storage.delete).toHaveBeenCalledTimes(1);
+    expect(storage.delete).toHaveBeenCalledWith("obj-60-current-only", "exp-60");
+  });
+
+  it("EXP-61: cleanup failure does not mask original failure and no completed audit emitted", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 1 });
+    const { service, storage, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-61",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update: jest.fn().mockRejectedValue(new Error("db update failed")),
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-61", sizeBytes: 16 }),
+    });
+    storage.delete.mockRejectedValueOnce(new Error("cleanup delete failed"));
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-61", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await expect((service as any).processQueuedExport("exp-61")).resolves.toBeUndefined();
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_FAILED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-61" })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_COMPLETED,
+      "OrganizationDataExport",
+      expect.anything()
+    );
+  });
+
+  it("EXP-62: failExport does not overwrite terminal COMPLETED export", async () => {
+    const { service, prisma, audit } = makeService({
+      organizationDataExport: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    });
+    await (service as any).failExport(
+      { id: "exp-62", facilityId: "fac-a", requestedByUserId: "admin-a" },
+      "EXPORT_PROCESSING_FAILED",
+      "should not overwrite completed"
+    );
+    expect(prisma.organizationDataExport.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: expect.objectContaining({
+            in: [OrganizationDataExportStatus.QUEUED, OrganizationDataExportStatus.PROCESSING],
+          }),
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_FAILED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-62" })
+    );
+  });
+
+  it("EXP-63: failExport does not overwrite terminal EXPIRED export", async () => {
+    const { service, audit } = makeService({
+      organizationDataExport: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    });
+    await (service as any).failExport(
+      { id: "exp-63", facilityId: "fac-a", requestedByUserId: "admin-a" },
+      "EXPORT_PROCESSING_FAILED",
+      "should not overwrite expired"
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_FAILED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-63" })
+    );
+  });
+
+  it("EXP-64: STARTED audit corresponds to successful PROCESSING claim", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 1 });
+    const { service, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-64",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update: jest.fn().mockRejectedValue(new Error("fail after started")),
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-64", sizeBytes: 20 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-64", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-64");
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_STARTED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-64" })
+    );
+  });
+
+  it("EXP-65: COMPLETED audit is emitted only after COMPLETED persistence succeeds", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const update = jest.fn().mockResolvedValue({});
+    const { service, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-65",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update,
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-65", sizeBytes: 20 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-65", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-65");
+    const updateOrder = update.mock.invocationCallOrder[0] ?? 0;
+    const completedIdx = audit.log.mock.calls.findIndex((call) => call[0] === AuditAction.ORGANIZATION_EXPORT_COMPLETED);
+    const completedOrder = completedIdx >= 0 ? audit.log.mock.invocationCallOrder[completedIdx] : 0;
+    expect(updateOrder).toBeGreaterThan(0);
+    expect(completedOrder).toBeGreaterThan(updateOrder);
+  });
+
+  it("EXP-66: FAILED audit corresponds to FAILED state transition", async () => {
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    const updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 1 });
+    const { service, audit } = makeService({
+      organizationDataExport: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "exp-66",
+          facilityId: "fac-a",
+          requestedByUserId: "admin-a",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+          status: OrganizationDataExportStatus.QUEUED,
+          exportKeyWrappedJson: wrapped,
+        }),
+        updateMany,
+        update: jest.fn().mockRejectedValue(new Error("force failure")),
+      },
+      storagePut: jest.fn().mockResolvedValue({ objectKey: "obj-66", sizeBytes: 20 }),
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-66", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+    await (service as any).processQueuedExport("exp-66");
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_FAILED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-66", metadata: expect.objectContaining({ failureCode: "EXPORT_PROCESSING_FAILED" }) })
+    );
+  });
+
+  it("EXP-67: download success ordering remains integrity verify then lifecycle update then success audit", async () => {
+    const artifact = Buffer.from("artifact-67", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(artifact).digest("hex");
+    let readDone = false;
+    const storageRead = jest.fn().mockImplementation(async () => {
+      readDone = true;
+      return artifact;
+    });
+    const update = jest.fn().mockImplementation(async () => {
+      expect(readDone).toBe(true);
+      return {};
+    });
+    const { service, audit } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-67",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-67",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+      storageRead,
+    });
+    await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-67" });
+    const readOrder = storageRead.mock.invocationCallOrder[0] ?? 0;
+    const updateOrder = update.mock.invocationCallOrder[0] ?? 0;
+    const auditIdx = audit.log.mock.calls.findIndex((call) => call[0] === AuditAction.ORGANIZATION_EXPORT_DOWNLOADED);
+    const auditOrder = auditIdx >= 0 ? audit.log.mock.invocationCallOrder[auditIdx] : 0;
+    expect(readOrder).toBeLessThan(updateOrder);
+    expect(updateOrder).toBeLessThan(auditOrder);
+  });
+
+  it("EXP-68: integrity failure still does not write download success lifecycle/audit", async () => {
+    const expected = Buffer.from("exp-68-expected", "utf8");
+    const tampered = Buffer.from("exp-68-tampered", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(expected).digest("hex");
+    const update = jest.fn().mockResolvedValue({});
+    const { service, prisma, audit } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-68",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-68",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+      storageRead: jest.fn().mockResolvedValue(tampered),
+    });
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-68" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+    expect(prisma.organizationDataExport.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          downloadedByUserId: "admin-a",
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_DOWNLOADED,
+      "OrganizationDataExport",
+      expect.anything()
+    );
+  });
+
+  it("EXP-69: expired export transitions to EXPIRED then emits expiration audit without FAILED transition", async () => {
+    const update = jest.fn().mockResolvedValue({});
+    const { service, prisma, audit } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-69",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-08T05:00:00.000Z"),
+          encryptedSha256: "a".repeat(64),
+          objectStorageKey: "obj-69",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+    });
+    await expect(
+      service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-69" })
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    const updateOrder = update.mock.invocationCallOrder[0] ?? 0;
+    const expIdx = audit.log.mock.calls.findIndex((call) => call[0] === AuditAction.ORGANIZATION_EXPORT_EXPIRED);
+    const expAuditOrder = expIdx >= 0 ? audit.log.mock.invocationCallOrder[expIdx] : 0;
+    expect(updateOrder).toBeGreaterThan(0);
+    expect(expAuditOrder).toBeGreaterThan(updateOrder);
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_FAILED,
+      "OrganizationDataExport",
+      expect.objectContaining({ entityId: "exp-69" })
+    );
+  });
+
+  it("EXP-70: known limitation - scheduling remains in-process via setTimeout", async () => {
+    jest.useFakeTimers();
+    try {
+      const { service, prisma } = makeService();
+      ((service as any).scheduleProcessing as jest.SpyInstance).mockRestore();
+      (service as any).scheduleProcessing("exp-70");
+      expect(prisma.organizationDataExport.findUnique).not.toHaveBeenCalled();
+      await jest.runOnlyPendingTimersAsync();
+      expect(prisma.organizationDataExport.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "exp-70" } })
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

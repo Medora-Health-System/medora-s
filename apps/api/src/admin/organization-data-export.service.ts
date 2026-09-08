@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AuditAction, OrganizationDataExportFormat, OrganizationDataExportStatus } from "@prisma/client";
 import * as crypto from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -329,6 +329,7 @@ function facilityExportSpecs(): SqlFileExportSpec[] {
 
 @Injectable()
 export class OrganizationDataExportService {
+  private readonly logger = new Logger(OrganizationDataExportService.name);
   private readonly exportStorage: SecureExportStorage;
 
   constructor(
@@ -609,6 +610,8 @@ export class OrganizationDataExportService {
   }
 
   protected scheduleProcessing(exportId: string): void {
+    // Known limitation: this is still in-process scheduling and is not durable
+    // across process restarts. Durable queued workers are tracked as follow-up hardening.
     setTimeout(() => {
       void this.processQueuedExport(exportId);
     }, 0);
@@ -626,21 +629,24 @@ export class OrganizationDataExportService {
         exportKeyWrappedJson: true,
       },
     });
-    if (!job || job.status !== OrganizationDataExportStatus.QUEUED) return;
+    if (!job) return;
+
+    const claim = await this.prisma.organizationDataExport.updateMany({
+      where: { id: job.id, status: OrganizationDataExportStatus.QUEUED },
+      data: {
+        status: OrganizationDataExportStatus.PROCESSING,
+        startedAt: new Date(),
+      },
+    });
+    if (claim.count !== 1) return;
 
     if (!job.exportKeyWrappedJson) {
       await this.failExport(job, "MISSING_EXPORT_SECRET", "Encryption secret is unavailable.");
       return;
     }
 
+    let storedObjectKey: string | null = null;
     try {
-      await this.prisma.organizationDataExport.update({
-        where: { id: job.id },
-        data: {
-          status: OrganizationDataExportStatus.PROCESSING,
-          startedAt: new Date(),
-        },
-      });
       await this.audit.log(AuditAction.ORGANIZATION_EXPORT_STARTED, "OrganizationDataExport", {
         userId: job.requestedByUserId ?? undefined,
         facilityId: job.facilityId,
@@ -674,6 +680,7 @@ export class OrganizationDataExportService {
         algorithm: ENCRYPTION_ALGORITHM,
         encryptedSha256,
       });
+      storedObjectKey = stored.objectKey;
 
       await this.prisma.organizationDataExport.update({
         where: { id: job.id },
@@ -689,7 +696,7 @@ export class OrganizationDataExportService {
           encryptionIvBase64: iv.toString("base64"),
           encryptionAuthTagBase64: authTag.toString("base64"),
           wrappedKeyReference: "mfa-secret-encryption:v1",
-          objectStorageKey: stored.objectKey,
+          objectStorageKey: storedObjectKey,
           expiresAt: expiration,
           failureCode: null,
           failureMessage: null,
@@ -709,6 +716,13 @@ export class OrganizationDataExportService {
         },
       });
     } catch (error) {
+      if (storedObjectKey) {
+        await this.cleanupPartialArtifact({
+          exportId: job.id,
+          facilityId: job.facilityId,
+          objectKey: storedObjectKey,
+        });
+      }
       await this.failExport(
         job,
         "EXPORT_PROCESSING_FAILED",
@@ -722,8 +736,11 @@ export class OrganizationDataExportService {
     failureCode: string,
     failureMessage: string
   ) {
-    await this.prisma.organizationDataExport.update({
-      where: { id: job.id },
+    const updated = await this.prisma.organizationDataExport.updateMany({
+      where: {
+        id: job.id,
+        status: { in: [OrganizationDataExportStatus.QUEUED, OrganizationDataExportStatus.PROCESSING] },
+      },
       data: {
         status: OrganizationDataExportStatus.FAILED,
         failedAt: new Date(),
@@ -731,12 +748,14 @@ export class OrganizationDataExportService {
         failureMessage: failureMessage.slice(0, 4000),
       },
     });
+    if (updated.count !== 1) return false;
     await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
       userId: job.requestedByUserId ?? undefined,
       facilityId: job.facilityId,
       entityId: job.id,
       metadata: { failureCode },
     });
+    return true;
   }
 
   private async buildPlaintextPackage(args: {
@@ -945,5 +964,22 @@ export class OrganizationDataExportService {
       return `Export failed (${failureCode}).`;
     }
     return "Export failed.";
+  }
+
+  private async cleanupPartialArtifact(args: {
+    exportId: string;
+    facilityId: string;
+    objectKey: string;
+  }): Promise<void> {
+    try {
+      await this.exportStorage.delete(args.objectKey, args.exportId);
+    } catch (error) {
+      this.logger.error("export_partial_artifact_cleanup_failed", {
+        exportId: args.exportId,
+        facilityId: args.facilityId,
+        objectKeySha256: hashSha256Hex(args.objectKey),
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
   }
 }
