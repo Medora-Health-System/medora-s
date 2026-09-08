@@ -289,7 +289,7 @@ describe("Provider documentation version endpoints + concurrency (e2e)", () => {
     await request(app.getHttpServer())
       .get(`/encounters/${historyEncounterId}/provider-documentation/versions`)
       .set("x-facility-id", facilityIdA)
-      .expect(403);
+      .expect(401);
   });
 
   it("disallowed role is rejected", async () => {
