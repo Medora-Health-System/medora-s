@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { AuditAction, OrganizationDataExportFormat, OrganizationDataExportStatus } from "@prisma/client";
 import * as crypto from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -8,6 +8,8 @@ import { EncounterChartExportService } from "../encounters/chart-export.service"
 import { renderEncounterChartExportHtml } from "../encounters/chart-export-html.util";
 import { buildStoredZip, readStoredZipEntries, type ZipEntryInput } from "./organization-data-export.zip";
 import { DocumentSecureExportStorage, type SecureExportStorage } from "./organization-data-export.storage";
+import { unwrapServerSecret, wrapServerSecret } from "../auth/mfa/server-secret-encryption.util";
+import { createEncryptedExportEnvelope, parseEncryptedExportEnvelope } from "./organization-data-export-envelope";
 
 const EXPORT_SCHEMA_VERSION = 1;
 const ENCRYPTION_ALGORITHM = "AES-256-GCM";
@@ -155,10 +157,10 @@ function facilityExportSpecs(): SqlFileExportSpec[] {
       reconciliationKey: "medicationOrderSchedules",
     },
     {
-      filePath: "allergies.csv",
-      queryBase: `SELECT p."id" FROM "Patient" p WHERE p."facilityId" = $1 AND 1 = 0 ORDER BY p."id"`,
-      countQuery: `SELECT 0::bigint AS "count"`,
-      format: "csv",
+      filePath: "allergies.jsonl",
+      queryBase: `SELECT p."id" AS "patientId", p."facilityId" AS "facilityId", (p."clinicalHistoryProfileJson"::jsonb)->'allergies' AS "allergies" FROM "Patient" p WHERE p."facilityId" = $1 AND jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies') = 'object' ORDER BY p."id"`,
+      countQuery: `SELECT COUNT(*)::bigint AS "count" FROM "Patient" p WHERE p."facilityId" = $1 AND jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies') = 'object'`,
+      format: "jsonl",
       reconciliationKey: "allergies",
     },
     {
@@ -327,7 +329,7 @@ function facilityExportSpecs(): SqlFileExportSpec[] {
 
 @Injectable()
 export class OrganizationDataExportService {
-  private readonly pendingSecrets = new Map<string, Buffer>();
+  private readonly logger = new Logger(OrganizationDataExportService.name);
   private readonly exportStorage: SecureExportStorage;
 
   constructor(
@@ -364,6 +366,9 @@ export class OrganizationDataExportService {
     });
     if (!actor) throw new ForbiddenException("Authentication required");
 
+    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
+    const exportKeyWrappedJson = wrapServerSecret(decryptionSecret);
+
     const row = await this.prisma.organizationDataExport.create({
       data: {
         facilityId,
@@ -371,6 +376,7 @@ export class OrganizationDataExportService {
         status: OrganizationDataExportStatus.QUEUED,
         exportFormat: OrganizationDataExportFormat.ZIP,
         schemaVersion: EXPORT_SCHEMA_VERSION,
+        exportKeyWrappedJson,
       },
       select: {
         id: true,
@@ -378,9 +384,6 @@ export class OrganizationDataExportService {
         status: true,
       },
     });
-
-    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
-    this.pendingSecrets.set(row.id, Buffer.from(decryptionSecret, "base64url"));
 
     await this.audit.log(AuditAction.ORGANIZATION_EXPORT_REQUESTED, "OrganizationDataExport", {
       userId: actor.id,
@@ -459,8 +462,57 @@ export class OrganizationDataExportService {
     }
 
     if (!row.objectStorageKey) throw new NotFoundException("Encrypted artifact unavailable");
+    if (!row.encryptedSha256) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_METADATA_MISSING",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: null,
+          actualSha256: null,
+        },
+      });
+      throw new ConflictException("Encrypted artifact integrity metadata unavailable");
+    }
+
+    let expectedSha256: Buffer;
+    try {
+      expectedSha256 = this.parseSha256HexOrThrow(row.encryptedSha256);
+    } catch (error) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_METADATA_INVALID",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: row.encryptedSha256,
+          actualSha256: null,
+        },
+      });
+      throw error;
+    }
     const encryptedArtifact = await this.exportStorage.read(row.objectStorageKey, row.id);
     if (!encryptedArtifact) throw new NotFoundException("Encrypted artifact unavailable");
+    const actualSha256 = hashSha256Hex(encryptedArtifact);
+    const actualSha256Buffer = Buffer.from(actualSha256, "hex");
+    const hashMatch = expectedSha256.length === actualSha256Buffer.length && crypto.timingSafeEqual(expectedSha256, actualSha256Buffer);
+    if (!hashMatch) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_CHECK_FAILED",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: row.encryptedSha256.trim().toLowerCase(),
+          actualSha256,
+        },
+      });
+      throw new ConflictException("Encrypted artifact integrity check failed");
+    }
 
     await this.prisma.organizationDataExport.update({
       where: { id: row.id },
@@ -492,16 +544,47 @@ export class OrganizationDataExportService {
   async verifyEncryptedArtifact(input: {
     encryptedArtifact: Buffer;
     decryptionSecret: string;
-    ivBase64: string;
-    authTagBase64: string;
+    ivBase64?: string;
+    authTagBase64?: string;
     plaintextSha256: string;
   }) {
     const key = Buffer.from(input.decryptionSecret, "base64url");
-    const iv = Buffer.from(input.ivBase64, "base64");
-    const authTag = Buffer.from(input.authTagBase64, "base64");
+    if (key.length !== 32) {
+      throw new Error("Invalid export decryption secret.");
+    }
+
+    const magic = input.encryptedArtifact.subarray(0, 4).toString("ascii");
+    const isMed1Envelope = magic === "MED1";
+
+    let ciphertext = input.encryptedArtifact;
+    let iv: Buffer;
+    let authTag: Buffer;
+
+    if (isMed1Envelope) {
+      const parsed = parseEncryptedExportEnvelope(input.encryptedArtifact);
+      if (parsed.algorithm !== ENCRYPTION_ALGORITHM) {
+        throw new Error(`Unsupported export encryption algorithm: ${parsed.algorithm}`);
+      }
+      iv = parsed.iv;
+      authTag = parsed.authTag;
+      ciphertext = parsed.ciphertext;
+    } else {
+      if (!input.ivBase64 || !input.authTagBase64) {
+        throw new Error("Legacy encrypted artifact requires ivBase64 and authTagBase64.");
+      }
+      iv = Buffer.from(input.ivBase64, "base64");
+      authTag = Buffer.from(input.authTagBase64, "base64");
+      if (iv.length !== 12) {
+        throw new Error("Invalid legacy export IV.");
+      }
+      if (authTag.length !== 16) {
+        throw new Error("Invalid legacy export auth tag.");
+      }
+    }
+
     const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(authTag);
-    const plaintext = Buffer.concat([decipher.update(input.encryptedArtifact), decipher.final()]);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     const plaintextSha256 = hashSha256Hex(plaintext);
     if (plaintextSha256 !== input.plaintextSha256) {
       throw new Error("Plaintext package hash mismatch.");
@@ -527,6 +610,8 @@ export class OrganizationDataExportService {
   }
 
   protected scheduleProcessing(exportId: string): void {
+    // Known limitation: this is still in-process scheduling and is not durable
+    // across process restarts. Durable queued workers are tracked as follow-up hardening.
     setTimeout(() => {
       void this.processQueuedExport(exportId);
     }, 0);
@@ -541,24 +626,27 @@ export class OrganizationDataExportService {
         requestedByUserId: true,
         exportFormat: true,
         status: true,
+        exportKeyWrappedJson: true,
       },
     });
-    if (!job || job.status !== OrganizationDataExportStatus.QUEUED) return;
+    if (!job) return;
 
-    const decryptionKey = this.pendingSecrets.get(exportId);
-    if (!decryptionKey) {
+    const claim = await this.prisma.organizationDataExport.updateMany({
+      where: { id: job.id, status: OrganizationDataExportStatus.QUEUED },
+      data: {
+        status: OrganizationDataExportStatus.PROCESSING,
+        startedAt: new Date(),
+      },
+    });
+    if (claim.count !== 1) return;
+
+    if (!job.exportKeyWrappedJson) {
       await this.failExport(job, "MISSING_EXPORT_SECRET", "Encryption secret is unavailable.");
       return;
     }
 
+    let storedObjectKey: string | null = null;
     try {
-      await this.prisma.organizationDataExport.update({
-        where: { id: job.id },
-        data: {
-          status: OrganizationDataExportStatus.PROCESSING,
-          startedAt: new Date(),
-        },
-      });
       await this.audit.log(AuditAction.ORGANIZATION_EXPORT_STARTED, "OrganizationDataExport", {
         userId: job.requestedByUserId ?? undefined,
         facilityId: job.facilityId,
@@ -567,6 +655,11 @@ export class OrganizationDataExportService {
       });
 
       const generatedAt = new Date();
+      const decryptionSecret = unwrapServerSecret(job.exportKeyWrappedJson);
+      const decryptionKey = Buffer.from(decryptionSecret, "base64url");
+      if (decryptionKey.length !== 32) {
+        throw new Error("Invalid export encryption secret.");
+      }
       const pkg = await this.buildPlaintextPackage({
         facilityId: job.facilityId,
         requestedByUserId: job.requestedByUserId,
@@ -576,8 +669,9 @@ export class OrganizationDataExportService {
 
       const iv = crypto.randomBytes(12);
       const cipher = crypto.createCipheriv("aes-256-gcm", decryptionKey, iv);
-      const encryptedArtifact = Buffer.concat([cipher.update(pkg.zipBuffer), cipher.final()]);
+      const ciphertext = Buffer.concat([cipher.update(pkg.zipBuffer), cipher.final()]);
       const authTag = cipher.getAuthTag();
+      const encryptedArtifact = createEncryptedExportEnvelope(ENCRYPTION_ALGORITHM, iv, authTag, ciphertext);
       const encryptedSha256 = hashSha256Hex(encryptedArtifact);
       const expiration = new Date(generatedAt.getTime() + ttlHours() * 3600_000);
       const fileName = `medora-export-${job.facilityId}-${exportTimestamp(generatedAt)}.zip.enc`;
@@ -586,6 +680,7 @@ export class OrganizationDataExportService {
         algorithm: ENCRYPTION_ALGORITHM,
         encryptedSha256,
       });
+      storedObjectKey = stored.objectKey;
 
       await this.prisma.organizationDataExport.update({
         where: { id: job.id },
@@ -600,8 +695,8 @@ export class OrganizationDataExportService {
           encryptionAlgorithm: ENCRYPTION_ALGORITHM,
           encryptionIvBase64: iv.toString("base64"),
           encryptionAuthTagBase64: authTag.toString("base64"),
-          wrappedKeyReference: "in-memory-one-time-secret",
-          objectStorageKey: stored.objectKey,
+          wrappedKeyReference: "mfa-secret-encryption:v1",
+          objectStorageKey: storedObjectKey,
           expiresAt: expiration,
           failureCode: null,
           failureMessage: null,
@@ -621,13 +716,18 @@ export class OrganizationDataExportService {
         },
       });
     } catch (error) {
+      if (storedObjectKey) {
+        await this.cleanupPartialArtifact({
+          exportId: job.id,
+          facilityId: job.facilityId,
+          objectKey: storedObjectKey,
+        });
+      }
       await this.failExport(
         job,
         "EXPORT_PROCESSING_FAILED",
         error instanceof Error ? error.message : String(error)
       );
-    } finally {
-      this.pendingSecrets.delete(exportId);
     }
   }
 
@@ -636,8 +736,11 @@ export class OrganizationDataExportService {
     failureCode: string,
     failureMessage: string
   ) {
-    await this.prisma.organizationDataExport.update({
-      where: { id: job.id },
+    const updated = await this.prisma.organizationDataExport.updateMany({
+      where: {
+        id: job.id,
+        status: { in: [OrganizationDataExportStatus.QUEUED, OrganizationDataExportStatus.PROCESSING] },
+      },
       data: {
         status: OrganizationDataExportStatus.FAILED,
         failedAt: new Date(),
@@ -645,12 +748,14 @@ export class OrganizationDataExportService {
         failureMessage: failureMessage.slice(0, 4000),
       },
     });
+    if (updated.count !== 1) return false;
     await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
       userId: job.requestedByUserId ?? undefined,
       facilityId: job.facilityId,
       entityId: job.id,
       metadata: { failureCode },
     });
+    return true;
   }
 
   private async buildPlaintextPackage(args: {
@@ -811,7 +916,6 @@ export class OrganizationDataExportService {
     plaintextSha256: string | null;
     encryptedSha256: string | null;
     encryptionAlgorithm: string | null;
-    objectStorageKey: string | null;
     expiresAt: Date | null;
     downloadedAt: Date | null;
     failureCode: string | null;
@@ -834,13 +938,48 @@ export class OrganizationDataExportService {
       plaintextSha256: row.plaintextSha256,
       encryptedSha256: row.encryptedSha256,
       encryptionAlgorithm: row.encryptionAlgorithm,
-      objectStorageKey: row.objectStorageKey,
       expiresAt: row.expiresAt?.toISOString() ?? null,
       downloadedAt: row.downloadedAt?.toISOString() ?? null,
       failureCode: row.failureCode,
-      failureMessage: row.failureMessage,
+      failureMessage: this.sanitizeFailureMessageForPublicApi(row.failureCode, row.failureMessage),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
+  }
+
+  private parseSha256HexOrThrow(value: string): Buffer {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    if (!/^[0-9a-f]{64}$/.test(normalized)) {
+      throw new ConflictException("Encrypted artifact integrity metadata invalid");
+    }
+    return Buffer.from(normalized, "hex");
+  }
+
+  private sanitizeFailureMessageForPublicApi(
+    failureCode: string | null,
+    failureMessage: string | null
+  ): string | null {
+    if (!failureMessage) return null;
+    if (failureCode) {
+      return `Export failed (${failureCode}).`;
+    }
+    return "Export failed.";
+  }
+
+  private async cleanupPartialArtifact(args: {
+    exportId: string;
+    facilityId: string;
+    objectKey: string;
+  }): Promise<void> {
+    try {
+      await this.exportStorage.delete(args.objectKey, args.exportId);
+    } catch (error) {
+      this.logger.error("export_partial_artifact_cleanup_failed", {
+        exportId: args.exportId,
+        facilityId: args.facilityId,
+        objectKeySha256: hashSha256Hex(args.objectKey),
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+    }
   }
 }
