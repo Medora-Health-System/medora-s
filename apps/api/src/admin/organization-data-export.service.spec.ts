@@ -737,7 +737,10 @@ describe("OrganizationDataExportService", () => {
     expect(block).not.toContain("AND 1 = 0");
     expect(block).not.toContain("SELECT 0");
     expect(block).toContain(`format: "jsonl"`);
-    expect(block).toContain(`WHERE p."facilityId" = $1`);
-    expect(block).toContain(`countQuery:`);
+    const queryBase = block.match(/queryBase:\s*`([^`]+)`/)?.[1] ?? "";
+    const countQuery = block.match(/countQuery:\s*`([^`]+)`/)?.[1] ?? "";
+    expect(queryBase).toContain(`WHERE p."facilityId" = $1`);
+    expect(countQuery).toContain(`WHERE p."facilityId" = $1`);
+    expect(countQuery).not.toContain("SELECT 0");
   });
 });
