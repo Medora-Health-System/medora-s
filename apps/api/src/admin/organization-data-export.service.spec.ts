@@ -245,6 +245,8 @@ describe("OrganizationDataExportService", () => {
   });
 
   it("EXP-15: Download is audited", async () => {
+    const encryptedArtifact = Buffer.from("cipher-exp-15", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(encryptedArtifact).digest("hex");
     const { service, audit } = makeService({
       organizationDataExport: {
         findFirst: jest.fn().mockResolvedValue({
@@ -253,12 +255,13 @@ describe("OrganizationDataExportService", () => {
           status: OrganizationDataExportStatus.COMPLETED,
           requestedAt: new Date("2026-09-08T06:00:00.000Z"),
           expiresAt: new Date("2026-09-09T06:00:00.000Z"),
-          encryptedSha256: "a".repeat(64),
+          encryptedSha256,
           objectStorageKey: "obj-key",
           exportFormat: OrganizationDataExportFormat.ZIP,
         }),
         update: jest.fn().mockResolvedValue({}),
       },
+      storageRead: jest.fn().mockResolvedValue(encryptedArtifact),
     });
     await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-1" });
     expect(audit.log).toHaveBeenCalledWith(
@@ -742,5 +745,286 @@ describe("OrganizationDataExportService", () => {
     expect(queryBase).toContain(`WHERE p."facilityId" = $1`);
     expect(countQuery).toContain(`WHERE p."facilityId" = $1`);
     expect(countQuery).not.toContain("SELECT 0");
+  });
+
+  it("EXP-40: Valid stored MED1 artifact with matching encryptedSha256 downloads exact bytes", async () => {
+    const artifact = createEncryptedExportEnvelope(
+      "AES-256-GCM",
+      crypto.randomBytes(12),
+      crypto.randomBytes(16),
+      crypto.randomBytes(48)
+    );
+    const encryptedSha256 = crypto.createHash("sha256").update(artifact).digest("hex");
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-40",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-40",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      storageRead: jest.fn().mockResolvedValue(artifact),
+    });
+    const res = await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-40" });
+    expect(res.buffer.equals(artifact)).toBe(true);
+  });
+
+  it("EXP-41: Tampered artifact fails closed when bytes do not match encryptedSha256", async () => {
+    const original = Buffer.from("artifact-original", "utf8");
+    const tampered = Buffer.from("artifact-tampered", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(original).digest("hex");
+    const update = jest.fn().mockResolvedValue({});
+    const auditLog = jest.fn().mockResolvedValue(undefined);
+    const { service, prisma, audit } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-41",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-41",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+      storageRead: jest.fn().mockResolvedValue(tampered),
+    });
+    audit.log = auditLog as never;
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-41" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+    expect(prisma.organizationDataExport.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          downloadedByUserId: "admin-a",
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_DOWNLOADED,
+      "OrganizationDataExport",
+      expect.anything()
+    );
+  });
+
+  it("EXP-42: Truncated artifact fails closed when hash was from complete artifact", async () => {
+    const full = Buffer.from("artifact-complete", "utf8");
+    const truncated = full.subarray(0, full.length - 4);
+    const encryptedSha256 = crypto.createHash("sha256").update(full).digest("hex");
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-42",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-42",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      storageRead: jest.fn().mockResolvedValue(truncated),
+    });
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-42" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+  });
+
+  it("EXP-43: Missing encryptedSha256 prevents completed export download", async () => {
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-43",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256: null,
+          objectStorageKey: "obj-43",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+      },
+    });
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-43" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+  });
+
+  it("EXP-44: Malformed encryptedSha256 fails closed", async () => {
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-44",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256: "zz-not-hex",
+          objectStorageKey: "obj-44",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+      },
+    });
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-44" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+  });
+
+  it("EXP-45: Missing objectStorageKey or missing stored artifact fails closed", async () => {
+    const noKeyCase = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-45a",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256: "a".repeat(64),
+          objectStorageKey: null,
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+      },
+    });
+    await expect(
+      noKeyCase.service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-45a" })
+    ).rejects.toThrow("Encrypted artifact unavailable");
+
+    const withMissingArtifactHash = crypto.createHash("sha256").update(Buffer.from("abc", "utf8")).digest("hex");
+    const missingArtifactCase = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-45b",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256: withMissingArtifactHash,
+          objectStorageKey: "obj-45b",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+      },
+      storageRead: jest.fn().mockResolvedValue(null),
+    });
+    await expect(
+      missingArtifactCase.service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-45b" })
+    ).rejects.toThrow("Encrypted artifact unavailable");
+  });
+
+  it("EXP-46: Failed integrity check does not mark downloaded or emit success download audit", async () => {
+    const expected = Buffer.from("expected-46", "utf8");
+    const tampered = Buffer.from("tampered-46", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(expected).digest("hex");
+    const update = jest.fn().mockResolvedValue({});
+    const auditLog = jest.fn().mockResolvedValue(undefined);
+    const { service, prisma, audit } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-46",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-46",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+      storageRead: jest.fn().mockResolvedValue(tampered),
+    });
+    audit.log = auditLog as never;
+    await expect(service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-46" })).rejects.toBeInstanceOf(
+      ConflictException
+    );
+    expect(prisma.organizationDataExport.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          downloadedAt: expect.any(Date),
+          downloadedByUserId: "admin-a",
+        }),
+      })
+    );
+    expect(audit.log).not.toHaveBeenCalledWith(
+      AuditAction.ORGANIZATION_EXPORT_DOWNLOADED,
+      "OrganizationDataExport",
+      expect.anything()
+    );
+  });
+
+  it("EXP-47: Successful integrity check happens before downloaded lifecycle mutation", async () => {
+    const artifact = Buffer.from("artifact-47", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(artifact).digest("hex");
+    let readFinished = false;
+    const storageRead = jest.fn().mockImplementation(async () => {
+      readFinished = true;
+      return artifact;
+    });
+    const update = jest.fn().mockImplementation(async (args) => {
+      if (args?.data?.downloadedAt || args?.data?.downloadedByUserId) {
+        expect(readFinished).toBe(true);
+      }
+      return {};
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-47",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-47",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update,
+      },
+      storageRead,
+    });
+    await expect(
+      service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-47" })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        buffer: artifact,
+      })
+    );
+    const readOrder = storageRead.mock.invocationCallOrder[0] ?? 0;
+    const updateOrder = update.mock.invocationCallOrder[0] ?? 0;
+    expect(readOrder).toBeGreaterThan(0);
+    expect(updateOrder).toBeGreaterThan(0);
+    expect(readOrder).toBeLessThan(updateOrder);
+  });
+
+  it("EXP-48: Legacy encrypted artifact passes integrity when stored bytes match encryptedSha256", async () => {
+    const legacyArtifact = Buffer.from("legacy-cipher-bytes-48", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(legacyArtifact).digest("hex");
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-48",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "obj-48",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      storageRead: jest.fn().mockResolvedValue(legacyArtifact),
+    });
+    const res = await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-48" });
+    expect(res.buffer.equals(legacyArtifact)).toBe(true);
   });
 });

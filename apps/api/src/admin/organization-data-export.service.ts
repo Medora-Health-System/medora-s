@@ -461,8 +461,57 @@ export class OrganizationDataExportService {
     }
 
     if (!row.objectStorageKey) throw new NotFoundException("Encrypted artifact unavailable");
+    if (!row.encryptedSha256) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_METADATA_MISSING",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: null,
+          actualSha256: null,
+        },
+      });
+      throw new ConflictException("Encrypted artifact integrity metadata unavailable");
+    }
+
+    let expectedSha256: Buffer;
+    try {
+      expectedSha256 = this.parseSha256HexOrThrow(row.encryptedSha256);
+    } catch (error) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_METADATA_INVALID",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: row.encryptedSha256,
+          actualSha256: null,
+        },
+      });
+      throw error;
+    }
     const encryptedArtifact = await this.exportStorage.read(row.objectStorageKey, row.id);
     if (!encryptedArtifact) throw new NotFoundException("Encrypted artifact unavailable");
+    const actualSha256 = hashSha256Hex(encryptedArtifact);
+    const actualSha256Buffer = Buffer.from(actualSha256, "hex");
+    const hashMatch = expectedSha256.length === actualSha256Buffer.length && crypto.timingSafeEqual(expectedSha256, actualSha256Buffer);
+    if (!hashMatch) {
+      await this.audit.log(AuditAction.ORGANIZATION_EXPORT_FAILED, "OrganizationDataExport", {
+        userId: actorUserId,
+        facilityId,
+        entityId: row.id,
+        metadata: {
+          failureCode: "EXPORT_INTEGRITY_CHECK_FAILED",
+          event: "ORGANIZATION_EXPORT_INTEGRITY_CHECK_FAILED",
+          expectedSha256: row.encryptedSha256.trim().toLowerCase(),
+          actualSha256,
+        },
+      });
+      throw new ConflictException("Encrypted artifact integrity check failed");
+    }
 
     await this.prisma.organizationDataExport.update({
       where: { id: row.id },
@@ -879,5 +928,13 @@ export class OrganizationDataExportService {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
+  }
+
+  private parseSha256HexOrThrow(value: string): Buffer {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    if (!/^[0-9a-f]{64}$/.test(normalized)) {
+      throw new ConflictException("Encrypted artifact integrity metadata invalid");
+    }
+    return Buffer.from(normalized, "hex");
   }
 }
