@@ -225,6 +225,20 @@ export type ChartExportManifest = {
       status: string;
       signedAt: string | null;
       signedByDisplayFr: string | null;
+      versions: Array<{
+        id: string;
+        versionNumber: number;
+        signedAt: string;
+        signedByUserId: string;
+        signedByDisplayFr: string | null;
+        snapshotHash: string;
+        unlockedAt: string | null;
+        unlockedByUserId: string | null;
+        unlockedByDisplayFr: string | null;
+        unlockReason: string | null;
+        documentType: string | null;
+        encounterMode: string | null;
+      }>;
       workspaceNote: {
         title: string;
         encounterMode: string;
@@ -891,6 +905,23 @@ export class EncounterChartExportService {
         physicianAssignedUserId: true,
         physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
         providerDocumentationSignedBy: { select: { firstName: true, lastName: true } },
+        providerDocumentationVersions: {
+          orderBy: { versionNumber: "asc" },
+          select: {
+            id: true,
+            versionNumber: true,
+            signedAt: true,
+            signedByUserId: true,
+            snapshotHash: true,
+            unlockedAt: true,
+            unlockedByUserId: true,
+            unlockReason: true,
+            documentType: true,
+            encounterMode: true,
+            signedBy: { select: { firstName: true, lastName: true } },
+            unlockedBy: { select: { firstName: true, lastName: true } },
+          },
+        },
         patient: {
           select: {
             id: true,
@@ -1585,6 +1616,20 @@ export class EncounterChartExportService {
             ? encounter.providerDocumentationSignedAt.toISOString()
             : null,
           signedByDisplayFr: userDisplayFr(encounter.providerDocumentationSignedBy),
+          versions: (encounter.providerDocumentationVersions ?? []).map((row) => ({
+            id: row.id,
+            versionNumber: row.versionNumber,
+            signedAt: row.signedAt.toISOString(),
+            signedByUserId: row.signedByUserId,
+            signedByDisplayFr: userDisplayFr(row.signedBy),
+            snapshotHash: row.snapshotHash,
+            unlockedAt: row.unlockedAt ? row.unlockedAt.toISOString() : null,
+            unlockedByUserId: row.unlockedByUserId ?? null,
+            unlockedByDisplayFr: userDisplayFr(row.unlockedBy),
+            unlockReason: row.unlockReason ?? null,
+            documentType: row.documentType ?? null,
+            encounterMode: row.encounterMode ?? null,
+          })),
           workspaceNote: providerDocumentationWorkspaceNote(encounter.nursingAssessment),
         },
         nursingDocumentation: initialNursingDocumentationFromAssessment(encounter.nursingAssessment),

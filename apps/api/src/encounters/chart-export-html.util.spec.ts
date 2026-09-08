@@ -43,6 +43,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
         status: "SIGNED",
         signedAt: null,
         signedByDisplayFr: null,
+        versions: [],
         workspaceNote: null,
       },
       nursingDocumentation: null,
@@ -140,7 +141,7 @@ describe("chart-export-html.util", () => {
   it("includes generated (closed) notice when livePreview is false", () => {
     const html = renderEncounterChartExportHtml(baseManifest({ livePreview: false }));
     expect(html).toContain("Generated encounter chart export");
-    expect(html).toContain("not an immutable legal snapshot");
+    expect(html).toContain("Immutable signed provider documentation versions are included when available.");
   });
 
   it("lists deferred domains", () => {

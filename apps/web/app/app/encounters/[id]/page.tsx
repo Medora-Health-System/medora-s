@@ -4383,6 +4383,10 @@ function ClinicVisitTab({
   const [unlocking, setUnlocking] = useState(false);
   const [addendumText, setAddendumText] = useState("");
   const [addendumSaving, setAddendumSaving] = useState(false);
+  const [documentationVersions, setDocumentationVersions] = useState<any[]>([]);
+  const [loadingDocumentationVersions, setLoadingDocumentationVersions] = useState(false);
+  const [historyDetailLoadingId, setHistoryDetailLoadingId] = useState<string | null>(null);
+  const [historyVersionDetail, setHistoryVersionDetail] = useState<any | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "queued" | "err"; text: string } | null>(null);
   const readOnly = encounter.status !== "OPEN";
   const docSigned = isEncounterLocked(encounter);
@@ -4476,6 +4480,28 @@ function ClinicVisitTab({
     syncClinicFieldsFromEncounter,
   ]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingDocumentationVersions(true);
+    void apiFetch(`/encounters/${encounter.id}/provider-documentation/versions`, {
+      facilityId,
+    })
+      .then((rows) => {
+        if (cancelled) return;
+        setDocumentationVersions(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDocumentationVersions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDocumentationVersions(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [encounter.id, facilityId, encounter.providerDocumentationSignedAt, encounter.providerDocumentationStatus]);
+
   const handleAddAddendum = async () => {
     const trimmed = addendumText.trim();
     if (!trimmed) return;
@@ -4548,6 +4574,25 @@ function ClinicVisitTab({
       });
     } finally {
       setUnlocking(false);
+    }
+  };
+
+  const handleViewDocumentationVersion = async (versionId: string) => {
+    setHistoryDetailLoadingId(versionId);
+    try {
+      const detail = await apiFetch(`/encounters/${encounter.id}/provider-documentation/versions/${versionId}`, {
+        facilityId,
+      });
+      setHistoryVersionDetail(detail);
+    } catch (e: unknown) {
+      setMessage({
+        type: "err",
+        text:
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterClinicTab.historyLoadError"),
+      });
+    } finally {
+      setHistoryDetailLoadingId(null);
     }
   };
 
@@ -4820,6 +4865,71 @@ function ClinicVisitTab({
           </button>
         </div>
       ) : null}
+      <div style={{ ...clinicShell, padding: "16px 18px" }}>
+        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+          {t("encounterClinicTab.historyTitle")}
+        </h4>
+        {loadingDocumentationVersions ? (
+          <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 13 }}>{t("encounterClinicTab.historyLoading")}</p>
+        ) : documentationVersions.length === 0 ? (
+          <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 13 }}>{t("encounterClinicTab.historyEmpty")}</p>
+        ) : (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            {documentationVersions.map((version) => (
+              <div
+                key={version.id}
+                style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#fff" }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+                  {t("encounterClinicTab.historyVersionLabel").replace("{version}", String(version.versionNumber ?? "—"))}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                  {t("encounterClinicTab.historySignedBy").replace("{name}", version.signedByDisplay ?? "—")}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                  {t("encounterClinicTab.historySignedAt").replace(
+                    "{datetime}",
+                    version.signedAt ? new Date(version.signedAt).toLocaleString(dateLocale) : "—"
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                  {t("encounterClinicTab.historyHash").replace("{hash}", String(version.snapshotHash ?? "—").slice(0, 16))}
+                </div>
+                {version.unlockedAt || version.unlockReason ? (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#7c2d12", lineHeight: 1.5 }}>
+                    {t("encounterClinicTab.historyUnlockedBy").replace("{name}", version.unlockedByDisplay ?? "—")} ·{" "}
+                    {t("encounterClinicTab.historyUnlockedAt").replace(
+                      "{datetime}",
+                      version.unlockedAt ? new Date(version.unlockedAt).toLocaleString(dateLocale) : "—"
+                    )}
+                    {version.unlockReason ? ` · ${version.unlockReason}` : ""}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleViewDocumentationVersion(version.id)}
+                  disabled={historyDetailLoadingId === version.id}
+                  style={{
+                    marginTop: 8,
+                    padding: "7px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    background: "#f8fafc",
+                    color: "#334155",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: historyDetailLoadingId === version.id ? "wait" : "pointer",
+                  }}
+                >
+                  {historyDetailLoadingId === version.id
+                    ? t("encounterClinicTab.historyViewLoading")
+                    : t("encounterClinicTab.historyView")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       {(encounter.providerAddenda ?? []).length > 0 ? (
         <div style={{ marginBottom: 16 }}>
           {(encounter.providerAddenda ?? []).map((ad: { id: string; text: string; createdAt: string; createdByDisplayFr?: string | null }) => (
@@ -5164,6 +5274,81 @@ function ClinicVisitTab({
         )}
       </div>
       </div>
+      {historyVersionDetail ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 86,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 740,
+              width: "100%",
+              maxHeight: "80vh",
+              overflow: "auto",
+              borderRadius: 14,
+              backgroundColor: MEDORA_CARD_SHELL.background,
+              border: MEDORA_CARD_SHELL.border,
+              boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)",
+              padding: "22px 24px",
+              boxSizing: "border-box",
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
+              {t("encounterClinicTab.historyModalTitle").replace(
+                "{version}",
+                String(historyVersionDetail.versionNumber ?? "—")
+              )}
+            </h2>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "#475569" }}>
+              {t("encounterClinicTab.historyHash").replace("{hash}", historyVersionDetail.snapshotHash ?? "—")}
+            </p>
+            <pre
+              style={{
+                marginTop: 12,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontSize: 12,
+                color: "#0f172a",
+              }}
+            >
+              {JSON.stringify(historyVersionDetail.clinicalSnapshotJson ?? null, null, 2)}
+            </pre>
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setHistoryVersionDetail(null)}
+                style={{
+                  padding: "10px 18px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  background: "#fff",
+                  color: "#334155",
+                  cursor: "pointer",
+                }}
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {showUnlockModal ? (
         <div
           role="dialog"
@@ -5246,7 +5431,7 @@ function ClinicVisitTab({
               </button>
               <button
                 type="button"
-                disabled={unlocking}
+                disabled={unlocking || unlockReason.trim().length === 0}
                 onClick={() => void handleUnlockDocumentation()}
                 style={{
                   padding: "10px 18px",
@@ -5256,7 +5441,8 @@ function ClinicVisitTab({
                   borderRadius: 10,
                   background: "#c2410c",
                   color: "#fff",
-                  cursor: unlocking ? "wait" : "pointer",
+                  cursor: unlocking || unlockReason.trim().length === 0 ? "not-allowed" : "pointer",
+                  opacity: unlocking || unlockReason.trim().length === 0 ? 0.65 : 1,
                 }}
               >
                 {unlocking ? t("encounterClinicTab.unlocking") : t("encounterClinicTab.unlockConfirm")}
@@ -7148,5 +7334,3 @@ function OrdersTab({
     </div>
   );
 }
-
-

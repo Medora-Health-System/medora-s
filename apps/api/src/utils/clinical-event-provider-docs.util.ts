@@ -11,6 +11,9 @@ export function providerDocumentationSignedPayloadJson(input: {
   documentType?: "INITIAL_PROVIDER_NOTE" | "OBSERVATION_PROVIDER_PROGRESS_NOTE" | null;
   previousSignedByUserId?: string | null;
   previousSignedAt?: string | null;
+  versionNumber?: string | null;
+  snapshotHash?: string | null;
+  providerDocumentationVersionId?: string | null;
 }): Prisma.InputJsonValue {
   const o: Record<string, unknown> = {
     source: "PROVIDER_DOCUMENTATION",
@@ -36,6 +39,15 @@ export function providerDocumentationSignedPayloadJson(input: {
   if (input.previousSignedAt != null && input.previousSignedAt !== "") {
     o.previousSignedAt = input.previousSignedAt;
   }
+  if (input.versionNumber != null && input.versionNumber !== "") {
+    o.versionNumber = input.versionNumber;
+  }
+  if (input.snapshotHash != null && input.snapshotHash !== "") {
+    o.snapshotHash = input.snapshotHash;
+  }
+  if (input.providerDocumentationVersionId != null && input.providerDocumentationVersionId !== "") {
+    o.providerDocumentationVersionId = input.providerDocumentationVersionId;
+  }
   return asJsonValue(o);
 }
 
@@ -45,6 +57,8 @@ export function providerDocumentationUnlockedPayloadJson(input: {
   previousSignedAt: string | null;
   previousStatus: string;
   reason?: string | null;
+  providerDocumentationVersionId?: string | null;
+  providerDocumentationVersionNumber?: string | null;
 }): Prisma.InputJsonValue {
   const o: Record<string, unknown> = {
     source: "PROVIDER_DOCUMENTATION",
@@ -55,6 +69,12 @@ export function providerDocumentationUnlockedPayloadJson(input: {
   };
   if (input.reason != null && input.reason !== "") {
     o.reason = input.reason;
+  }
+  if (input.providerDocumentationVersionId != null && input.providerDocumentationVersionId !== "") {
+    o.providerDocumentationVersionId = input.providerDocumentationVersionId;
+  }
+  if (input.providerDocumentationVersionNumber != null && input.providerDocumentationVersionNumber !== "") {
+    o.providerDocumentationVersionNumber = input.providerDocumentationVersionNumber;
   }
   return asJsonValue(o);
 }

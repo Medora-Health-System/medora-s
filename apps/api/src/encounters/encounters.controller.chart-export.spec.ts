@@ -70,6 +70,7 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
         status: "SIGNED",
         signedAt: null,
         signedByDisplayFr: null,
+        versions: [],
         workspaceNote: null,
       },
       nursingDocumentation: null,
@@ -338,7 +339,7 @@ describe("EncountersController.getChartExport", () => {
     const html = (await controller.getChartExport("enc-1", "html", undefined, req, res)) as string;
 
     expect(html).toContain("Generated encounter chart export");
-    expect(html).toContain("not an immutable legal snapshot");
+    expect(html).toContain("Immutable signed provider documentation versions are included when available.");
     expect(html).not.toContain("Live preview — not a finalized legal record export");
   });
 
@@ -497,7 +498,8 @@ describe("EncountersController.getChartExportSnapshot (GET snapshots/:snapshotId
       "json",
       "u-1",
       "127.0.0.1",
-      undefined
+      undefined,
+      { locale: "en" }
     );
   });
 
@@ -520,7 +522,8 @@ describe("EncountersController.getChartExportSnapshot (GET snapshots/:snapshotId
       "html",
       "u-1",
       "127.0.0.1",
-      undefined
+      undefined,
+      { locale: "en" }
     );
   });
 
