@@ -29,9 +29,13 @@ import { AuditService } from "../common/services/audit.service";
 import { QueuesModule } from "../queues/queues.module";
 import { ReportsModule } from "../reports/reports.module";
 import { EncountersModule } from "../encounters/encounters.module";
+import { DocumentsModule } from "../documents/documents.module";
+import { OrganizationDataExportController } from "./organization-data-export.controller";
+import { OrganizationDataExportService } from "./organization-data-export.service";
+import { DocumentSecureExportStorage } from "./organization-data-export.storage";
 
 @Module({
-  imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule, EncountersModule],
+  imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule, EncountersModule, DocumentsModule],
   controllers: [
     AdminUsersController,
     AdminFacilitiesController,
@@ -46,6 +50,7 @@ import { EncountersModule } from "../encounters/encounters.module";
     AdminRoiMonitoringController,
     AdminBillingGovernanceController,
     AdminMfaController,
+    OrganizationDataExportController,
   ],
   providers: [
     AdminUsersService,
@@ -59,6 +64,8 @@ import { EncountersModule } from "../encounters/encounters.module";
     AdminComplianceService,
     AdminCatalogAuditService,
     AdminBillingGovernanceService,
+    OrganizationDataExportService,
+    DocumentSecureExportStorage,
     AuditService,
   ],
   exports: [QueuesModule, MfaModule, AdminFacilitiesService, GoLiveReadinessService, BackupReadinessService, SystemHealthService, AdminComplianceService, AdminExportMonitoringService, AdminBillingGovernanceService, AdminCatalogAuditService],

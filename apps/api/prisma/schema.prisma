@@ -123,6 +123,7 @@ model Facility {
   triageVitalsReadings                   TriageVitalsReading[]
   userRoles                              UserRole[]
   vaccineAdministrations                 VaccineAdministration[]
+  organizationDataExports                OrganizationDataExport[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -343,6 +344,8 @@ model User {
   privilegedActionRequestsClosed                 PrivilegedActionRequest[]                @relation("PrivilegedActionClosedBy")
   privilegedActionRequestsExecuted               PrivilegedActionRequest[]                @relation("PrivilegedActionExecutor")
   vaccineAdministrations                          VaccineAdministration[]
+  organizationDataExportsRequested              OrganizationDataExport[]                 @relation("OrganizationDataExportRequestedBy")
+  organizationDataExportsDownloaded             OrganizationDataExport[]                 @relation("OrganizationDataExportDownloadedBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -721,6 +724,44 @@ model ChartRoiRequest {
   @@index([facilityId, status, createdAt])
   @@index([facilityId, patientId, createdAt])
   @@index([encounterId])
+}
+
+model OrganizationDataExport {
+  id                    String                        @id @default(uuid())
+  facilityId            String
+  requestedByUserId     String?
+  requestedAt           DateTime                      @default(now())
+  startedAt             DateTime?
+  completedAt           DateTime?
+  failedAt              DateTime?
+  status                OrganizationDataExportStatus  @default(QUEUED)
+  exportFormat          OrganizationDataExportFormat
+  schemaVersion         Int                           @default(1)
+  patientCount          Int                           @default(0)
+  encounterCount        Int                           @default(0)
+  fileSizeBytes         BigInt?
+  plaintextSha256       String?
+  encryptedSha256       String?
+  encryptionAlgorithm   String?
+  encryptionIvBase64    String?
+  encryptionAuthTagBase64 String?
+  wrappedKeyReference   String?
+  objectStorageKey      String?
+  expiresAt             DateTime?
+  downloadedAt          DateTime?
+  downloadedByUserId    String?
+  failureCode           String?
+  failureMessage        String?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  downloadedByUser      User?                         @relation("OrganizationDataExportDownloadedBy", fields: [downloadedByUserId], references: [id], onDelete: SetNull)
+  facility              Facility                      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  requestedByUser       User?                         @relation("OrganizationDataExportRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId, status, requestedAt])
+  @@index([requestedByUserId, requestedAt])
+  @@index([downloadedByUserId])
+  @@index([expiresAt])
 }
 
 model Encounter {
@@ -7790,6 +7831,13 @@ enum AuditAction {
   RECORD_EXPORT
   /// Phase 5F — retrieval of an immutable encounter chart export snapshot (post hash verification).
   RECORD_EXPORT_VIEW
+  /// P0.2 — Organization portability export lifecycle.
+  ORGANIZATION_EXPORT_REQUESTED
+  ORGANIZATION_EXPORT_STARTED
+  ORGANIZATION_EXPORT_COMPLETED
+  ORGANIZATION_EXPORT_FAILED
+  ORGANIZATION_EXPORT_DOWNLOADED
+  ORGANIZATION_EXPORT_EXPIRED
   /// Phase 5G — Release of Information (ROI) request lifecycle.
   ROI_REQUEST_CREATE
   ROI_REQUEST_APPROVE
@@ -7947,6 +7995,21 @@ enum ChartRoiDeliveryMethod {
   REGULATOR_SECURE_CHANNEL
   INTERNAL_HANDOFF
   OTHER
+}
+
+enum OrganizationDataExportStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+enum OrganizationDataExportFormat {
+  JSON
+  CSV
+  ZIP
+  XLSX
 }
 
 /// Charge-capture ledger (Phase 1) — complements Encounter.billingCaptureJson; idempotent per source.
