@@ -9,6 +9,7 @@ import { renderEncounterChartExportHtml } from "../encounters/chart-export-html.
 import { buildStoredZip, readStoredZipEntries, type ZipEntryInput } from "./organization-data-export.zip";
 import { DocumentSecureExportStorage, type SecureExportStorage } from "./organization-data-export.storage";
 import { unwrapServerSecret, wrapServerSecret } from "../auth/mfa/server-secret-encryption.util";
+import { createEncryptedExportEnvelope, parseEncryptedExportEnvelope } from "./organization-data-export-envelope";
 
 const EXPORT_SCHEMA_VERSION = 1;
 const ENCRYPTION_ALGORITHM = "AES-256-GCM";
@@ -493,16 +494,47 @@ export class OrganizationDataExportService {
   async verifyEncryptedArtifact(input: {
     encryptedArtifact: Buffer;
     decryptionSecret: string;
-    ivBase64: string;
-    authTagBase64: string;
+    ivBase64?: string;
+    authTagBase64?: string;
     plaintextSha256: string;
   }) {
     const key = Buffer.from(input.decryptionSecret, "base64url");
-    const iv = Buffer.from(input.ivBase64, "base64");
-    const authTag = Buffer.from(input.authTagBase64, "base64");
+    if (key.length !== 32) {
+      throw new Error("Invalid export decryption secret.");
+    }
+
+    const magic = input.encryptedArtifact.subarray(0, 4).toString("ascii");
+    const isMed1Envelope = magic === "MED1";
+
+    let ciphertext = input.encryptedArtifact;
+    let iv: Buffer;
+    let authTag: Buffer;
+
+    if (isMed1Envelope) {
+      const parsed = parseEncryptedExportEnvelope(input.encryptedArtifact);
+      if (parsed.algorithm !== ENCRYPTION_ALGORITHM) {
+        throw new Error(`Unsupported export encryption algorithm: ${parsed.algorithm}`);
+      }
+      iv = parsed.iv;
+      authTag = parsed.authTag;
+      ciphertext = parsed.ciphertext;
+    } else {
+      if (!input.ivBase64 || !input.authTagBase64) {
+        throw new Error("Legacy encrypted artifact requires ivBase64 and authTagBase64.");
+      }
+      iv = Buffer.from(input.ivBase64, "base64");
+      authTag = Buffer.from(input.authTagBase64, "base64");
+      if (iv.length !== 12) {
+        throw new Error("Invalid legacy export IV.");
+      }
+      if (authTag.length !== 16) {
+        throw new Error("Invalid legacy export auth tag.");
+      }
+    }
+
     const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(authTag);
-    const plaintext = Buffer.concat([decipher.update(input.encryptedArtifact), decipher.final()]);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     const plaintextSha256 = hashSha256Hex(plaintext);
     if (plaintextSha256 !== input.plaintextSha256) {
       throw new Error("Plaintext package hash mismatch.");
@@ -582,8 +614,9 @@ export class OrganizationDataExportService {
 
       const iv = crypto.randomBytes(12);
       const cipher = crypto.createCipheriv("aes-256-gcm", decryptionKey, iv);
-      const encryptedArtifact = Buffer.concat([cipher.update(pkg.zipBuffer), cipher.final()]);
+      const ciphertext = Buffer.concat([cipher.update(pkg.zipBuffer), cipher.final()]);
       const authTag = cipher.getAuthTag();
+      const encryptedArtifact = createEncryptedExportEnvelope(ENCRYPTION_ALGORITHM, iv, authTag, ciphertext);
       const encryptedSha256 = hashSha256Hex(encryptedArtifact);
       const expiration = new Date(generatedAt.getTime() + ttlHours() * 3600_000);
       const fileName = `medora-export-${job.facilityId}-${exportTimestamp(generatedAt)}.zip.enc`;

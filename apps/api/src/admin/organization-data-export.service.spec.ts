@@ -3,6 +3,7 @@ import { AuditAction, OrganizationDataExportFormat, OrganizationDataExportStatus
 import * as crypto from "crypto";
 import { OrganizationDataExportService } from "./organization-data-export.service";
 import { buildStoredZip, readStoredZipEntries } from "./organization-data-export.zip";
+import { createEncryptedExportEnvelope } from "./organization-data-export-envelope";
 import { assertFacilityAdminFacilityScope } from "./user-mutation-boundary";
 import { unwrapServerSecret, wrapServerSecret } from "../auth/mfa/server-secret-encryption.util";
 
@@ -138,16 +139,11 @@ describe("OrganizationDataExportService", () => {
     }
   });
 
-  it("EXP-09/10: plaintext package hash verifies and encrypted artifact decrypts with correct secret", async () => {
+  it("EXP-09/10: plaintext package hash verifies and MED1 artifact decrypts with correct secret", async () => {
     const { service } = makeService();
     const secret = crypto.randomBytes(32).toString("base64url");
     const key = Buffer.from(secret, "base64url");
-    const plaintext = Buffer.from("zip-bytes", "utf8");
     const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-    const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-    const tag = cipher.getAuthTag();
-
     const root = "medora-export-fac-a-20260908T060000Z";
     const manifestPayload = { files: [{ path: "README.txt", sizeBytes: 5, sha256: crypto.createHash("sha256").update("hello").digest("hex") }] };
     const zipBuffer = buildStoredZip(
@@ -160,52 +156,49 @@ describe("OrganizationDataExportService", () => {
     const c2 = crypto.createCipheriv("aes-256-gcm", key, iv);
     const encryptedZip = Buffer.concat([c2.update(zipBuffer), c2.final()]);
     const tag2 = c2.getAuthTag();
+    const envelope = createEncryptedExportEnvelope("AES-256-GCM", iv, tag2, encryptedZip);
     const plaintextSha256 = crypto.createHash("sha256").update(zipBuffer).digest("hex");
     await expect(
       service.verifyEncryptedArtifact({
-        encryptedArtifact: encryptedZip,
+        encryptedArtifact: envelope,
         decryptionSecret: secret,
-        ivBase64: iv.toString("base64"),
-        authTagBase64: tag2.toString("base64"),
         plaintextSha256,
       })
     ).resolves.toEqual({ ok: true });
-    expect(encrypted.length).toBeGreaterThan(0);
+    expect(encryptedZip.length).toBeGreaterThan(0);
     expect(plaintextSha256).toHaveLength(64);
   });
 
-  it("EXP-11: incorrect secret fails decryption", async () => {
+  it("EXP-11: incorrect secret fails MED1 decryption", async () => {
     const { service } = makeService();
     const key = crypto.randomBytes(32);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-    const encrypted = Buffer.concat([cipher.update(Buffer.from("abc")), cipher.final()]);
+    const encrypted = Buffer.concat([cipher.update(Buffer.from("abc", "utf8")), cipher.final()]);
     const tag = cipher.getAuthTag();
+    const envelope = createEncryptedExportEnvelope("AES-256-GCM", iv, tag, encrypted);
     await expect(
       service.verifyEncryptedArtifact({
-        encryptedArtifact: encrypted,
+        encryptedArtifact: envelope,
         decryptionSecret: crypto.randomBytes(32).toString("base64url"),
-        ivBase64: iv.toString("base64"),
-        authTagBase64: tag.toString("base64"),
         plaintextSha256: "0".repeat(64),
       })
     ).rejects.toThrow();
   });
 
-  it("EXP-12: modified ciphertext fails authenticated decryption", async () => {
+  it("EXP-12: modified MED1 ciphertext fails authenticated decryption", async () => {
     const { service } = makeService();
     const key = crypto.randomBytes(32);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
     const encrypted = Buffer.concat([cipher.update(Buffer.from("abc")), cipher.final()]);
     const tag = cipher.getAuthTag();
-    encrypted[0] = encrypted[0] ^ 0xff;
+    const envelope = createEncryptedExportEnvelope("AES-256-GCM", iv, tag, encrypted);
+    envelope[envelope.length - 1] = envelope[envelope.length - 1] ^ 0xff;
     await expect(
       service.verifyEncryptedArtifact({
-        encryptedArtifact: encrypted,
+        encryptedArtifact: envelope,
         decryptionSecret: key.toString("base64url"),
-        ivBase64: iv.toString("base64"),
-        authTagBase64: tag.toString("base64"),
         plaintextSha256: "0".repeat(64),
       })
     ).rejects.toThrow();
@@ -437,5 +430,86 @@ describe("OrganizationDataExportService", () => {
         }),
       })
     );
+  });
+
+  it("EXP-30/31: Stored export artifact is MED1 and encryptedSha256 hashes stored MED1 bytes", async () => {
+    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
+    const wrapped = wrapServerSecret(decryptionSecret);
+    const findUnique = jest.fn().mockResolvedValue({
+      id: "exp-1",
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      exportFormat: OrganizationDataExportFormat.ZIP,
+      status: OrganizationDataExportStatus.QUEUED,
+      exportKeyWrappedJson: wrapped,
+    });
+    const update = jest.fn().mockResolvedValue({});
+    const storagePut = jest.fn().mockImplementation(async (_id, _facilityId, _fileName, encryptedArtifact: Buffer) => ({
+      objectKey: "obj-key",
+      sizeBytes: encryptedArtifact.length,
+    }));
+    const { service, prisma, storage } = makeService({
+      organizationDataExport: { findUnique, update },
+      storagePut,
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-bytes", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+
+    await (service as any).processQueuedExport("exp-1");
+
+    expect(storage.put).toHaveBeenCalled();
+    const storedArtifact = storage.put.mock.calls[0]?.[3] as Buffer;
+    expect(Buffer.isBuffer(storedArtifact)).toBe(true);
+    expect(storedArtifact.subarray(0, 4).toString("ascii")).toBe("MED1");
+
+    const completionCall = prisma.organizationDataExport.update.mock.calls.find(
+      (call) => call[0]?.data?.status === OrganizationDataExportStatus.COMPLETED
+    );
+    const completionData = completionCall?.[0]?.data;
+    expect(completionData).toBeDefined();
+    expect(completionData.encryptedSha256).toBe(crypto.createHash("sha256").update(storedArtifact).digest("hex"));
+  });
+
+  it("EXP-32: Legacy raw ciphertext fallback still decrypts with DB iv/auth tag metadata", async () => {
+    const { service } = makeService();
+    const key = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(12);
+    const plaintext = Buffer.from("legacy export payload", "utf8");
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    const plaintextSha256 = crypto.createHash("sha256").update(plaintext).digest("hex");
+
+    const root = "legacy-root";
+    const manifestPayload = {
+      files: [{ path: "README.txt", sizeBytes: 5, sha256: crypto.createHash("sha256").update("hello").digest("hex") }],
+    };
+    const zipBuffer = buildStoredZip(
+      [
+        { path: `${root}/README.txt`, data: Buffer.from("hello", "utf8") },
+        { path: `${root}/manifest.json`, data: Buffer.from(JSON.stringify(manifestPayload), "utf8") },
+      ],
+      new Date("2026-09-08T06:00:00.000Z")
+    );
+    const c2 = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const encryptedZip = Buffer.concat([c2.update(zipBuffer), c2.final()]);
+    const tag2 = c2.getAuthTag();
+    const zipHash = crypto.createHash("sha256").update(zipBuffer).digest("hex");
+
+    await expect(
+      service.verifyEncryptedArtifact({
+        encryptedArtifact: encryptedZip,
+        decryptionSecret: key.toString("base64url"),
+        ivBase64: iv.toString("base64"),
+        authTagBase64: tag2.toString("base64"),
+        plaintextSha256: zipHash,
+      })
+    ).resolves.toEqual({ ok: true });
+    expect(encrypted.length).toBeGreaterThan(0);
+    expect(plaintextSha256).toHaveLength(64);
   });
 });
