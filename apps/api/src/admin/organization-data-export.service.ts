@@ -8,6 +8,7 @@ import { EncounterChartExportService } from "../encounters/chart-export.service"
 import { renderEncounterChartExportHtml } from "../encounters/chart-export-html.util";
 import { buildStoredZip, readStoredZipEntries, type ZipEntryInput } from "./organization-data-export.zip";
 import { DocumentSecureExportStorage, type SecureExportStorage } from "./organization-data-export.storage";
+import { unwrapServerSecret, wrapServerSecret } from "../auth/mfa/server-secret-encryption.util";
 
 const EXPORT_SCHEMA_VERSION = 1;
 const ENCRYPTION_ALGORITHM = "AES-256-GCM";
@@ -327,7 +328,6 @@ function facilityExportSpecs(): SqlFileExportSpec[] {
 
 @Injectable()
 export class OrganizationDataExportService {
-  private readonly pendingSecrets = new Map<string, Buffer>();
   private readonly exportStorage: SecureExportStorage;
 
   constructor(
@@ -364,6 +364,9 @@ export class OrganizationDataExportService {
     });
     if (!actor) throw new ForbiddenException("Authentication required");
 
+    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
+    const exportKeyWrappedJson = wrapServerSecret(decryptionSecret);
+
     const row = await this.prisma.organizationDataExport.create({
       data: {
         facilityId,
@@ -371,6 +374,7 @@ export class OrganizationDataExportService {
         status: OrganizationDataExportStatus.QUEUED,
         exportFormat: OrganizationDataExportFormat.ZIP,
         schemaVersion: EXPORT_SCHEMA_VERSION,
+        exportKeyWrappedJson,
       },
       select: {
         id: true,
@@ -378,9 +382,6 @@ export class OrganizationDataExportService {
         status: true,
       },
     });
-
-    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
-    this.pendingSecrets.set(row.id, Buffer.from(decryptionSecret, "base64url"));
 
     await this.audit.log(AuditAction.ORGANIZATION_EXPORT_REQUESTED, "OrganizationDataExport", {
       userId: actor.id,
@@ -541,12 +542,12 @@ export class OrganizationDataExportService {
         requestedByUserId: true,
         exportFormat: true,
         status: true,
+        exportKeyWrappedJson: true,
       },
     });
     if (!job || job.status !== OrganizationDataExportStatus.QUEUED) return;
 
-    const decryptionKey = this.pendingSecrets.get(exportId);
-    if (!decryptionKey) {
+    if (!job.exportKeyWrappedJson) {
       await this.failExport(job, "MISSING_EXPORT_SECRET", "Encryption secret is unavailable.");
       return;
     }
@@ -567,6 +568,11 @@ export class OrganizationDataExportService {
       });
 
       const generatedAt = new Date();
+      const decryptionSecret = unwrapServerSecret(job.exportKeyWrappedJson);
+      const decryptionKey = Buffer.from(decryptionSecret, "base64url");
+      if (decryptionKey.length !== 32) {
+        throw new Error("Invalid export encryption secret.");
+      }
       const pkg = await this.buildPlaintextPackage({
         facilityId: job.facilityId,
         requestedByUserId: job.requestedByUserId,
@@ -600,7 +606,7 @@ export class OrganizationDataExportService {
           encryptionAlgorithm: ENCRYPTION_ALGORITHM,
           encryptionIvBase64: iv.toString("base64"),
           encryptionAuthTagBase64: authTag.toString("base64"),
-          wrappedKeyReference: "in-memory-one-time-secret",
+          wrappedKeyReference: "mfa-secret-encryption:v1",
           objectStorageKey: stored.objectKey,
           expiresAt: expiration,
           failureCode: null,
@@ -626,8 +632,6 @@ export class OrganizationDataExportService {
         "EXPORT_PROCESSING_FAILED",
         error instanceof Error ? error.message : String(error)
       );
-    } finally {
-      this.pendingSecrets.delete(exportId);
     }
   }
 

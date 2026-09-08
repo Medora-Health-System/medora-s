@@ -4,6 +4,7 @@ import * as crypto from "crypto";
 import { OrganizationDataExportService } from "./organization-data-export.service";
 import { buildStoredZip, readStoredZipEntries } from "./organization-data-export.zip";
 import { assertFacilityAdminFacilityScope } from "./user-mutation-boundary";
+import { unwrapServerSecret, wrapServerSecret } from "../auth/mfa/server-secret-encryption.util";
 
 jest.mock("./user-mutation-boundary", () => ({
   assertFacilityAdminFacilityScope: jest.fn(),
@@ -62,8 +63,19 @@ function makeService(overrides?: {
 }
 
 describe("OrganizationDataExportService", () => {
+  const originalMfaKey = process.env.MFA_SECRET_ENCRYPTION_KEY;
+
   beforeEach(() => {
     assertScope.mockResolvedValue(undefined);
+    process.env.MFA_SECRET_ENCRYPTION_KEY = crypto.randomBytes(32).toString("base64");
+  });
+
+  afterAll(() => {
+    if (originalMfaKey === undefined) {
+      delete process.env.MFA_SECRET_ENCRYPTION_KEY;
+      return;
+    }
+    process.env.MFA_SECRET_ENCRYPTION_KEY = originalMfaKey;
   });
 
   it("EXP-01: Authorized admin can request facility export", async () => {
@@ -327,5 +339,103 @@ describe("OrganizationDataExportService", () => {
     const auditArgs = audit.log.mock.calls[0];
     expect(JSON.stringify(createArgs)).not.toContain(result.decryptionSecret);
     expect(JSON.stringify(auditArgs)).not.toContain(result.decryptionSecret);
+  });
+
+  it("EXP-21: Request persists wrapped key and can recover plaintext for one-time return", async () => {
+    const { service, prisma } = makeService();
+    const result = await service.requestExport({ actorUserId: "admin-a", facilityId: "fac-a", format: "ZIP" });
+    const createArgs = prisma.organizationDataExport.create.mock.calls[0]?.[0];
+    const wrapped = createArgs?.data?.exportKeyWrappedJson as string;
+    expect(typeof wrapped).toBe("string");
+    expect(wrapped).toBeTruthy();
+    expect(wrapped).not.toContain(result.decryptionSecret);
+    expect(unwrapServerSecret(wrapped)).toBe(result.decryptionSecret);
+  });
+
+  it("EXP-22: Processing reads wrapped key from DB and does not require in-memory pending secret", async () => {
+    const decryptionSecret = crypto.randomBytes(32).toString("base64url");
+    const wrapped = wrapServerSecret(decryptionSecret);
+    const findUnique = jest.fn().mockResolvedValue({
+      id: "exp-1",
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      exportFormat: OrganizationDataExportFormat.ZIP,
+      status: OrganizationDataExportStatus.QUEUED,
+      exportKeyWrappedJson: wrapped,
+    });
+    const update = jest.fn().mockResolvedValue({});
+    const { service, prisma, storage } = makeService({
+      organizationDataExport: { findUnique, update },
+    });
+    jest.spyOn(service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-bytes", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+
+    await (service as any).processQueuedExport("exp-1");
+
+    expect(storage.put).toHaveBeenCalled();
+    expect(prisma.organizationDataExport.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "exp-1" },
+        data: expect.objectContaining({
+          status: OrganizationDataExportStatus.COMPLETED,
+          wrappedKeyReference: "mfa-secret-encryption:v1",
+        }),
+      })
+    );
+  });
+
+  it("EXP-23: Plaintext key is never persisted to export row", async () => {
+    const { service, prisma } = makeService();
+    const result = await service.requestExport({ actorUserId: "admin-a", facilityId: "fac-a", format: "ZIP" });
+    const createArgs = prisma.organizationDataExport.create.mock.calls[0]?.[0];
+    expect(createArgs?.data?.decryptionSecret).toBeUndefined();
+    expect(JSON.stringify(createArgs)).not.toContain(result.decryptionSecret);
+  });
+
+  it("EXP-24: Missing server wrapping key fails closed for request and processing", async () => {
+    delete process.env.MFA_SECRET_ENCRYPTION_KEY;
+    const requestCase = makeService();
+    await expect(
+      requestCase.service.requestExport({ actorUserId: "admin-a", facilityId: "fac-a", format: "ZIP" })
+    ).rejects.toThrow();
+    expect(requestCase.prisma.organizationDataExport.create).not.toHaveBeenCalled();
+
+    process.env.MFA_SECRET_ENCRYPTION_KEY = crypto.randomBytes(32).toString("base64");
+    const wrapped = wrapServerSecret(crypto.randomBytes(32).toString("base64url"));
+    delete process.env.MFA_SECRET_ENCRYPTION_KEY;
+    const findUnique = jest.fn().mockResolvedValue({
+      id: "exp-1",
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      exportFormat: OrganizationDataExportFormat.ZIP,
+      status: OrganizationDataExportStatus.QUEUED,
+      exportKeyWrappedJson: wrapped,
+    });
+    const update = jest.fn().mockResolvedValue({});
+    const processCase = makeService({
+      organizationDataExport: { findUnique, update },
+    });
+    jest.spyOn(processCase.service as any, "buildPlaintextPackage").mockResolvedValue({
+      zipBuffer: Buffer.from("zip-bytes", "utf8"),
+      patientCount: 1,
+      encounterCount: 1,
+      providerDocumentationVersionCount: 0,
+    });
+
+    await (processCase.service as any).processQueuedExport("exp-1");
+
+    expect(processCase.prisma.organizationDataExport.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "exp-1" },
+        data: expect.objectContaining({
+          status: OrganizationDataExportStatus.FAILED,
+          failureCode: "EXPORT_PROCESSING_FAILED",
+        }),
+      })
+    );
   });
 });
