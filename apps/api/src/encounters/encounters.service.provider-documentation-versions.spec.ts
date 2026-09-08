@@ -1,10 +1,11 @@
-import { BadRequestException, HttpException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuditAction, EncounterClinicalEventType, EncounterStatus, EncounterType, RoleCode } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 import { createMockEnterpriseAssignmentService } from "./encounters.service.test-enterprise-assignment.mock";
 import { createMockEnterpriseLifecycleService } from "./encounters.service.test-enterprise-lifecycle.mock";
 import { createMockInternalPlacementService } from "./encounters.service.test-internal-placement.mock";
+import { ENCOUNTER_CONCURRENT_MODIFICATION_CODE } from "./encounter-concurrency.util";
 
 type MutableState = {
   encounter: any;
@@ -285,9 +286,16 @@ describe("EncountersService provider documentation immutable versions (MEDORA.RD
     );
   });
 
-  it("IMM-10 concurrent sign conflict avoids duplicate version numbers", async () => {
+  it("IMM-10a simulated stale write path returns canonical concurrency conflict without creating versions", async () => {
     const { service, state } = buildService({ forceEncounterUpdateConflict: true });
-    await expect(service.signProviderDocumentation("fac-1", "enc-1", "user-1")).rejects.toBeInstanceOf(HttpException);
+    await expect(service.signProviderDocumentation("fac-1", "enc-1", "user-1")).rejects.toMatchObject({
+      status: 409,
+      response: {
+        statusCode: 409,
+        code: ENCOUNTER_CONCURRENT_MODIFICATION_CODE,
+        message: ENCOUNTER_CONCURRENT_MODIFICATION_CODE,
+      },
+    });
     expect(state.versions).toHaveLength(0);
   });
 
