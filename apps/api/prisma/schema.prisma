@@ -746,6 +746,7 @@ model OrganizationDataExport {
   encryptionIvBase64    String?
   encryptionAuthTagBase64 String?
   wrappedKeyReference   String?
+  exportKeyWrappedJson  String?
   objectStorageKey      String?
   expiresAt             DateTime?
   downloadedAt          DateTime?
