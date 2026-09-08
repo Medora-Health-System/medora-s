@@ -6,7 +6,8 @@ import {
   Query,
   Req,
   UseGuards,
-  BadRequestException,
+  UseFilters,
+  UseInterceptors,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
@@ -18,11 +19,18 @@ import {
   parseFhirObservationSearchRefs,
 } from "./dto/fhir-read.schemas";
 import { FhirResourceService } from "./fhir-resource.service";
+import { FhirCapabilityRegistry } from "./fhir-capability.registry";
+import { FhirContextGuard, FhirDeploymentGuard, FhirRequestContext } from "./fhir-context.guard";
+import { FhirOperationOutcomeFilter } from "./fhir-operation-outcome.filter";
+import { FhirMediaInterceptor } from "./fhir-media.interceptor";
+import { parseStrictSearch } from "./fhir-protocol";
 
 @Controller("fhir/Observation")
-@UseGuards(AuthGuard("jwt"), RolesGuard)
+@UseGuards(FhirDeploymentGuard, AuthGuard("jwt"), RolesGuard, FhirContextGuard)
+@UseFilters(FhirOperationOutcomeFilter)
+@UseInterceptors(FhirMediaInterceptor)
 export class FhirObservationController {
-  constructor(private readonly fhirResource: FhirResourceService) {}
+  constructor(private readonly fhirResource: FhirResourceService, private readonly capabilities: FhirCapabilityRegistry) {}
 
   /**
    * FHIR R4 type search (vitals mapped to Observations):
@@ -35,10 +43,9 @@ export class FhirObservationController {
     @Query() query: Record<string, string | undefined>,
     @Req() req: { user?: { userId?: string; facilityId?: string }; ip?: string; headers?: Record<string, string | string[] | undefined> }
   ) {
-    const facilityId = this.facilityId(req);
-    if (!facilityId) {
-      throw new BadRequestException("Facility ID required");
-    }
+    const facilityId = (req as typeof req & { fhirContext: FhirRequestContext }).fhirContext.facilityId;
+    const allowed = this.capabilities.enabled().find((c) => c.resourceType === "Observation" && c.interaction === "search-type")?.searchParameters ?? [];
+    parseStrictSearch(query, allowed);
     const q = assertZod(fhirObservationSearchQuerySchema.safeParse(query));
     const parsed = parseFhirObservationSearchRefs(q);
     return this.fhirResource.searchObservations(facilityId, parsed, req.user?.userId, req.ip, this.ua(req));
@@ -52,10 +59,7 @@ export class FhirObservationController {
     @Param("id") id: string,
     @Req() req: { user?: { userId?: string; facilityId?: string }; ip?: string; headers?: Record<string, string | string[] | undefined> }
   ) {
-    const facilityId = this.facilityId(req);
-    if (!facilityId) {
-      throw new BadRequestException("Facility ID required");
-    }
+    const facilityId = (req as typeof req & { fhirContext: FhirRequestContext }).fhirContext.facilityId;
     const opaqueId = assertZod(fhirObservationInstanceIdParamSchema.safeParse(id));
     return this.fhirResource.readObservationById(facilityId, opaqueId, req.user?.userId, req.ip, this.ua(req));
   }
@@ -65,11 +69,4 @@ export class FhirObservationController {
     return typeof h === "string" ? h : Array.isArray(h) ? h[0] : undefined;
   }
 
-  private facilityId(req: {
-    user?: { facilityId?: string };
-    headers?: Record<string, string | string[] | undefined>;
-  }): string | undefined {
-    const raw = req.user?.facilityId ?? req.headers?.["x-facility-id"];
-    return typeof raw === "string" ? raw : Array.isArray(raw) ? raw[0] : undefined;
-  }
 }

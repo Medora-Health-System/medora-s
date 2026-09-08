@@ -12,6 +12,7 @@ import {
   sanitizePrismaException,
 } from "../logging/prisma-error-sanitizer";
 import { isPrismaMissingHospitalEpisodeIdColumn } from "../../encounters/direct-admission-api-errors.util";
+import { FhirOperationOutcomeFilter } from "../../fhir/fhir-operation-outcome.filter";
 
 const log = createStructuredLogger("AllExceptionsFilter");
 
@@ -37,6 +38,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
     const request = ctx.getRequest();
+    if (typeof request.url === "string" && (request.url === "/fhir" || request.url.startsWith("/fhir/"))) {
+      return new FhirOperationOutcomeFilter().catch(exception, host);
+    }
 
     const isDev = process.env.NODE_ENV !== "production";
     const isHttpException = exception instanceof HttpException;
