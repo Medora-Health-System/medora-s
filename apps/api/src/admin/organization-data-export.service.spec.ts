@@ -472,6 +472,7 @@ describe("OrganizationDataExportService", () => {
     const completionData = completionCall?.[0]?.data;
     expect(completionData).toBeDefined();
     expect(completionData.encryptedSha256).toBe(crypto.createHash("sha256").update(storedArtifact).digest("hex"));
+    expect(Number(completionData.fileSizeBytes)).toBe(storedArtifact.length);
   });
 
   it("EXP-32: Legacy raw ciphertext fallback still decrypts with DB iv/auth tag metadata", async () => {
