@@ -103,7 +103,10 @@ describe("OrganizationDataExportService", () => {
 
   it("EXP-04/05/06/07/08: facility package includes scoped rows and valid manifest hashes", async () => {
     const queryRaw = jest.fn(async (query: string, facilityId: string) => {
-      if (query.includes("AND 1 = 0")) return [];
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) return [{ count: 1n }];
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [{ patientId: `${facilityId}-pat`, facilityId, allergies: { allergyNote: `${facilityId}-allergy` } }];
+      }
       if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
       if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
       if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
@@ -125,12 +128,16 @@ describe("OrganizationDataExportService", () => {
     const manifestPath = [...zip.keys()].find((k) => k.endsWith("/manifest.json"))!;
     const manifest = JSON.parse(zip.get(manifestPath)!.toString("utf8"));
     const patients = [...zip.entries()].find(([k]) => k.endsWith("/patients.csv"))?.[1].toString("utf8") ?? "";
+    const allergiesJsonl = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
     const encounters = [...zip.entries()].find(([k]) => k.endsWith("/encounters.csv"))?.[1].toString("utf8") ?? "";
     const versions = [...zip.entries()].find(([k]) => k.endsWith("/provider-documentation-versions.jsonl"))?.[1].toString("utf8") ?? "";
     expect(patients).toContain("fac-a-pat");
+    expect(allergiesJsonl).toContain("\"patientId\":\"fac-a-pat\"");
+    expect(allergiesJsonl).toContain("\"facilityId\":\"fac-a\"");
+    expect(allergiesJsonl).toContain("\"allergyNote\":\"fac-a-allergy\"");
     expect(encounters).toContain("fac-a-enc");
     expect(versions).toContain("fac-a-ver");
-    expect(`${patients}${encounters}${versions}`).not.toContain("fac-b-");
+    expect(`${patients}${allergiesJsonl}${encounters}${versions}`).not.toContain("fac-b-");
     for (const f of manifest.files as Array<{ path: string; sha256: string; sizeBytes: number }>) {
       const key = manifestPath.replace("manifest.json", f.path);
       const file = zip.get(key);
@@ -512,5 +519,37 @@ describe("OrganizationDataExportService", () => {
     ).resolves.toEqual({ ok: true });
     expect(encrypted.length).toBeGreaterThan(0);
     expect(plaintextSha256).toHaveLength(64);
+  });
+
+  it("EXP-33: Allergy export no longer uses placeholder query and reconciles canonical profile allergies", async () => {
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes("AND 1 = 0")) {
+        throw new Error("placeholder allergy query must not run");
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 1n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [{ patientId: `${facilityId}-pat`, facilityId, allergies: { allergyNote: "Penicillin" } }];
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) return [{ id: `${facilityId}-pat`, facilityId }];
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    const pkg = await (service as any).buildPlaintextPackage({
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    });
+    const zip = readStoredZipEntries(pkg.zipBuffer);
+    const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
+    expect(allergies).toContain("\"allergyNote\":\"Penicillin\"");
   });
 });

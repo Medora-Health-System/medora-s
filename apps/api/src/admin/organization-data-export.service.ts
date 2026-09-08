@@ -157,10 +157,10 @@ function facilityExportSpecs(): SqlFileExportSpec[] {
       reconciliationKey: "medicationOrderSchedules",
     },
     {
-      filePath: "allergies.csv",
-      queryBase: `SELECT p."id" FROM "Patient" p WHERE p."facilityId" = $1 AND 1 = 0 ORDER BY p."id"`,
-      countQuery: `SELECT 0::bigint AS "count"`,
-      format: "csv",
+      filePath: "allergies.jsonl",
+      queryBase: `SELECT p."id" AS "patientId", p."facilityId" AS "facilityId", (p."clinicalHistoryProfileJson"::jsonb)->'allergies' AS "allergies" FROM "Patient" p WHERE p."facilityId" = $1 AND jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies') = 'object' ORDER BY p."id"`,
+      countQuery: `SELECT COUNT(*)::bigint AS "count" FROM "Patient" p WHERE p."facilityId" = $1 AND jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies') = 'object'`,
+      format: "jsonl",
       reconciliationKey: "allergies",
     },
     {
