@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException } from "@nestjs/common";
 import { AuditAction, OrganizationDataExportFormat, OrganizationDataExportStatus } from "@prisma/client";
 import * as crypto from "crypto";
+import * as fs from "fs";
 import { OrganizationDataExportService } from "./organization-data-export.service";
 import { buildStoredZip, readStoredZipEntries } from "./organization-data-export.zip";
 import { createEncryptedExportEnvelope } from "./organization-data-export-envelope";
@@ -551,5 +552,192 @@ describe("OrganizationDataExportService", () => {
     const zip = readStoredZipEntries(pkg.zipBuffer);
     const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
     expect(allergies).toContain("\"allergyNote\":\"Penicillin\"");
+  });
+
+  it("EXP-34: Cross-facility isolation prevents facility B allergies from appearing in facility A export", async () => {
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 1n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [{ patientId: `${facilityId}-pat`, facilityId, allergies: { allergyNote: `${facilityId}-allergy` } }];
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) return [{ id: `${facilityId}-pat`, facilityId }];
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    const pkg = await (service as any).buildPlaintextPackage({
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    });
+    const zip = readStoredZipEntries(pkg.zipBuffer);
+    const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
+    expect(allergies).toContain("\"facilityId\":\"fac-a\"");
+    expect(allergies).not.toContain("\"facilityId\":\"fac-b\"");
+    expect(allergies).not.toContain("fac-b-allergy");
+  });
+
+  it("EXP-35: Patients without allergies section do not emit allergies.jsonl rows", async () => {
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 0n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [];
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 2n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) {
+        return [{ id: `${facilityId}-pat-1`, facilityId }, { id: `${facilityId}-pat-2`, facilityId }];
+      }
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    const pkg = await (service as any).buildPlaintextPackage({
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    });
+    const zip = readStoredZipEntries(pkg.zipBuffer);
+    const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
+    expect(allergies).toBe("");
+  });
+
+  it("EXP-36: Multiple allergy rows are deterministic by patient-id and preserve canonical allergy objects", async () => {
+    const allergyRows = [
+      {
+        patientId: "fac-a-pat-001",
+        facilityId: "fac-a",
+        allergies: { allergyNote: "Aspirin", entries: [{ substance: "ASA", status: "active" }] },
+      },
+      {
+        patientId: "fac-a-pat-002",
+        facilityId: "fac-a",
+        allergies: { allergyNote: "Penicillin", medicationAllergiesDetail: "Hives" },
+      },
+    ];
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 2n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return allergyRows;
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 2n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) {
+        return [{ id: `${facilityId}-pat-001`, facilityId }, { id: `${facilityId}-pat-002`, facilityId }];
+      }
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    const pkg = await (service as any).buildPlaintextPackage({
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    });
+    const zip = readStoredZipEntries(pkg.zipBuffer);
+    const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
+    const lines = allergies.trim().split("\n").filter(Boolean);
+    expect(lines).toHaveLength(2);
+    const parsed = lines.map((line) => JSON.parse(line));
+    expect(parsed[0]).toEqual(allergyRows[0]);
+    expect(parsed[1]).toEqual(allergyRows[1]);
+  });
+
+  it("EXP-37: Canonical allergy source count matches allergies.jsonl row count", async () => {
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 2n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [
+          { patientId: `${facilityId}-pat-001`, facilityId, allergies: { allergyNote: "A" } },
+          { patientId: `${facilityId}-pat-002`, facilityId, allergies: { allergyNote: "B" } },
+        ];
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 2n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) {
+        return [{ id: `${facilityId}-pat-001`, facilityId }, { id: `${facilityId}-pat-002`, facilityId }];
+      }
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    const pkg = await (service as any).buildPlaintextPackage({
+      facilityId: "fac-a",
+      requestedByUserId: "admin-a",
+      generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    });
+    const zip = readStoredZipEntries(pkg.zipBuffer);
+    const allergies = [...zip.entries()].find(([k]) => k.endsWith("/allergies.jsonl"))?.[1].toString("utf8") ?? "";
+    const lines = allergies.trim().split("\n").filter(Boolean);
+    expect(lines).toHaveLength(2);
+  });
+
+  it("EXP-38: Allergy reconciliation mismatch fails closed", async () => {
+    const queryRaw = jest.fn(async (query: string, facilityId: string) => {
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("COUNT(*)")) {
+        return [{ count: 2n }];
+      }
+      if (query.includes(`jsonb_typeof((p."clinicalHistoryProfileJson"::jsonb)->'allergies')`) && query.includes("LIMIT")) {
+        return [{ patientId: `${facilityId}-pat-001`, facilityId, allergies: { allergyNote: "A" } }];
+      }
+      if (query.includes(`FROM "Patient"`) && query.includes(`COUNT(*)`)) return [{ count: 1n }];
+      if (query.includes(`FROM "Encounter"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes(`COUNT(*)`)) return [{ count: 0n }];
+      if (query.includes(`FROM "Patient"`) && query.includes("LIMIT")) return [{ id: `${facilityId}-pat-001`, facilityId }];
+      if (query.includes(`FROM "Encounter"`) && query.includes("LIMIT")) return [];
+      if (query.includes(`FROM "EncounterProviderDocumentationVersion"`) && query.includes("LIMIT")) return [];
+      if (query.includes("COUNT(*)")) return [{ count: 0n }];
+      if (query.includes("LIMIT")) return [];
+      return [];
+    });
+    const { service } = makeService({ queryRaw });
+    await expect(
+      (service as any).buildPlaintextPackage({
+        facilityId: "fac-a",
+        requestedByUserId: "admin-a",
+        generatedAt: new Date("2026-09-08T06:00:00.000Z"),
+      })
+    ).rejects.toThrow(/RECONCILIATION_MISMATCH:allergies/);
+  });
+
+  it("EXP-39: Allergy export spec/query has no placeholder and remains facility-scoped JSONL", () => {
+    const servicePath = "/home/runner/work/medora-s/medora-s/apps/api/src/admin/organization-data-export.service.ts";
+    const source = fs.readFileSync(servicePath, "utf8");
+    const blockMatch = source.match(
+      /filePath:\s*"allergies\.jsonl"[\s\S]*?reconciliationKey:\s*"allergies"/
+    );
+    expect(blockMatch).toBeTruthy();
+    const block = blockMatch![0];
+    expect(block).not.toContain("AND 1 = 0");
+    expect(block).not.toContain("SELECT 0");
+    expect(block).toContain(`format: "jsonl"`);
+    expect(block).toContain(`WHERE p."facilityId" = $1`);
+    expect(block).toContain(`countQuery:`);
   });
 });
