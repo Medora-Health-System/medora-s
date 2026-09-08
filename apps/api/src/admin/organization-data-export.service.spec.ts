@@ -64,6 +64,63 @@ function makeService(overrides?: {
   return { service, prisma, audit, chartExport, storage };
 }
 
+function makeExportRow(
+  overrides?: Partial<{
+    id: string;
+    facilityId: string;
+    status: OrganizationDataExportStatus;
+    exportFormat: OrganizationDataExportFormat;
+    requestedAt: Date;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    failedAt: Date | null;
+    patientCount: number;
+    encounterCount: number;
+    fileSizeBytes: bigint | null;
+    plaintextSha256: string | null;
+    encryptedSha256: string | null;
+    encryptionAlgorithm: string | null;
+    encryptionIvBase64: string | null;
+    encryptionAuthTagBase64: string | null;
+    wrappedKeyReference: string | null;
+    objectStorageKey: string | null;
+    expiresAt: Date | null;
+    downloadedAt: Date | null;
+    failureCode: string | null;
+    failureMessage: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }>
+) {
+  return {
+    id: "exp-row-1",
+    facilityId: "fac-a",
+    status: OrganizationDataExportStatus.COMPLETED,
+    exportFormat: OrganizationDataExportFormat.ZIP,
+    requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+    startedAt: null,
+    completedAt: new Date("2026-09-08T06:05:00.000Z"),
+    failedAt: null,
+    patientCount: 1,
+    encounterCount: 1,
+    fileSizeBytes: BigInt(128),
+    plaintextSha256: "p".repeat(64),
+    encryptedSha256: "e".repeat(64),
+    encryptionAlgorithm: "AES-256-GCM",
+    encryptionIvBase64: "iv-base64",
+    encryptionAuthTagBase64: "tag-base64",
+    wrappedKeyReference: "mfa-secret-encryption:v1",
+    objectStorageKey: "internal/object/key",
+    expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+    downloadedAt: null,
+    failureCode: null,
+    failureMessage: null,
+    createdAt: new Date("2026-09-08T06:00:00.000Z"),
+    updatedAt: new Date("2026-09-08T06:00:00.000Z"),
+    ...overrides,
+  };
+}
+
 describe("OrganizationDataExportService", () => {
   const originalMfaKey = process.env.MFA_SECRET_ENCRYPTION_KEY;
 
@@ -1026,5 +1083,158 @@ describe("OrganizationDataExportService", () => {
     });
     const res = await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-48" });
     expect(res.buffer.equals(legacyArtifact)).toBe(true);
+  });
+
+  it("EXP-49: listExports response does not contain objectStorageKey", async () => {
+    const row = makeExportRow({
+      objectStorageKey: "s3://internal-bucket/private/path/export.enc",
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findMany: jest.fn().mockResolvedValue([row]),
+      },
+    });
+    const rows = await service.listExports("admin-a", "fac-a", 20, 0);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).not.toHaveProperty("objectStorageKey");
+    expect(JSON.stringify(rows[0])).not.toContain("internal-bucket/private/path");
+  });
+
+  it("EXP-50: getExport response does not contain objectStorageKey", async () => {
+    const row = makeExportRow({
+      id: "exp-50",
+      objectStorageKey: "obj/private/exp-50",
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue(row),
+      },
+    });
+    const result = await service.getExport("admin-a", "fac-a", "exp-50");
+    expect(result).not.toHaveProperty("objectStorageKey");
+    expect(JSON.stringify(result)).not.toContain("obj/private/exp-50");
+  });
+
+  it("EXP-51: public responses do not expose wrapped/export key internals or storage paths", async () => {
+    const row = makeExportRow({
+      id: "exp-51",
+      objectStorageKey: "bucket/private/object",
+      wrappedKeyReference: "mfa-secret-encryption:v1",
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findMany: jest.fn().mockResolvedValue([row]),
+        findFirst: jest.fn().mockResolvedValue(row),
+      },
+    });
+    const createResult = await service.requestExport({ actorUserId: "admin-a", facilityId: "fac-a", format: "ZIP" });
+    const listResult = await service.listExports("admin-a", "fac-a", 20, 0);
+    const detailResult = await service.getExport("admin-a", "fac-a", "exp-51");
+    expect(createResult).not.toHaveProperty("objectStorageKey");
+    expect(createResult).not.toHaveProperty("exportKeyWrappedJson");
+    expect(createResult).not.toHaveProperty("wrappedKeyReference");
+    expect(listResult[0]).not.toHaveProperty("objectStorageKey");
+    expect(listResult[0]).not.toHaveProperty("exportKeyWrappedJson");
+    expect(listResult[0]).not.toHaveProperty("wrappedKeyReference");
+    expect(detailResult).not.toHaveProperty("objectStorageKey");
+    expect(detailResult).not.toHaveProperty("exportKeyWrappedJson");
+    expect(detailResult).not.toHaveProperty("wrappedKeyReference");
+    expect(JSON.stringify({ createResult, listResult, detailResult })).not.toContain("bucket/private/object");
+  });
+
+  it("EXP-52: downloadExport still uses internal DB objectStorageKey after serialization hardening", async () => {
+    const artifact = Buffer.from("artifact-52", "utf8");
+    const encryptedSha256 = crypto.createHash("sha256").update(artifact).digest("hex");
+    const storageRead = jest.fn().mockResolvedValue(artifact);
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "exp-52",
+          facilityId: "fac-a",
+          status: OrganizationDataExportStatus.COMPLETED,
+          requestedAt: new Date("2026-09-08T06:00:00.000Z"),
+          expiresAt: new Date("2026-09-09T06:00:00.000Z"),
+          encryptedSha256,
+          objectStorageKey: "internal-obj-52",
+          exportFormat: OrganizationDataExportFormat.ZIP,
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      storageRead,
+    });
+    const res = await service.downloadExport({ actorUserId: "admin-a", facilityId: "fac-a", exportId: "exp-52" });
+    expect(storageRead).toHaveBeenCalledWith("internal-obj-52", "exp-52");
+    expect(res.buffer.equals(artifact)).toBe(true);
+  });
+
+  it("EXP-53: MED1 public metadata keeps supported fields without exposing storage internals", async () => {
+    const row = makeExportRow({
+      id: "exp-53",
+      encryptedSha256: "a".repeat(64),
+      encryptionAlgorithm: "AES-256-GCM",
+      objectStorageKey: "internal/med1/53",
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue(row),
+      },
+    });
+    const result = await service.getExport("admin-a", "fac-a", "exp-53");
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: "exp-53",
+        encryptedSha256: "a".repeat(64),
+        encryptionAlgorithm: "AES-256-GCM",
+        status: OrganizationDataExportStatus.COMPLETED,
+      })
+    );
+    expect(result).not.toHaveProperty("objectStorageKey");
+  });
+
+  it("EXP-54: legacy IV/tag and wrapped-key internals are absent from public responses", async () => {
+    const row = makeExportRow({
+      id: "exp-54",
+      encryptionIvBase64: "legacy-iv-b64",
+      encryptionAuthTagBase64: "legacy-tag-b64",
+      wrappedKeyReference: "legacy-wrapped-ref",
+      objectStorageKey: "legacy/internal/object",
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findMany: jest.fn().mockResolvedValue([row]),
+        findFirst: jest.fn().mockResolvedValue(row),
+      },
+    });
+    const list = await service.listExports("admin-a", "fac-a", 20, 0);
+    const detail = await service.getExport("admin-a", "fac-a", "exp-54");
+    for (const result of [list[0], detail]) {
+      expect(result).not.toHaveProperty("encryptionIvBase64");
+      expect(result).not.toHaveProperty("encryptionAuthTagBase64");
+      expect(result).not.toHaveProperty("wrappedKeyReference");
+      expect(result).not.toHaveProperty("objectStorageKey");
+      expect(result).not.toHaveProperty("exportKeyWrappedJson");
+    }
+  });
+
+  it("EXP-55: failure message is sanitized and does not leak storage internals", async () => {
+    const row = makeExportRow({
+      id: "exp-55",
+      status: OrganizationDataExportStatus.FAILED,
+      failureCode: "EXPORT_PROCESSING_FAILED",
+      failureMessage: "storage failure at s3://internal-bucket/private/obj-55 with object key obj-55",
+      objectStorageKey: "internal/obj-55",
+      failedAt: new Date("2026-09-08T06:06:00.000Z"),
+      completedAt: null,
+    });
+    const { service } = makeService({
+      organizationDataExport: {
+        findFirst: jest.fn().mockResolvedValue(row),
+      },
+    });
+    const result = await service.getExport("admin-a", "fac-a", "exp-55");
+    expect(result.failureCode).toBe("EXPORT_PROCESSING_FAILED");
+    expect(result.failureMessage).toBe("Export failed (EXPORT_PROCESSING_FAILED).");
+    expect(result.failureMessage).not.toContain("s3://");
+    expect(result.failureMessage).not.toContain("obj-55");
   });
 });

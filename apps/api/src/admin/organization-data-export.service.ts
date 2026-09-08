@@ -897,7 +897,6 @@ export class OrganizationDataExportService {
     plaintextSha256: string | null;
     encryptedSha256: string | null;
     encryptionAlgorithm: string | null;
-    objectStorageKey: string | null;
     expiresAt: Date | null;
     downloadedAt: Date | null;
     failureCode: string | null;
@@ -920,11 +919,10 @@ export class OrganizationDataExportService {
       plaintextSha256: row.plaintextSha256,
       encryptedSha256: row.encryptedSha256,
       encryptionAlgorithm: row.encryptionAlgorithm,
-      objectStorageKey: row.objectStorageKey,
       expiresAt: row.expiresAt?.toISOString() ?? null,
       downloadedAt: row.downloadedAt?.toISOString() ?? null,
       failureCode: row.failureCode,
-      failureMessage: row.failureMessage,
+      failureMessage: this.sanitizeFailureMessageForPublicApi(row.failureCode, row.failureMessage),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -936,5 +934,16 @@ export class OrganizationDataExportService {
       throw new ConflictException("Encrypted artifact integrity metadata invalid");
     }
     return Buffer.from(normalized, "hex");
+  }
+
+  private sanitizeFailureMessageForPublicApi(
+    failureCode: string | null,
+    failureMessage: string | null
+  ): string | null {
+    if (!failureMessage) return null;
+    if (failureCode) {
+      return `Export failed (${failureCode}).`;
+    }
+    return "Export failed.";
   }
 }
