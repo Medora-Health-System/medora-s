@@ -1059,7 +1059,7 @@ export type EncounterProviderDocumentationSignDto = z.infer<
 
 /** POST /encounters/:id/unlock-provider-documentation — provider/admin only; audited (metadata on ENCOUNTER_UPDATE). */
 export const encounterProviderDocumentationUnlockDtoSchema = z.object({
-  reason: z.preprocess(emptyStrToUndefined, z.string().trim().max(2000).optional()),
+  reason: z.string().trim().min(1).max(2000),
 });
 
 export type EncounterProviderDocumentationUnlockDto = z.infer<
@@ -1131,4 +1131,3 @@ export const breakGlassStartDtoSchema = z.object({
 });
 
 export type BreakGlassStartDto = z.infer<typeof breakGlassStartDtoSchema>;
-

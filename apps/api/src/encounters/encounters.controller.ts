@@ -1255,6 +1255,43 @@ export class EncountersController {
     );
   }
 
+  @Get("encounters/:id/provider-documentation/versions")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async listProviderDocumentationVersions(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.listProviderDocumentationVersions(
+      facilityId,
+      id,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Get("encounters/:id/provider-documentation/versions/:versionId")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async getProviderDocumentationVersion(
+    @Param("id") id: string,
+    @Param("versionId") versionId: string,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.encountersService.getProviderDocumentationVersion(
+      facilityId,
+      id,
+      versionId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Post("encounters/:id/provider-addenda")
   @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
   async addProviderAddendum(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {

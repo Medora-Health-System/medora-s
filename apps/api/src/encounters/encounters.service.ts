@@ -253,6 +253,49 @@ function encounterHasSignableProviderContent(enc: {
   return hasPhysicianEvalV1Content(enc.nursingAssessment);
 }
 
+function asObjectRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function providerDocumentationSnapshotFromEncounter(enc: {
+  id: string;
+  patientId: string;
+  facilityId: string;
+  chiefComplaint: string | null;
+  providerNote: string | null;
+  treatmentPlan: string | null;
+  followUpDate: Date | null;
+  nursingAssessment: unknown;
+  dischargeSummaryJson: unknown;
+  admissionSummaryJson: unknown;
+  version: number;
+}) {
+  const nursing = asObjectRecord(enc.nursingAssessment);
+  const physicianEvalV1 = asObjectRecord(nursing?.physicianEvalV1 ?? null);
+  const providerWorkspace = asObjectRecord(
+    nursing?.[NURSING_ASSESSMENT_NAMESPACE_ER_PROVIDER_MSE_V1] ?? null
+  );
+  return {
+    schemaVersion: 1,
+    snapshotType: "ENCOUNTER_PROVIDER_DOCUMENTATION",
+    encounterId: enc.id,
+    facilityId: enc.facilityId,
+    patientId: enc.patientId,
+    sourceEncounterVersion: enc.version,
+    signedClinicalContent: {
+      chiefComplaint: enc.chiefComplaint ?? null,
+      providerNote: enc.providerNote ?? null,
+      treatmentPlan: enc.treatmentPlan ?? null,
+      followUpDate: enc.followUpDate ? enc.followUpDate.toISOString() : null,
+      physicianEvalV1,
+      providerWorkspace,
+      dischargeSummaryJson: enc.dischargeSummaryJson ?? null,
+      admissionSummaryJson: enc.admissionSummaryJson ?? null,
+    },
+  } as const;
+}
+
 /** Sections structurées, lignes résumé ou procédure IV — aligné sur l’affichage dossier (V1). */
 function nursingAssessmentHasContent(raw: unknown): boolean {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
@@ -309,6 +352,7 @@ import {
 } from "./encounter-query-contracts";
 import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
 import { mergeDischargeSummaryJson } from "./effective-discharge-summary.util";
+import { hashCanonicalJson } from "./chart-export-hash.util";
 
 /**
  * MEDUI.D4C.7K — keep the published D4C.7D concurrency contract on `POST /encounters/:id/close`
@@ -1049,9 +1093,17 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     const signedDocumentationMetadata = providerDocumentationWorkspaceMetadataFromNursingAssessment(
       encounter.nursingAssessment
     );
+    const clinicalSnapshot = providerDocumentationSnapshotFromEncounter(encounter);
+    const { hash: snapshotHash } = hashCanonicalJson(clinicalSnapshot);
 
     const signedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      const previousVersion = await tx.encounterProviderDocumentationVersion.findFirst({
+        where: { encounterId, facilityId },
+        orderBy: { versionNumber: "desc" },
+        select: { id: true, versionNumber: true },
+      });
+      const versionNumber = (previousVersion?.versionNumber ?? 0) + 1;
       const u = await tx.encounter.updateMany({
         where: { id: encounterId, facilityId, version: encounter.version },
         data: {
@@ -1062,6 +1114,23 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         },
       });
       if (u.count === 0) throwEncounterConcurrentModification();
+      const createdVersion = await tx.encounterProviderDocumentationVersion.create({
+        data: {
+          encounterId: encounter.id,
+          facilityId,
+          patientId: encounter.patientId,
+          versionNumber,
+          signedAt,
+          signedByUserId: userId,
+          clinicalSnapshotJson: clinicalSnapshot as Prisma.InputJsonValue,
+          snapshotHash,
+          schemaVersion: 1,
+          documentType: signedDocumentationMetadata.documentType,
+          encounterMode: signedDocumentationMetadata.encounterMode,
+          sourceEncounterVersion: encounter.version,
+          previousVersionId: previousVersion?.id ?? null,
+        },
+      });
       await this.audit.log(AuditAction.PROVIDER_DOCUMENTATION_SIGN, "ENCOUNTER", {
         userId,
         facilityId,
@@ -1070,6 +1139,14 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         entityId: encounter.id,
         ip,
         userAgent,
+        metadata: {
+          providerDocumentationVersionId: createdVersion.id,
+          providerDocumentationVersionNumber: versionNumber,
+          snapshotHash,
+          previousVersionId: previousVersion?.id ?? null,
+          previousVersionNumber: previousVersion?.versionNumber ?? null,
+          reSign: previousVersion != null,
+        },
         critical: true,
         tx,
       });
@@ -1086,6 +1163,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
             documentType: signedDocumentationMetadata.documentType,
             previousSignedByUserId,
             previousSignedAt: previousSignedAt?.toISOString() ?? null,
+            versionNumber: String(versionNumber),
+            snapshotHash,
+            providerDocumentationVersionId: createdVersion.id,
           }),
           createdByUserId: userId,
         },
@@ -1138,7 +1218,10 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       throw new BadRequestException("L'évaluation médicale n'est pas verrouillée par signature.");
     }
 
-    const reasonTrim = dto.reason?.trim() || undefined;
+    const reasonTrim = dto.reason?.trim();
+    if (!reasonTrim) {
+      throw new BadRequestException("Un motif non vide est requis pour déverrouiller l'évaluation médicale.");
+    }
 
     const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
     const previousSignedAt = encounter.providerDocumentationSignedAt;
@@ -1146,6 +1229,11 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
 
     const unlockedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      const activeVersion = await tx.encounterProviderDocumentationVersion.findFirst({
+        where: { encounterId, facilityId },
+        orderBy: { versionNumber: "desc" },
+        select: { id: true, versionNumber: true, snapshotHash: true, unlockedAt: true },
+      });
       const u = await tx.encounter.updateMany({
         where: { id: encounterId, facilityId, version: encounter.version },
         data: {
@@ -1156,6 +1244,16 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         },
       });
       if (u.count === 0) throwEncounterConcurrentModification();
+      if (activeVersion) {
+        await tx.encounterProviderDocumentationVersion.updateMany({
+          where: { id: activeVersion.id, unlockedAt: null },
+          data: {
+            unlockedAt,
+            unlockedByUserId: userId,
+            unlockReason: reasonTrim,
+          },
+        });
+      }
       await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
         userId,
         facilityId,
@@ -1166,7 +1264,11 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         userAgent,
         metadata: {
           providerDocumentationUnlock: true,
-          ...(reasonTrim ? { reason: reasonTrim } : {}),
+          reason: reasonTrim,
+          providerDocumentationVersionId: activeVersion?.id ?? null,
+          providerDocumentationVersionNumber: activeVersion?.versionNumber ?? null,
+          providerDocumentationSnapshotHash: activeVersion?.snapshotHash ?? null,
+          legacySignedStateWithoutImmutableVersion: !activeVersion,
         },
         critical: true,
         tx,
@@ -1182,7 +1284,11 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
             previousSignedByUserId,
             previousSignedAt: previousSignedAt?.toISOString() ?? null,
             previousStatus,
-            reason: reasonTrim ?? null,
+            reason: reasonTrim,
+            providerDocumentationVersionId: activeVersion?.id ?? null,
+            providerDocumentationVersionNumber: activeVersion?.versionNumber
+              ? String(activeVersion.versionNumber)
+              : null,
           }),
           createdByUserId: userId,
         },
@@ -1198,6 +1304,144 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     });
 
     return toEncounterClinicResponse(updated);
+  }
+
+  async listProviderDocumentationVersions(
+    facilityId: string,
+    encounterId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true, patientId: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    const versions = await this.prisma.encounterProviderDocumentationVersion.findMany({
+      where: { encounterId, facilityId },
+      orderBy: { versionNumber: "asc" },
+      select: {
+        id: true,
+        versionNumber: true,
+        signedAt: true,
+        signedByUserId: true,
+        snapshotHash: true,
+        documentType: true,
+        encounterMode: true,
+        unlockedAt: true,
+        unlockedByUserId: true,
+        unlockReason: true,
+        signedBy: { select: { firstName: true, lastName: true } },
+        unlockedBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+    await this.audit.log(AuditAction.CHART_ACCESS, "ENCOUNTER_PROVIDER_DOCUMENTATION_VERSION", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId,
+      entityId: encounterId,
+      ip,
+      userAgent,
+      metadata: {
+        historyView: true,
+        providerDocumentationVersionCount: versions.length,
+      },
+      critical: true,
+    });
+    return versions.map((version) => ({
+      id: version.id,
+      versionNumber: version.versionNumber,
+      signedAt: version.signedAt.toISOString(),
+      signedByUserId: version.signedByUserId,
+      signedByDisplay: `${version.signedBy.firstName ?? ""} ${version.signedBy.lastName ?? ""}`.trim() || null,
+      snapshotHash: version.snapshotHash,
+      documentType: version.documentType,
+      encounterMode: version.encounterMode,
+      unlockedAt: version.unlockedAt?.toISOString() ?? null,
+      unlockedByUserId: version.unlockedByUserId,
+      unlockedByDisplay:
+        version.unlockedBy && `${version.unlockedBy.firstName ?? ""} ${version.unlockedBy.lastName ?? ""}`.trim()
+          ? `${version.unlockedBy.firstName ?? ""} ${version.unlockedBy.lastName ?? ""}`.trim()
+          : null,
+      unlockReason: version.unlockReason ?? null,
+    }));
+  }
+
+  async getProviderDocumentationVersion(
+    facilityId: string,
+    encounterId: string,
+    versionId: string,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const version = await this.prisma.encounterProviderDocumentationVersion.findFirst({
+      where: { id: versionId, encounterId, facilityId },
+      select: {
+        id: true,
+        encounterId: true,
+        patientId: true,
+        versionNumber: true,
+        signedAt: true,
+        signedByUserId: true,
+        clinicalSnapshotJson: true,
+        snapshotHash: true,
+        schemaVersion: true,
+        documentType: true,
+        encounterMode: true,
+        sourceEncounterVersion: true,
+        previousVersionId: true,
+        unlockedAt: true,
+        unlockedByUserId: true,
+        unlockReason: true,
+        signedBy: { select: { firstName: true, lastName: true } },
+        unlockedBy: { select: { firstName: true, lastName: true } },
+      },
+    });
+    if (!version) {
+      throw new NotFoundException("Provider documentation version not found");
+    }
+    await this.audit.log(AuditAction.CHART_ACCESS, "ENCOUNTER_PROVIDER_DOCUMENTATION_VERSION", {
+      userId,
+      facilityId,
+      patientId: version.patientId,
+      encounterId,
+      entityId: version.id,
+      ip,
+      userAgent,
+      metadata: {
+        historyView: true,
+        providerDocumentationVersionNumber: version.versionNumber,
+      },
+      critical: true,
+    });
+    return {
+      id: version.id,
+      encounterId: version.encounterId,
+      patientId: version.patientId,
+      versionNumber: version.versionNumber,
+      signedAt: version.signedAt.toISOString(),
+      signedByUserId: version.signedByUserId,
+      signedByDisplay: `${version.signedBy.firstName ?? ""} ${version.signedBy.lastName ?? ""}`.trim() || null,
+      clinicalSnapshotJson: version.clinicalSnapshotJson,
+      snapshotHash: version.snapshotHash,
+      schemaVersion: version.schemaVersion,
+      documentType: version.documentType,
+      encounterMode: version.encounterMode,
+      sourceEncounterVersion: version.sourceEncounterVersion,
+      previousVersionId: version.previousVersionId,
+      unlockedAt: version.unlockedAt?.toISOString() ?? null,
+      unlockedByUserId: version.unlockedByUserId,
+      unlockedByDisplay:
+        version.unlockedBy && `${version.unlockedBy.firstName ?? ""} ${version.unlockedBy.lastName ?? ""}`.trim()
+          ? `${version.unlockedBy.firstName ?? ""} ${version.unlockedBy.lastName ?? ""}`.trim()
+          : null,
+      unlockReason: version.unlockReason ?? null,
+    };
   }
 
   async update(facilityId: string, id: string, data: EncounterUpdateDto, userId?: string, ip?: string, userAgent?: string) {

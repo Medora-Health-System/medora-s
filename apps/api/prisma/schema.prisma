@@ -84,6 +84,7 @@ model Facility {
   encounterCarePlanProgress              EncounterCarePlanProgress[]
   encounterCarePlanReviews               EncounterCarePlanReview[]
   encounterProviderAddenda               EncounterProviderAddendum[]
+  encounterProviderDocumentationVersions EncounterProviderDocumentationVersion[]
   facilityFormularyItems                 FacilityFormularyItem[]
   facilityMedicationUsages               FacilityMedicationUsage[]
   followUps                              FollowUp[]
@@ -243,6 +244,8 @@ model User {
   clinicalDocumentationEntriesVoided              EncounterClinicalDocumentationEntry[]  @relation("ClinicalDocumentationEntryVoidedBy")
   clinicalDocumentationEntriesWitnessed           EncounterClinicalDocumentationEntry[]  @relation("ClinicalDocumentationEntryWitnessedBy")
   encounterClinicalEventsCreated                  EncounterClinicalEvent[]               @relation("EncounterClinicalEventCreatedBy")
+  providerDocumentationVersionsSigned             EncounterProviderDocumentationVersion[] @relation("EncounterProviderDocumentationVersionSignedBy")
+  providerDocumentationVersionsUnlocked           EncounterProviderDocumentationVersion[] @relation("EncounterProviderDocumentationVersionUnlockedBy")
   carePlansActivated                              EncounterCarePlan[]                     @relation("CarePlanActivatedBy")
   carePlanComponentsCreated                       EncounterCarePlanComponent[]            @relation("CarePlanComponentCreatedBy")
   carePlanComponentsCorrected                     EncounterCarePlanComponent[]            @relation("CarePlanComponentCorrectedBy")
@@ -580,6 +583,7 @@ model Patient {
   clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
   encounterClinicalEvents      EncounterClinicalEvent[]
   encounterNotes               EncounterNote[]
+  encounterProviderDocumentationVersions EncounterProviderDocumentationVersion[]
   encounterCarePlans           EncounterCarePlan[]
   encounterCarePlanProgress    EncounterCarePlanProgress[]
   encounterCarePlanReviews     EncounterCarePlanReview[]
@@ -839,7 +843,8 @@ model Encounter {
   chartExports                              EncounterChartExport[]
   clinicalDocumentationEntries              EncounterClinicalDocumentationEntry[]
   encounterClinicalEvents                   EncounterClinicalEvent[]
-  intake                                    EncounterIntake?
+  providerDocumentationVersions          EncounterProviderDocumentationVersion[]
+  intake                                 EncounterIntake?
   encounterNotes                            EncounterNote[]
   providerAddenda                           EncounterProviderAddendum[]
   followUps                                 FollowUp[]
@@ -1182,6 +1187,44 @@ model EncounterProviderAddendum {
   @@index([encounterId, createdAt])
   @@index([createdByUserId])
   @@index([facilityId])
+}
+
+/// MEDORA.RD.P0.1 — immutable signed provider documentation versions.
+/// Application rule: append-only clinicalSnapshotJson + snapshotHash + signed metadata.
+/// Unlock lifecycle metadata may be populated once for an already-signed version.
+model EncounterProviderDocumentationVersion {
+  id                     String    @id @default(uuid())
+  encounterId            String
+  facilityId             String
+  patientId              String
+  versionNumber          Int
+  signedAt               DateTime
+  signedByUserId         String
+  clinicalSnapshotJson   Json
+  snapshotHash           String    @db.VarChar(128)
+  schemaVersion          Int       @default(1)
+  documentType           String?   @db.VarChar(80)
+  encounterMode          String?   @db.VarChar(40)
+  sourceEncounterVersion Int?
+  previousVersionId      String?
+  unlockedAt             DateTime?
+  unlockedByUserId       String?
+  unlockReason           String?
+  createdAt              DateTime  @default(now())
+  encounter              Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility               Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  signedBy               User      @relation("EncounterProviderDocumentationVersionSignedBy", fields: [signedByUserId], references: [id], onDelete: Restrict)
+  unlockedBy             User?     @relation("EncounterProviderDocumentationVersionUnlockedBy", fields: [unlockedByUserId], references: [id], onDelete: SetNull)
+  previousVersion        EncounterProviderDocumentationVersion?  @relation("EncounterProviderDocumentationVersionPrevious", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  nextVersions           EncounterProviderDocumentationVersion[] @relation("EncounterProviderDocumentationVersionPrevious")
+
+  @@unique([encounterId, versionNumber])
+  @@index([facilityId, encounterId, versionNumber])
+  @@index([facilityId, patientId, signedAt])
+  @@index([snapshotHash])
+  @@index([signedByUserId])
+  @@index([unlockedByUserId])
 }
 
 model EncounterNote {

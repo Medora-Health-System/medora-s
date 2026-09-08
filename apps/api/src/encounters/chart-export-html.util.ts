@@ -398,7 +398,7 @@ export function renderEncounterChartExportHtml(
   const bannerClosed = !manifest.livePreview
     ? `<div class="banner banner-closed" role="status">
         <strong>Generated encounter chart export.</strong>
-        This is not an immutable legal snapshot; versioning and cryptographic integrity are planned for a later phase.
+        Immutable signed provider documentation versions are included when available.
       </div>`
     : "";
 
@@ -447,6 +447,22 @@ export function renderEncounterChartExportHtml(
     ${pAlways("Preview clock (open encounter)", obsStay.preview ? "Yes" : "No")}
     `
       : "";
+  const providerDocVersionsHtml =
+    (enc.providerDocumentation.versions ?? []).length === 0
+      ? `<p class="muted">${esc(NO_DATA)}</p>`
+      : `<ul>${enc.providerDocumentation.versions
+          .map((v) => {
+            const unlockMeta =
+              v.unlockedAt || v.unlockedByDisplayFr || v.unlockReason
+                ? `<div class="muted">Unlocked: ${esc(v.unlockedAt ?? "—")} by ${esc(v.unlockedByDisplayFr ?? "—")}${
+                    v.unlockReason ? ` — ${esc(v.unlockReason)}` : ""
+                  }</div>`
+                : "";
+            return `<li><span class="muted">v${esc(String(v.versionNumber))}</span> — ${esc(v.signedAt)} — ${esc(
+              v.signedByDisplayFr ?? "—"
+            )}<div class="muted">Hash: ${esc(v.snapshotHash)}</div>${unlockMeta}</li>`;
+          })
+          .join("")}</ul>`;
   const encounterBlock = `
     ${pAlways("Encounter ID", enc.id)}
     ${pAlways("Type", enc.type)}
@@ -465,6 +481,8 @@ export function renderEncounterChartExportHtml(
     ${pLine("Provider documentation status", enc.providerDocumentation.status)}
     ${pLine("Signed at", enc.providerDocumentation.signedAt)}
     ${pLine("Signed by", enc.providerDocumentation.signedByDisplayFr)}
+    <h3>Provider documentation signed versions</h3>
+    ${providerDocVersionsHtml}
     <h3>Structured provider documentation</h3>
     ${workspaceProviderNoteHtml(enc.providerDocumentation.workspaceNote)}
     ${pLine("Treatment plan", enc.treatmentPlan)}
