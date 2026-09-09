@@ -20,7 +20,9 @@ export const fhirObservationSearchQuerySchema = z
   .object({
     subject: z.string().optional(),
     encounter: z.string().optional(),
+    _count: z.coerce.number().int().min(1).max(50).optional(),
   })
+  .strict()
   .superRefine((q, ctx) => {
     const hasSubject = typeof q.subject === "string" && q.subject.trim().length > 0;
     const hasEncounter = typeof q.encounter === "string" && q.encounter.trim().length > 0;

@@ -645,3 +645,10 @@ must not enable inbound clinical writes.
 **MEDORA.RD.P0.3 PHASE 0: ARCHITECTURE AUDIT COMPLETE / IMPLEMENTATION PENDING**  
 **SAFE TO BEGIN P0.3A: YES**, subject to confirming remote-main parity and retaining the no-write
 gate.
+
+> **P0.3A implementation update (2026-09-08):** the foundation/security contract, generated
+> CapabilityStatement, strict FHIR error/query boundary, server-owned jurisdiction registry, and
+> protocol-neutral Administration Integrations configuration foundation are implemented on the
+> P0.3A branch. Machine credentials, normative profile validation, clinical expansion and all
+> inbound clinical writes remain deferred. See
+> `MEDORA_RD_P0_3A_FHIR_FOUNDATION_EVIDENCE.md` for evidence and limitations.

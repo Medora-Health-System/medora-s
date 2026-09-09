@@ -49,6 +49,7 @@ model Facility {
   /// MEDUI.D4C.1 — ambulatory care profile, optional modules, operational address / print identity (additive JSON).
   facilityCareProfileJson                Json?
   auditLogs                              AuditLog[]
+  integrationAuthorizations             IntegrationFacilityAuthorization[]
   billingEvents                          BillingEvent[]
   billingReviewDecisions                 BillingReviewDecision[]
   breakGlassSessions                     BreakGlassSession[]
@@ -223,6 +224,8 @@ model User {
   /// RFC 6238 step counter (epoch / 30s) of last accepted code, used to reject replay within the same step window.
   mfaLastUsedStep                                 BigInt?
   auditLogs                                       AuditLog[]
+  integrationsCreated                             Integration[]                          @relation("IntegrationCreatedBy")
+  integrationsUpdated                             Integration[]                          @relation("IntegrationUpdatedBy")
   authSessions                                    AuthSession[]
   billingReviewDecisionsReviewed                  BillingReviewDecision[]                @relation("BillingReviewDecisionReviewer")
   breakGlassSessions                              BreakGlassSession[]
@@ -639,6 +642,64 @@ model AuditLog {
   @@index([facilityId])
   @@index([createdAt])
   @@index([encounterId])
+}
+
+/// Protocol-neutral external-system configuration. Credentials are intentionally not represented.
+model Integration {
+  id                     String                       @id @default(uuid())
+  displayName            String                       @db.VarChar(160)
+  partnerName            String                       @db.VarChar(200)
+  organizationType       IntegrationOrganizationType
+  protocol               IntegrationProtocol
+  direction              IntegrationDirection
+  environment            IntegrationEnvironment
+  jurisdiction           String                       @db.VarChar(32)
+  status                 IntegrationStatus            @default(DRAFT)
+  provisioningState      IntegrationProvisioningState @default(PENDING_PROVISIONING)
+  sourceSystemIdentifier String?                      @db.VarChar(160)
+  technicalContactName   String?                      @db.VarChar(160)
+  technicalContactEmail  String?                      @db.VarChar(254)
+  technicalContactPhone  String?                      @db.VarChar(64)
+  endpointConfig         Json?
+  disabledAt             DateTime?
+  disabledById           String?
+  createdById            String
+  updatedById            String
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  createdBy              User                         @relation("IntegrationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy              User                         @relation("IntegrationUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  facilities             IntegrationFacilityAuthorization[]
+  permissions            IntegrationPermission[]
+
+  @@unique([environment, sourceSystemIdentifier])
+  @@index([status, updatedAt])
+  @@index([partnerName])
+}
+
+model IntegrationFacilityAuthorization {
+  id             String      @id @default(uuid())
+  integrationId  String
+  facilityId     String
+  active         Boolean     @default(true)
+  authorizedById String
+  authorizedAt   DateTime    @default(now())
+  revokedAt      DateTime?
+  integration    Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  facility       Facility    @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@unique([integrationId, facilityId])
+  @@index([facilityId, active])
+}
+
+model IntegrationPermission {
+  id             String      @id @default(uuid())
+  integrationId  String
+  capabilityCode String      @db.VarChar(100)
+  createdAt      DateTime    @default(now())
+  integration    Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, capabilityCode])
 }
 
 /// Phase 5F — immutable encounter chart export snapshot.
@@ -7695,6 +7756,48 @@ enum RoleCode {
   MEDICATION_ADMIN
   /// D4A.3.0-H1 — hospital / unit patient-care technician (PCT, CNA, unit tech). Not LAB/RADIOLOGY.
   PATIENT_CARE_TECH
+}
+
+enum IntegrationOrganizationType {
+  LABORATORY
+  HOSPITAL
+  CLINIC
+  PHARMACY
+  IMAGING_RADIOLOGY
+  GOVERNMENT
+  RCM_BILLING
+  HIE
+  OTHER
+}
+
+enum IntegrationProtocol {
+  FHIR_R4
+  HL7_V2
+}
+
+enum IntegrationDirection {
+  INBOUND
+  OUTBOUND
+  BIDIRECTIONAL
+}
+
+enum IntegrationEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum IntegrationStatus {
+  DRAFT
+  CONFIGURED
+  ACTIVE
+  DISABLED
+}
+
+enum IntegrationProvisioningState {
+  PENDING_PROVISIONING
+  NOT_PROVISIONED
+  PROVISIONED
+  REVOKED
 }
 
 enum DepartmentCode {

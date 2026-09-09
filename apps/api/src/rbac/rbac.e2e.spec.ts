@@ -7,6 +7,9 @@ import { PrismaService } from "../prisma/prisma.service";
 import { applyE2eAuthTestEnv, assertE2eLoginAccessToken } from "../test-utils/e2e-auth-env";
 import { closeE2eApp, createE2eApp } from "../test-utils/e2e-app";
 import * as argon2 from "argon2";
+
+// Real AppModule startup plus Argon2 user setup regularly exceeds Jest's 5-second default.
+jest.setTimeout(30_000);
 import { RoleCode } from "@prisma/client";
 
 describe("RBAC (e2e)", () => {
