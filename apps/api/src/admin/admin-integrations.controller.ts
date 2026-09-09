@@ -2,9 +2,10 @@ import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, Us
 import { AuthGuard } from "@nestjs/passport";
 import { AdminIntegrationsService } from "./admin-integrations.service";
 import { integrationInputSchema, integrationPatchSchema } from "./dto/admin-integration.dto";
+import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guard";
 
 @Controller("admin/integrations")
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(AuthGuard("jwt"), PlatformIntegrationAdminGuard)
 export class AdminIntegrationsController {
   constructor(private readonly service: AdminIntegrationsService) {}
   @Get("permission-options") permissions(@Req() req: any) { return this.service.authorize(req.user.userId).then(() => this.service.permissions()); }

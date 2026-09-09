@@ -16,6 +16,10 @@ remain `DRAFT` / `PENDING_PROVISIONING`; they cannot authenticate or access clin
 P0.3E must add hash-only secrets or key-based identity, one-time secret disclosure where
 applicable, rotation, revocation, token issuance, client/facility scopes, exchange attribution, and
 distributed rate limiting. No plaintext secret column or credential endpoint exists in P0.3A.
+`endpointConfig` is not a credential store: its strict allowlist accepts only non-secret URLs,
+authentication method labels, public-key references and scopes; credential-shaped keys and unknown
+nested properties are rejected. Future credentials must use the P0.3E credential/key-management
+subsystem and are never stored in `endpointConfig`.
 
 A future inbound connection package may include partner/environment, explicitly authorized
 facilities, base and metadata URLs, authentication method, client identifier, allowed scopes,

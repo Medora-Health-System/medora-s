@@ -18,14 +18,15 @@ export type FhirCapability = {
   evidenceTestIds: readonly string[];
 };
 
-const READ_ROLES = [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK] as const;
+const ADMIN_CLINICAL_ROLES = [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN] as const;
+const REGISTRATION_READ_ROLES = [...ADMIN_CLINICAL_ROLES, RoleCode.FRONT_DESK] as const;
 
 /** One authoritative contract for route enforcement, metadata, and admin permission choices. */
 export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
-  { resourceType: "Patient", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: READ_ROLES, futureM2mScope: "patient.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-001", "FHIR-010"] },
-  { resourceType: "Encounter", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: READ_ROLES, futureM2mScope: "encounter.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-002", "FHIR-011"] },
-  { resourceType: "Observation", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: READ_ROLES, futureM2mScope: "observation.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-003", "FHIR-012"] },
-  { resourceType: "Observation", interaction: "search-type", searchParameters: ["subject", "encounter", "_count"], profiles: [], jurisdictions: ["*"], humanRoles: READ_ROLES, futureM2mScope: "observation.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-004", "FHIR-013"] },
+  { resourceType: "Patient", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: REGISTRATION_READ_ROLES, futureM2mScope: "patient.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-001", "FHIR-010"] },
+  { resourceType: "Encounter", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: REGISTRATION_READ_ROLES, futureM2mScope: "encounter.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-002", "FHIR-011"] },
+  { resourceType: "Observation", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-003", "FHIR-012"] },
+  { resourceType: "Observation", interaction: "search-type", searchParameters: ["subject", "encounter", "_count"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-004", "FHIR-013"] },
 ]);
 
 @Injectable()

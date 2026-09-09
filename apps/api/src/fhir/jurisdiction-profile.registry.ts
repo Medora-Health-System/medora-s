@@ -1,5 +1,6 @@
-import { Injectable } from "@nestjs/common";
 import { createHash } from "node:crypto";
+
+export const FHIR_JURISDICTION_PROFILES = Symbol("FHIR_JURISDICTION_PROFILES");
 
 export const JURISDICTION_PROFILE_STATUS = { VERIFIED_AUTHORITATIVE_REQUIREMENT: "VERIFIED_AUTHORITATIVE_REQUIREMENT", IMPLEMENTED: "IMPLEMENTED", ARCHITECTURALLY_SUPPORTED: "ARCHITECTURALLY_SUPPORTED", PENDING_AUTHORITY_CONFIRMATION: "PENDING_AUTHORITY_CONFIRMATION" } as const;
 export type JurisdictionProfileStatus = typeof JURISDICTION_PROFILE_STATUS[keyof typeof JURISDICTION_PROFILE_STATUS];
@@ -7,7 +8,6 @@ export type JurisdictionProfile = { jurisdictionCode: string; facilityIds: reado
 
 export const BASE_PROFILE: JurisdictionProfile = { jurisdictionCode: "INTL", facilityIds: [], packageId: "medora.fhir.r4.core", canonicalUrl: "https://medora.health/fhir/StructureDefinition/core", semanticVersion: "0.1.0", authority: "Medora Health System", evidenceReference: "docs/interop/MEDORA_RD_P0_3A_FHIR_FOUNDATION_EVIDENCE.md", checksum: "sha256:8da1b3ecf9d80fe546185f6625f37d336b1e06e2b8fa78df1528ea93d55bc431", status: JURISDICTION_PROFILE_STATUS.ARCHITECTURALLY_SUPPORTED, resourceProfiles: {}, extensions: [], terminologyBindings: [], identifierNamespaces: [], allowedInteractions: ["read", "search-type"], searchParameters: ["subject", "encounter", "_count"], validationPolicy: { severity: "error" }, securityMetadata: { jurisdictionSource: "facility.country" }, dependencies: ["hl7.fhir.r4.core@4.0.1"] };
 
-@Injectable()
 export class JurisdictionProfileRegistry {
   constructor(private readonly profiles: readonly JurisdictionProfile[] = [BASE_PROFILE]) { this.validate(profiles); }
   resolve(country: string): readonly JurisdictionProfile[] {

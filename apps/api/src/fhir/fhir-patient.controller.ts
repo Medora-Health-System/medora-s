@@ -8,9 +8,10 @@ import { FhirResourceService } from "./fhir-resource.service";
 import { FhirContextGuard, FhirDeploymentGuard, FhirRequestContext } from "./fhir-context.guard";
 import { FhirOperationOutcomeFilter } from "./fhir-operation-outcome.filter";
 import { FhirMediaInterceptor } from "./fhir-media.interceptor";
+import { FhirCapabilityGuard, RequireFhirCapability } from "./fhir-capability.guard";
 
 @Controller("fhir/Patient")
-@UseGuards(FhirDeploymentGuard, AuthGuard("jwt"), RolesGuard, FhirContextGuard)
+@UseGuards(FhirDeploymentGuard, AuthGuard("jwt"), RolesGuard, FhirContextGuard, FhirCapabilityGuard)
 @UseFilters(FhirOperationOutcomeFilter)
 @UseInterceptors(FhirMediaInterceptor)
 export class FhirPatientController {
@@ -20,6 +21,7 @@ export class FhirPatientController {
   @Get(":id")
   @Header("Content-Type", "application/fhir+json; charset=utf-8")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireFhirCapability("Patient", "read")
   async read(@Param("id") id: string, @Req() req: { user?: { userId?: string; facilityId?: string }; ip?: string; headers?: Record<string, string | string[] | undefined> }) {
     const facilityId = (req as typeof req & { fhirContext: FhirRequestContext }).fhirContext.facilityId;
     const validId = assertZod(fhirResourceIdParamSchema.safeParse(id));

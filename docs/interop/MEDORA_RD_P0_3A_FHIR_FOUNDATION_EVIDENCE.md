@@ -44,8 +44,10 @@ documented production requirement for P0.3E.
 
 `FhirContextGuard` proves human identity, active facility membership and facility state from the
 database, rejects conflicting headers, rejects request-supplied jurisdiction, and resolves profile
-context only from `Facility.country`. FRONT_DESK read access is retained because it is part of all
-three existing product route contracts; reassessment remains a least-privilege product decision.
+context only from `Facility.country`. Repository registration and encounter workflows demonstrate a
+legitimate FRONT_DESK need for Patient and Encounter context, so those two FHIR reads remain. They
+do not demonstrate a need for external clinical Observation exchange; FRONT_DESK is therefore
+removed from Observation FHIR read/search without changing internal registration workflows.
 
 `JurisdictionProfileRegistry` defines exact required status constants, FHIR-base/Medora-core
 precedence, checksums, semver/dependency/retirement/conflict checks and fail-closed construction.
@@ -55,7 +57,9 @@ IMPLEMENTED pending safe package selection, provenance and checksum review.
 
 The protocol-neutral Prisma control plane stores no secret. Server endpoints list/create/update,
 enable/disable integrations, explicitly assign facilities, constrain FHIR permissions to registry
-codes, require database-backed platform authority, and emit PHI-minimized critical audit metadata.
+codes, require database-backed platform authority at both guard and service layers, reject
+credential-shaped endpoint configuration recursively, allowlist returned endpoint metadata, and
+emit PHI-minimized critical audit metadata.
 The Administration hub links to a six-step Integrations workflow. Records remain pending
 provisioning; no machine credential, token endpoint, connection test, or clinical authorization is
 created.
@@ -78,10 +82,14 @@ guarded cross-tenant E2E; P0.3I final regression, operations evidence and activa
 - Web integrations Vitest suite: 1 file, 3 tests passed.
 - API and web production builds passed; Prisma schema validation, workspace placeholder lint, and
   `git diff --check` passed.
-- Targeted P0.1/P0.2 regression: 3 suites and 79 tests passed. One existing
-  `organization-data-export.service.spec.ts` assertion failed because it hard-codes the unrelated
-  GitHub Actions path `/home/runner/work/medora-s/medora-s/...`, absent in this workspace. Export
-  implementation was not changed.
+- The original PR #232 GitHub CI run successfully applied
+  `20260908120000_p03a_integration_control_plane` with `prisma migrate deploy` to disposable
+  PostgreSQL 16. The initial local Codex image did not expose PostgreSQL tooling; the repository
+  bootstrap subsequently installed PostgreSQL 16 and a fresh local `prisma migrate deploy` also
+  applied all 192 migrations, including the P0.3A migration, successfully.
+- The P0.2 export source-contract test now resolves its target relative to the active checkout
+  instead of hard-coding a GitHub Actions runner path; its expectation and export implementation
+  are unchanged.
 - A broad web invocation selected the entire suite despite the requested file filter and was
   stopped after existing fixed-count localization assertions and unrelated source/display
   assertions failed. The dedicated integration UI suite was rerun directly and passed.
@@ -94,3 +102,26 @@ registry permission validation, secret-free schema and critical audit events. SE
 fail-closed profile validation and isolated resolution. SEC-15–20 PASS: P0.1/P0.2 code is untouched,
 only GET FHIR interactions are registered, flag default is closed, and no credential generation or
 clinical DELETE exists.
+
+## PR #232 correction pass
+
+- Previous failing head: `14adf9b7246d5c54bb7033069d1ca5118b519a89`.
+- Root cause: TypeScript emitted the `readonly JurisdictionProfile[]` constructor parameter as the
+  runtime `Array` token, but `FhirModule` registered the class directly without an Array provider.
+- Correction: `FhirModule` now owns an explicit `FHIR_JURISDICTION_PROFILES` token/value and creates
+  `JurisdictionProfileRegistry` through an injected factory. A real `AppModule` Nest-container test
+  proves resolution without global mocks.
+- Every resource handler declares `RequireFhirCapability`; `FhirCapabilityGuard` checks the live
+  registry entry and effective human role after authenticated facility context resolution. Metadata
+  and integration permission options use the same registry.
+- Integration administration has both a controller guard and service authorization check against
+  current database-backed platform authority. Its real PostgreSQL E2E covers 401, facility-only
+  ADMIN 403, and platform-administrator 200.
+- Endpoint configuration rejects credential aliases and unknown nested keys, omits configuration
+  contents from audit metadata, and allowlists output even for a hostile legacy row.
+- OperationOutcome diagnostics are fixed status categories and never echo exception messages.
+- Correction-pass local results: 4 foundation/security suites with 29 tests passed; 4 CI-equivalent
+  E2E suites with 31 tests passed; integration-admin authorization E2E with 3 tests passed; P0.1/P0.2
+  regression suites with 80 tests passed; API/web builds and Prisma validation passed.
+
+**MEDORA.RD.P0.3A: CORRECTIONS IMPLEMENTED / CI PENDING**

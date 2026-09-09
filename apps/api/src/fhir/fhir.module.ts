@@ -10,13 +10,29 @@ import { FhirCapabilityRegistry } from "./fhir-capability.registry";
 import { FhirController } from "./fhir.controller";
 import { FhirContextGuard, FhirDeploymentGuard } from "./fhir-context.guard";
 import { FhirMediaInterceptor } from "./fhir-media.interceptor";
-import { JurisdictionProfileRegistry } from "./jurisdiction-profile.registry";
+import { BASE_PROFILE, FHIR_JURISDICTION_PROFILES, JurisdictionProfileRegistry } from "./jurisdiction-profile.registry";
+import { FhirCapabilityGuard } from "./fhir-capability.guard";
 import { FhirR4StructuralValidator } from "./fhir-validator";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule],
   controllers: [FhirController, FhirPatientController, FhirEncounterController, FhirObservationController],
-  providers: [FhirResourceService, AuditService, FhirCapabilityRegistry, FhirContextGuard, FhirDeploymentGuard, FhirMediaInterceptor, JurisdictionProfileRegistry, FhirR4StructuralValidator],
+  providers: [
+    FhirResourceService,
+    AuditService,
+    FhirCapabilityRegistry,
+    FhirCapabilityGuard,
+    FhirContextGuard,
+    FhirDeploymentGuard,
+    FhirMediaInterceptor,
+    { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
+    {
+      provide: JurisdictionProfileRegistry,
+      inject: [FHIR_JURISDICTION_PROFILES],
+      useFactory: (profiles: readonly typeof BASE_PROFILE[]) => new JurisdictionProfileRegistry(profiles),
+    },
+    FhirR4StructuralValidator,
+  ],
   exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry],
 })
 export class FhirModule {}

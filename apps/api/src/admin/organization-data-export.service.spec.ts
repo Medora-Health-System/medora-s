@@ -791,7 +791,8 @@ describe("OrganizationDataExportService", () => {
   });
 
   it("EXP-39: Allergy export spec/query has no placeholder and remains facility-scoped JSONL", () => {
-    const servicePath = "/home/runner/work/medora-s/medora-s/apps/api/src/admin/organization-data-export.service.ts";
+    // Resolve from the checkout instead of assuming GitHub Actions' absolute workspace path.
+    const servicePath = require.resolve("./organization-data-export.service");
     const source = fs.readFileSync(servicePath, "utf8");
     const blockMatch = source.match(
       /filePath:\s*"allergies\.jsonl"[\s\S]*?reconciliationKey:\s*"allergies"/

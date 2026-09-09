@@ -36,6 +36,7 @@ import { DocumentSecureExportStorage } from "./organization-data-export.storage"
 import { AdminIntegrationsController } from "./admin-integrations.controller";
 import { AdminIntegrationsService } from "./admin-integrations.service";
 import { FhirModule } from "../fhir/fhir.module";
+import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guard";
 
 @Module({
   imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule, EncountersModule, DocumentsModule, FhirModule],
@@ -72,6 +73,7 @@ import { FhirModule } from "../fhir/fhir.module";
     DocumentSecureExportStorage,
     AuditService,
     AdminIntegrationsService,
+    PlatformIntegrationAdminGuard,
   ],
   exports: [QueuesModule, MfaModule, AdminFacilitiesService, GoLiveReadinessService, BackupReadinessService, SystemHealthService, AdminComplianceService, AdminExportMonitoringService, AdminBillingGovernanceService, AdminCatalogAuditService],
 })
