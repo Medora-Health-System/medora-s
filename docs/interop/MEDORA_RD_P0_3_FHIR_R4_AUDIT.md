@@ -673,3 +673,7 @@ this audit does not declare the PR merged or independently approved.
 ## P0.3C core clinical read/search addendum (2026-09-09)
 
 P0.3C adds tenant-scoped projections for canonical historical vital readings, diagnoses, diagnostic order items, results, and encounter care plans. The detailed canonical mapping, unsupported-field record, least-privilege matrix, and C-SEC-01..40 verification status are preserved in `MEDORA_RD_P0_3C_FHIR_CLINICAL_RESOURCE_EVIDENCE.md`. AllergyIntolerance remains blocked and unadvertised because stable/versioned allergy entry semantics were not evidenced. This addendum does not replace or revise earlier audit findings and makes no national implementation-guide conformance claim.
+
+### P0.3C final PostgreSQL verification addendum (2026-09-09)
+
+A real native PostgreSQL 16, AppModule, PrismaService, JWT, and two-facility correction suite now verifies tenant-neutral 404 behavior, search isolation, reference isolation, stable historical Observation identity/time, bounded pagination, role policy, no-write/no-store, sanitized OperationOutcome responses, capability drift, and blocked AllergyIntolerance behavior. The suite found and corrected missing inherited Nest dependency metadata in the compact clinical controllers and corrected Observation searchset links/keyset continuation. Exact commands, counts, C-SEC results, and the independently failing P0.2 time-sensitive fixtures and Medication Validation gate are preserved in the P0.3C evidence document. Historical findings remain unchanged.

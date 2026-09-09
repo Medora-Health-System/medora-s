@@ -38,45 +38,69 @@ The labels below are deliberately evidence-based; no item is marked verified mer
 
 | ID | Control | Result |
 |---|---|---|
-| C-SEC-01 | tenant-scoped Observation read | NOT VERIFIED |
-| C-SEC-02 | tenant-scoped Observation search | NOT VERIFIED |
-| C-SEC-03 | stable Observation reading identity | NOT VERIFIED |
-| C-SEC-04 | canonical Observation measurement time | NOT VERIFIED |
+| C-SEC-01 | tenant-scoped Observation read | PASS — VERIFIED BY TEST |
+| C-SEC-02 | tenant-scoped Observation search | PASS — VERIFIED BY TEST |
+| C-SEC-03 | stable Observation reading identity | PASS — VERIFIED BY TEST |
+| C-SEC-04 | canonical Observation measurement time | PASS — VERIFIED BY TEST |
 | C-SEC-05 | voided vital hidden | NOT VERIFIED |
-| C-SEC-06 | Condition tenant read | NOT VERIFIED |
-| C-SEC-07 | Condition tenant search | NOT VERIFIED |
-| C-SEC-08 | Condition terminology integrity | NOT VERIFIED |
+| C-SEC-06 | Condition tenant read | PASS — VERIFIED BY TEST |
+| C-SEC-07 | Condition tenant search | PASS — VERIFIED BY TEST |
+| C-SEC-08 | Condition terminology integrity | PASS — VERIFIED BY TEST |
 | C-SEC-09 | Condition status integrity | NOT VERIFIED |
-| C-SEC-10 | Allergy not advertised without identity | NOT VERIFIED |
-| C-SEC-11 | ServiceRequest tenant read | NOT VERIFIED |
-| C-SEC-12 | ServiceRequest tenant search | NOT VERIFIED |
-| C-SEC-13 | medication exclusion | NOT VERIFIED |
+| C-SEC-10 | Allergy not advertised without identity | PASS — VERIFIED BY TEST |
+| C-SEC-11 | ServiceRequest tenant read | PASS — VERIFIED BY TEST |
+| C-SEC-12 | ServiceRequest tenant search | PASS — VERIFIED BY TEST |
+| C-SEC-13 | medication exclusion | PASS — VERIFIED BY TEST |
 | C-SEC-14 | ServiceRequest status integrity | NOT VERIFIED |
-| C-SEC-15 | requester reference safety | NOT VERIFIED |
-| C-SEC-16 | DiagnosticReport tenant read | NOT VERIFIED |
-| C-SEC-17 | DiagnosticReport tenant search | NOT VERIFIED |
-| C-SEC-18 | basedOn reference safety | NOT VERIFIED |
-| C-SEC-19 | no internal storage URL | NOT VERIFIED |
-| C-SEC-20 | no fabricated ImagingStudy | NOT VERIFIED |
+| C-SEC-15 | requester reference safety | PASS — VERIFIED BY TEST |
+| C-SEC-16 | DiagnosticReport tenant read | PASS — VERIFIED BY TEST |
+| C-SEC-17 | DiagnosticReport tenant search | PASS — VERIFIED BY TEST |
+| C-SEC-18 | basedOn reference safety | PASS — VERIFIED BY TEST |
+| C-SEC-19 | no internal storage URL | PASS — VERIFIED BY TEST |
+| C-SEC-20 | no fabricated ImagingStudy | PASS — VERIFIED BY TEST |
 | C-SEC-21 | DiagnosticReport status integrity | NOT VERIFIED |
-| C-SEC-22 | CarePlan tenant read | NOT VERIFIED |
-| C-SEC-23 | CarePlan tenant search | NOT VERIFIED |
+| C-SEC-22 | CarePlan tenant read | PASS — VERIFIED BY TEST |
+| C-SEC-23 | CarePlan tenant search | PASS — VERIFIED BY TEST |
 | C-SEC-24 | CarePlan status/intent integrity | NOT VERIFIED |
-| C-SEC-25 | no fabricated CareTeam | NOT VERIFIED |
-| C-SEC-26 | central reference construction | NOT VERIFIED |
-| C-SEC-27 | same-tenant Patient references | NOT VERIFIED |
-| C-SEC-28 | same-tenant Encounter references | NOT VERIFIED |
-| C-SEC-29 | strict unknown-param rejection | NOT VERIFIED |
-| C-SEC-30 | malformed reference rejection | NOT VERIFIED |
-| C-SEC-31 | bounded count | NOT VERIFIED |
-| C-SEC-32 | cursor syntax validation | NOT VERIFIED |
-| C-SEC-33 | tenant-neutral bundle links | NOT VERIFIED |
-| C-SEC-34 | total omitted | NOT VERIFIED |
-| C-SEC-35 | capability single-source derivation | NOT VERIFIED |
-| C-SEC-36 | FRONT_DESK least privilege | NOT VERIFIED |
-| C-SEC-37 | unsupported writes return 405 | NOT VERIFIED |
-| C-SEC-38 | sanitized OperationOutcome | NOT VERIFIED |
-| C-SEC-39 | Cache-Control no-store | NOT VERIFIED |
-| C-SEC-40 | server-owned base URL, no profile fabrication, and real PostgreSQL E2E | NOT VERIFIED |
+| C-SEC-25 | no fabricated CareTeam | PASS — VERIFIED BY TEST |
+| C-SEC-26 | central reference construction | PASS — VERIFIED BY TEST |
+| C-SEC-27 | same-tenant Patient references | PASS — VERIFIED BY TEST |
+| C-SEC-28 | same-tenant Encounter references | PASS — VERIFIED BY TEST |
+| C-SEC-29 | strict unknown-param rejection | PASS — VERIFIED BY TEST |
+| C-SEC-30 | malformed reference rejection | PASS — VERIFIED BY TEST |
+| C-SEC-31 | bounded count | PASS — VERIFIED BY TEST |
+| C-SEC-32 | cursor syntax validation | PASS — VERIFIED BY TEST |
+| C-SEC-33 | tenant-neutral bundle links | PASS — VERIFIED BY TEST |
+| C-SEC-34 | total omitted | PASS — VERIFIED BY TEST |
+| C-SEC-35 | capability single-source derivation | PASS — VERIFIED BY TEST |
+| C-SEC-36 | FRONT_DESK least privilege | PASS — VERIFIED BY TEST |
+| C-SEC-37 | unsupported writes return 405 | PASS — VERIFIED BY TEST |
+| C-SEC-38 | sanitized OperationOutcome | PASS — VERIFIED BY TEST |
+| C-SEC-39 | Cache-Control no-store | PASS — VERIFIED BY TEST |
+| C-SEC-40 | server-owned base URL, no profile fabrication, and real PostgreSQL E2E | PASS — VERIFIED BY TEST |
 
-Real PostgreSQL AppModule/JWT two-facility E2E remains NOT VERIFIED in this working environment and is required before release classification may advance.
+## Final verification evidence (2026-09-09)
+
+The disposable native PostgreSQL 16 database was created with `.cursor/scripts/cloud-agent-install.sh`; all 192 committed migrations were deployed. The real `AppModule`/`PrismaService`/PostgreSQL/JWT two-facility P0.3C suite passed **1 suite / 6 tests**. The combined P0.3A/P0.3B/P0.3C FHIR regression run passed **6 suites / 46 tests**. P0.1 passed **1 suite / 13 tests**. P0.2 executed **4 suites / 93 tests**, with **3 suites passing, 1 failing; 80 tests passing and 13 failing** because time-sensitive export fixtures are expired as of the 2026-09-09 system date. Medication deployment validation executed twice: after clinical-content seeding it still failed hard acceptance with 41/64 searches and 43/64 orderability cases passing, and 23 failures (21 missing family, 2 hidden by ranking).
+
+Exact commands:
+
+- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/fhir/fhir-clinical-tenant.e2e.spec.ts`
+- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/fhir/fhir-foundation.spec.ts src/fhir/fhir-module-di.spec.ts src/fhir/fhir-administrative.spec.ts src/fhir/fhir-administrative-tenant.e2e.spec.ts src/fhir/fhir-clinical.spec.ts src/fhir/fhir-clinical-tenant.e2e.spec.ts`
+- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/encounters/encounters.service.provider-documentation-versions.spec.ts`
+- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/encounters/encounters.service.provider-documentation-versions.spec.ts src/admin/organization-data-export-envelope.spec.ts src/admin/organization-data-export.service.spec.ts src/admin/organization-data-export-authz.e2e.spec.ts`
+- `corepack pnpm --filter @medora/api medication:validate:deployment`
+
+Source baseline presented for correction: `55ca722b64dd67cbc9d02d06dd67058bca3397f7` (the reconstructed local equivalent is `94baaab1b5129f874f1f082ed299441105f988fa`). The final correction head is reported from Git in the delivery response because a commit cannot contain its own SHA.
+
+Remaining limitations are unchanged: AllergyIntolerance is blocked/unadvertised; corrected/amended DiagnosticReport semantics and atomic analyte Observations remain deferred without canonical evidence. C-SEC-05, 09, 14, 21, and 24 remain NOT VERIFIED because the final suite did not exhaustively exercise every void/status enum transition.
+
+Build/validation commands completed successfully:
+
+- `corepack pnpm --filter @medora/api build`
+- `corepack pnpm --filter @medora/web build` (non-blocking stale Browserslist-data warning)
+- `corepack pnpm --filter @medora/api exec prisma validate`
+- `corepack pnpm -r lint` (all workspace lint scripts are placeholders)
+- `git diff --check`
+
+No Prisma schema change or production migration was added by P0.3C.

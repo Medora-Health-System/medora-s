@@ -109,24 +109,32 @@ export class FhirResourceService {
 
   async searchObservations(
     facilityId: string, parsed: ParsedFhirObservationSearch,
-    userId: string | undefined, ip: string | undefined, userAgent: string | undefined
+    userId: string | undefined, ip: string | undefined, userAgent: string | undefined,
+    query: Record<string, unknown> = {}
   ): Promise<FhirBundle> {
     void userId; void ip; void userAgent;
     const take = Math.min(parsed.count ?? 20, 50);
+    const cursorReading = parsed.cursor ? parseFhirObservationOpaqueId(parsed.cursor) : undefined;
+    if (parsed.cursor && (!cursorReading || cursorReading.kind !== "reading")) throw new BadRequestException("Invalid _cursor");
+    const requestedReading = parsed.id ? parseFhirObservationOpaqueId(parsed.id) : undefined;
+    if (parsed.id && (!requestedReading || requestedReading.kind !== "reading")) return searchBundle(this.search.baseUrl(), "Observation", query, [], false) as FhirBundle;
     const rows = await this.prisma.triageVitalsReading.findMany({
-      where: { facilityId, status: "ACTIVE", ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {}), ...(parsed.encounterId ? { encounterId: parsed.encounterId } : {}), ...(parsed.patientId ? { patientId: parsed.patientId } : {}) },
-      orderBy: { measuredAt: "desc" }, take: take + 1,
+      where: { facilityId, status: "ACTIVE", ...(requestedReading?.kind === "reading" ? { id: requestedReading.readingId } : {}), ...(cursorReading?.kind === "reading" ? { id: { gte: cursorReading.readingId } } : {}), ...(parsed.encounterId ? { encounterId: parsed.encounterId } : {}), ...(parsed.patientId ? { patientId: parsed.patientId } : {}) },
+      orderBy: { id: "asc" }, take: take + 1,
     });
     let resources = rows.slice(0, take).flatMap((r) => this.fhirMapper.vitalsToObservations(r.vitalsJson, {
       idBase: `reading-${r.id}`, patientReference: `Patient/${r.patientId}`,
       encounterReference: `Encounter/${r.encounterId}`, effectiveDateTime: r.measuredAt.toISOString(),
     }));
+    resources.sort((a, b) => (a.id ?? "").localeCompare(b.id ?? ""));
+    if (parsed.cursor) resources = resources.filter((o) => (o.id ?? "") > parsed.cursor!);
     if (parsed.id) resources = resources.filter((o) => o.id === parsed.id);
     if (parsed.code) { const code = parsed.code.split("|").at(-1); resources = resources.filter((o) => o.code.coding?.some((c) => c.code === code)); }
     if (parsed.category && !["vital-signs", "http://terminology.hl7.org/CodeSystem/observation-category|vital-signs"].includes(parsed.category)) resources = [];
     if (parsed.status && parsed.status !== "final") resources = [];
     if (parsed.date) { const day = /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null; if (!day) throw new BadRequestException("Malformed date"); resources = resources.filter((o) => o.effectiveDateTime?.slice(0,10) === day); }
-    return this.toObservationSearchBundle(resources.slice(0, take));
+    const page = resources.slice(0, take);
+    return searchBundle(this.search.baseUrl(), "Observation", query, page, resources.length > take || rows.length > take) as FhirBundle;
   }
 
   async readObservationById(
@@ -143,14 +151,4 @@ export class FhirResourceService {
     return found;
   }
 
-  private toObservationSearchBundle(resources: FhirObservation[]): FhirBundle {
-    return {
-      resourceType: "Bundle",
-      type: "searchset",
-      entry: resources.map((resource) => ({
-        fullUrl: resource.id ? `/fhir/Observation/${encodeURIComponent(resource.id)}` : undefined,
-        resource,
-      })),
-    };
-  }
 }
