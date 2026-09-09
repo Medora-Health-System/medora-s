@@ -15,6 +15,21 @@ export function parseRelativeReference(value: unknown, allowed: readonly string[
   return { resourceType: match[1]!, id: match[2]! };
 }
 
+/** Strict P0.3B search-reference grammar: ResourceType/logical-id, relative only. */
+export function parseFhirReference<T extends (typeof FHIR_RESOURCE_TYPES)[number]>(
+  value: unknown,
+  expectedResourceType: T,
+): { resourceType: T; id: string } {
+  if (typeof value !== "string" || value.length > 128 || value.includes("%")) {
+    throw new BadRequestException("Malformed FHIR reference");
+  }
+  const match = /^([A-Z][A-Za-z]+)\/([^/]+)$/.exec(value);
+  if (!match || match[1] !== expectedResourceType) {
+    throw new BadRequestException("Malformed FHIR reference");
+  }
+  return { resourceType: expectedResourceType, id: parseLogicalId(match[2]) };
+}
+
 export function parseStrictSearch(query: Record<string, unknown>, allowed: readonly string[], policy = FHIR_REQUEST_POLICY) {
   const entries = Object.entries(query);
   if (entries.length > policy.maxParameters) throw new BadRequestException("Too many search parameters");

@@ -10,6 +10,7 @@ import type { ParsedFhirObservationSearch } from "./dto/fhir-read.schemas";
 import { parseFhirObservationOpaqueId } from "./fhir-observation-id";
 import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
 import { FhirSearchService, searchBundle } from "./fhir-search";
+import { parseFhirReference } from "./fhir-protocol";
 
 @Injectable()
 export class FhirResourceService {
@@ -45,8 +46,7 @@ export class FhirResourceService {
     const parsed = this.search.parse(query, ["_id", "patient", "subject", "date", "status", "class", "_count", "_cursor"]);
     const v = parsed.values;
     const patientRef = v.patient ?? v.subject;
-    const patientId = patientRef ? patientRef.replace(/^Patient\//, "") : undefined;
-    if (patientId && !/^[0-9a-f-]{36}$/i.test(patientId)) throw new BadRequestException("Malformed patient reference");
+    const patientId = patientRef ? parseFhirReference(patientRef, "Patient").id : undefined;
     const status = v.status ? ({ "in-progress": "OPEN", finished: "CLOSED", cancelled: "CANCELLED" } as const)[v.status as "in-progress"] : undefined;
     if (v.status && !status) throw new BadRequestException("Unsupported Encounter status");
     const type = v.class ? ({ AMB: "OUTPATIENT", IMP: "INPATIENT", EMER: "EMERGENCY" } as const)[v.class as "AMB"] : undefined;

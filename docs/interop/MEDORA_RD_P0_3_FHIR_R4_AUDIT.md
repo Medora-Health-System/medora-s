@@ -661,3 +661,11 @@ central reference resolver, shared bounded keyset search/Bundle foundation, serv
 FHIR base URL, no-store resource caching, and integration-permission synchronization. No write,
 history, transaction, batch, national profile, or U.S. Core conformance is advertised. Detailed
 evidence: `MEDORA_RD_P0_3B_FHIR_ADMINISTRATIVE_RESOURCE_EVIDENCE.md`.
+
+### PR #233 final security correction status
+
+The correction pass replaces wildcard administrative routing with four explicit capability-bound
+controllers, centralizes strict typed relative-reference parsing, and adds real PostgreSQL tenant,
+reference, routing, error, pagination, and no-write E2E evidence. Local verification passed 18 suites
+and 182 tests plus API/Web builds and Prisma validation/deployment. Status remains **CI PENDING**;
+this audit does not declare the PR merged or independently approved.

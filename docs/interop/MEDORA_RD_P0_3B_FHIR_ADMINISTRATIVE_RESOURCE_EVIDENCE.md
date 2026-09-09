@@ -124,3 +124,91 @@ Known limitations: no exact Bundle total; no chaining/modifiers/date prefixes/re
 Deferred to P0.3C or later: Condition, AllergyIntolerance, Procedure, ServiceRequest, DiagnosticReport expansion, medication resources, documents, Provenance/AuditEvent endpoints, Binary, bulk, subscription, transaction/batch, writes, SMART/OAuth, HL7 v2, DICOM and X12.
 
 **Readiness:** core administrative read/search and tenant-safe reference foundation are IMPLEMENTED and locally VERIFIED BY TEST subject to the exact final report. No inbound clinical write is enabled.
+
+## Final security correction pass — PR #233
+
+**Previous independently verified PR head:** `60fd07ae05e460152ddd47641d9c14b9ca6e2ce4`.
+**Correction branch:** `codex/implement-fhir-r4-core-administrative-resources` (existing PR #233 head branch).
+**Final head:** recorded by the final Codex report after the evidence commit (Git commit objects cannot contain their own hash).
+**CI:** the previous PR head was independently reported green; CI for this correction commit is **PENDING**.
+
+### Strict reference parser
+
+`parseFhirReference(value, expectedResourceType)` is the sole P0.3B search-reference parser. Its
+accepted grammar is `ResourceType/logical-id`, where the type must exactly equal the parameter's
+expected type and the ID must pass `FHIR_LOGICAL_ID_RE` (`[A-Za-z0-9\-.]{1,64}`). Bare IDs and
+absolute URLs are not supported. Percent signs are rejected before any decoding or normalization;
+extra path segments, queries, fragments, controls, traversal, empty IDs, and wrong types fail with
+`BadRequestException`. The P0.3A filter renders that failure as a sanitized HTTP 400 FHIR
+OperationOutcome. Encounter `patient`/`subject`, PractitionerRole `practitioner`/`organization`, and
+Location `organization` all call this parser; no ad-hoc prefix removal remains.
+
+### Route review and hardening
+
+The former `/fhir/:type` and `/fhir/:type/:id` dispatcher was removed. Four explicit controllers now
+own Practitioner, PractitionerRole, Organization, and Location routes, each with a statically declared
+`RequireFhirCapability` value. Therefore unsupported resource types have no controller or capability,
+and metadata, Patient, Encounter, and Observation cannot be shadowed by an administrative wildcard.
+The real-AppModule routing test exercises ROUTE-01 through ROUTE-10 and the no-write fallback.
+
+### PostgreSQL tenant and reference E2E
+
+`fhir-administrative-tenant.e2e.spec.ts` uses real `AppModule`, Prisma, PostgreSQL, JWT login, and
+canonical fixtures for two facilities. Its seven tests cover TENANT-01 through TENANT-20, all six
+required same-tenant emitted references, REF error responses, static routing, no-write behavior, and
+no-store caching. It additionally verifies direct Practitioner/PractitionerRole reads require an active
+RN/PROVIDER facility assignment.
+
+### Exact local verification (2026-09-09)
+
+| Command group | Suites | Tests | Result |
+|---|---:|---:|---|
+| P0.3A/P0.3B FHIR foundation, administrative, DI | 3 | 27 | PASS |
+| P0.3B PostgreSQL tenant/routing/reference E2E | 1 | 7 | PASS |
+| Facility isolation, RBAC, order atomicity, JSON charset, integration admin | 5 | 34 | PASS |
+| P0.1 signed versions, P0.2 encrypted export, Medication Validation | 9 | 114 | PASS |
+| **Executed Jest total** | **18** | **182** | **PASS** |
+
+Both API and Web production builds passed. Prisma validated and all 192 migrations deployed to the
+disposable PostgreSQL database, including `20260908120000_p03a_integration_control_plane`. Lint
+scripts and `git diff --check` passed. GitHub CI for the correction head remains pending.
+
+### Security matrix after correction
+
+| ID | Status |
+|---|---|
+| B-SEC-01 | PASS — VERIFIED BY TEST |
+| B-SEC-02 | PASS — VERIFIED BY TEST |
+| B-SEC-03 | PASS — VERIFIED BY TEST |
+| B-SEC-04 | PASS — VERIFIED BY TEST |
+| B-SEC-05 | PASS — VERIFIED BY TEST |
+| B-SEC-06 | PASS — VERIFIED BY TEST |
+| B-SEC-07 | PASS — VERIFIED BY TEST |
+| B-SEC-08 | PASS — VERIFIED BY TEST |
+| B-SEC-09 | PASS — VERIFIED BY TEST |
+| B-SEC-10 | PASS — VERIFIED BY TEST |
+| B-SEC-11 | PASS — VERIFIED BY TEST |
+| B-SEC-12 | PASS — VERIFIED BY TEST |
+| B-SEC-13 | PASS — VERIFIED BY TEST |
+| B-SEC-14 | PASS — VERIFIED BY TEST |
+| B-SEC-15 | PASS — VERIFIED BY TEST |
+| B-SEC-16 | PASS — VERIFIED BY TEST |
+| B-SEC-17 | PASS — VERIFIED BY TEST |
+| B-SEC-18 | PASS — VERIFIED BY TEST |
+| B-SEC-19 | PASS — VERIFIED BY TEST |
+| B-SEC-20 | PASS — VERIFIED BY TEST |
+| B-SEC-21 | PASS — VERIFIED BY TEST |
+| B-SEC-22 | PASS — VERIFIED BY TEST |
+| B-SEC-23 | PASS — VERIFIED BY TEST |
+| B-SEC-24 | PASS — VERIFIED BY TEST |
+| B-SEC-25 | PASS — VERIFIED BY TEST |
+| B-SEC-26 | PASS — VERIFIED BY TEST |
+| B-SEC-27 | PASS — VERIFIED BY TEST |
+| B-SEC-28 | PASS — VERIFIED BY TEST |
+| B-SEC-29 | PASS — VERIFIED BY TEST |
+| B-SEC-30 | PASS — VERIFIED BY TEST |
+
+### Correction classification
+
+MEDORA.RD.P0.3B: **FINAL SECURITY CORRECTIONS IMPLEMENTED / LOCAL VERIFICATION COMPLETE / CI PENDING**.
+Independent review remains the merge authority.
