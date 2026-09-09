@@ -1,7 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 
 export const FHIR_LOGICAL_ID_RE = /^[A-Za-z0-9\-.]{1,64}$/;
-export const FHIR_RESOURCE_TYPES = ["Patient", "Encounter", "Observation", "Organization", "Location", "Practitioner"] as const;
+export const FHIR_RESOURCE_TYPES = ["Patient", "Encounter", "Observation", "Organization", "Location", "Practitioner", "PractitionerRole"] as const;
 
 export function parseLogicalId(value: unknown): string {
   if (typeof value !== "string" || !FHIR_LOGICAL_ID_RE.test(value)) throw new BadRequestException("Malformed FHIR logical ID");

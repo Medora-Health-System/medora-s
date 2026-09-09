@@ -36,6 +36,8 @@ export interface FhirPatient {
   birthDate?: string;
   telecom?: FhirContactPoint[];
   address?: FhirAddress[];
+  active?: boolean;
+  managingOrganization?: FhirReference;
 }
 
 export type FhirEncounterStatus =
@@ -84,6 +86,7 @@ export interface FhirEncounter {
   subject?: FhirReference;
   period?: FhirPeriod;
   reasonCode?: FhirCodeableConcept[];
+  serviceProvider?: FhirReference;
 }
 
 export interface FhirQuantity {

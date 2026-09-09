@@ -3,13 +3,14 @@ import { FhirCapabilityRegistry, FHIR_MEDIA_TYPES, FHIR_VERSION } from "./fhir-c
 import { FhirDeploymentGuard } from "./fhir-context.guard";
 import { FhirMediaInterceptor } from "./fhir-media.interceptor";
 import { FhirOperationOutcomeFilter } from "./fhir-operation-outcome.filter";
+import { FhirSearchService } from "./fhir-search";
 
 @Controller("fhir")
 @UseGuards(FhirDeploymentGuard)
 @UseInterceptors(FhirMediaInterceptor)
 @UseFilters(FhirOperationOutcomeFilter)
 export class FhirController {
-  constructor(private readonly registry: FhirCapabilityRegistry) {}
+  constructor(private readonly registry: FhirCapabilityRegistry, private readonly search?: FhirSearchService) {}
   @Get("metadata")
   metadata() {
     const resources = new Map<string, { type: string; interaction: { code: string }[]; searchParam: { name: string; type: string }[] }>();
@@ -19,6 +20,6 @@ export class FhirController {
       for (const name of c.searchParameters) if (!entry.searchParam.some((p) => p.name === name)) entry.searchParam.push({ name, type: name === "_count" ? "number" : "reference" });
       resources.set(c.resourceType, entry);
     }
-    return { resourceType: "CapabilityStatement", status: "active", date: new Date().toISOString(), kind: "instance", fhirVersion: FHIR_VERSION, format: [...FHIR_MEDIA_TYPES], rest: [{ mode: "server", resource: [...resources.values()] }] };
+    return { resourceType: "CapabilityStatement", status: "active", date: new Date().toISOString(), kind: "instance", fhirVersion: FHIR_VERSION, format: [...FHIR_MEDIA_TYPES], ...(this.search ? { implementation: { url: this.search.baseUrl() } } : {}), rest: [{ mode: "server", resource: [...resources.values()] }] };
   }
 }

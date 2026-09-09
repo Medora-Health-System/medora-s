@@ -16,6 +16,7 @@ export class FhirMediaInterceptor implements NestInterceptor {
     }
     if (String(req.originalUrl ?? req.url).length > FHIR_REQUEST_POLICY.maxQueryBytes) throw new NotAcceptableException("FHIR query is too large");
     res.type("application/fhir+json");
+    if (!String(req.originalUrl ?? req.url).replace(/\?.*$/, "").endsWith("/metadata")) res.setHeader("Cache-Control", "no-store");
     return next.handle().pipe(timeout(FHIR_REQUEST_POLICY.timeoutMs), map((body) => {
       if (Buffer.byteLength(JSON.stringify(body)) > FHIR_REQUEST_POLICY.maxResponseBytes) throw new NotAcceptableException("FHIR response exceeds safety ceiling");
       return body;

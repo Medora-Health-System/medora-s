@@ -652,3 +652,12 @@ gate.
 > P0.3A branch. Machine credentials, normative profile validation, clinical expansion and all
 > inbound clinical writes remain deferred. See
 > `MEDORA_RD_P0_3A_FHIR_FOUNDATION_EVIDENCE.md` for evidence and limitations.
+
+## P0.3B administrative read/search addendum (2026-09-09)
+
+P0.3B adds registry-governed, facility-scoped read/search for Patient, Encounter,
+Practitioner, PractitionerRole, Organization, and Department-backed Location. It also adds a
+central reference resolver, shared bounded keyset search/Bundle foundation, server-owned public
+FHIR base URL, no-store resource caching, and integration-permission synchronization. No write,
+history, transaction, batch, national profile, or U.S. Core conformance is advertised. Detailed
+evidence: `MEDORA_RD_P0_3B_FHIR_ADMINISTRATIVE_RESOURCE_EVIDENCE.md`.
