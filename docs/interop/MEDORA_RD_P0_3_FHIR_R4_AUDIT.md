@@ -669,3 +669,7 @@ controllers, centralizes strict typed relative-reference parsing, and adds real 
 reference, routing, error, pagination, and no-write E2E evidence. Local verification passed 18 suites
 and 182 tests plus API/Web builds and Prisma validation/deployment. Status remains **CI PENDING**;
 this audit does not declare the PR merged or independently approved.
+
+## P0.3C core clinical read/search addendum (2026-09-09)
+
+P0.3C adds tenant-scoped projections for canonical historical vital readings, diagnoses, diagnostic order items, results, and encounter care plans. The detailed canonical mapping, unsupported-field record, least-privilege matrix, and C-SEC-01..40 verification status are preserved in `MEDORA_RD_P0_3C_FHIR_CLINICAL_RESOURCE_EVIDENCE.md`. AllergyIntolerance remains blocked and unadvertised because stable/versioned allergy entry semantics were not evidenced. This addendum does not replace or revise earlier audit findings and makes no national implementation-guide conformance claim.

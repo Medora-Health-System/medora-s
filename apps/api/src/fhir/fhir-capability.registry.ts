@@ -6,7 +6,7 @@ export const FHIR_MEDIA_TYPES = ["application/fhir+json", "application/json"] as
 export type FhirInteraction = "read" | "search-type" | "create" | "update" | "patch" | "delete" | "history-instance" | "history-type";
 
 export type FhirCapability = {
-  resourceType: "Patient" | "Encounter" | "Observation" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
+  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
   interaction: FhirInteraction;
   searchParameters: readonly string[];
   profiles: readonly string[];
@@ -32,7 +32,11 @@ export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
     { resourceType, interaction: "search-type" as const, searchParameters: resourceType === "Location" ? ["_id", "identifier", "name", "organization", "status", "_count", "_cursor"] : resourceType === "Organization" ? ["_id", "identifier", "name", "_count", "_cursor"] : resourceType === "PractitionerRole" ? ["_id", "practitioner", "organization", "_count", "_cursor"] : ["_id", "identifier", "family", "given", "name", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: `${resourceType[0]!.toLowerCase()}${resourceType.slice(1)}.search`, deploymentEnabled: true, productionEnabled: true, evidenceTestIds: [`FHIR-${resourceType === "Practitioner" ? "034" : resourceType === "PractitionerRole" ? "037" : resourceType === "Organization" ? "039" : "041"}`] },
   ]),
   { resourceType: "Observation", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-003", "FHIR-012"] },
-  { resourceType: "Observation", interaction: "search-type", searchParameters: ["subject", "encounter", "_count"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-004", "FHIR-013"] },
+  { resourceType: "Observation", interaction: "search-type", searchParameters: ["_id", "subject", "patient", "encounter", "code", "category", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-004", "FHIR-013"] },
+  ...(["Condition", "ServiceRequest", "DiagnosticReport", "CarePlan"] as const).flatMap((resourceType) => [
+    { resourceType, interaction: "read" as const, searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: `${resourceType[0]!.toLowerCase()}${resourceType.slice(1)}.read`, deploymentEnabled: true, productionEnabled: true, evidenceTestIds: [`C-${resourceType}-READ`] },
+    { resourceType, interaction: "search-type" as const, searchParameters: resourceType === "Condition" ? ["_id", "patient", "subject", "encounter", "code", "clinical-status", "verification-status", "recorded-date", "_count", "_cursor"] : resourceType === "ServiceRequest" ? ["_id", "patient", "subject", "encounter", "code", "status", "authored", "_count", "_cursor"] : resourceType === "DiagnosticReport" ? ["_id", "patient", "subject", "encounter", "based-on", "status", "date", "_count", "_cursor"] : ["_id", "patient", "subject", "encounter", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: `${resourceType[0]!.toLowerCase()}${resourceType.slice(1)}.search`, deploymentEnabled: true, productionEnabled: true, evidenceTestIds: [`C-${resourceType}-SEARCH`] },
+  ]),
 ]);
 
 @Injectable()

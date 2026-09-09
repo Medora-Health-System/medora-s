@@ -108,143 +108,38 @@ export class FhirResourceService {
   }
 
   async searchObservations(
-    facilityId: string,
-    parsed: ParsedFhirObservationSearch,
-    userId: string | undefined,
-    ip: string | undefined,
-    userAgent: string | undefined
+    facilityId: string, parsed: ParsedFhirObservationSearch,
+    userId: string | undefined, ip: string | undefined, userAgent: string | undefined
   ): Promise<FhirBundle> {
-    const resources: FhirObservation[] = [];
-
-    if (parsed.encounterId) {
-      const encounter = await this.prisma.encounter.findFirst({
-      select: ENCOUNTER_CORE_SELECT,
-      where: { id: parsed.encounterId, facilityId },
-      });
-      if (!encounter) {
-        throw new NotFoundException("Encounter not found");
-      }
-      if (parsed.patientId && encounter.patientId !== parsed.patientId) {
-        throw new NotFoundException("Encounter does not match subject patient");
-      }
-
-      await this.audit.log(AuditAction.ENCOUNTER_VIEW, "ENCOUNTER", {
-        userId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        entityId: encounter.id,
-        ip,
-        userAgent,
-        metadata: { source: "fhir", fhirObservationSearch: true },
-      });
-
-      resources.push(
-        ...this.fhirMapper.vitalsToObservations(encounter.vitals, {
-          idBase: encounter.id,
-          patientReference: `Patient/${encounter.patientId}`,
-          encounterReference: `Encounter/${encounter.id}`,
-          effectiveDateTime: encounter.updatedAt.toISOString(),
-        })
-      );
-    } else if (parsed.patientId) {
-      const patient = await this.prisma.patient.findFirst({
-        where: { id: parsed.patientId, facilityId },
-      });
-      if (!patient) {
-        throw new NotFoundException("Patient not found");
-      }
-
-      await this.audit.log(AuditAction.PATIENT_VIEW, "PATIENT", {
-        userId,
-        facilityId,
-        patientId: patient.id,
-        entityId: patient.id,
-        ip,
-        userAgent,
-        metadata: { source: "fhir", fhirObservationSearch: true },
-      });
-
-      const effective = patient.latestVitalsAt?.toISOString();
-      resources.push(
-        ...this.fhirMapper.vitalsToObservations(patient.latestVitalsJson, {
-          idBase: `${patient.id}-latest`,
-          patientReference: `Patient/${patient.id}`,
-          effectiveDateTime: effective,
-        })
-      );
-    }
-
-    return this.toObservationSearchBundle(resources);
+    void userId; void ip; void userAgent;
+    const take = Math.min(parsed.count ?? 20, 50);
+    const rows = await this.prisma.triageVitalsReading.findMany({
+      where: { facilityId, status: "ACTIVE", ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {}), ...(parsed.encounterId ? { encounterId: parsed.encounterId } : {}), ...(parsed.patientId ? { patientId: parsed.patientId } : {}) },
+      orderBy: { measuredAt: "desc" }, take: take + 1,
+    });
+    let resources = rows.slice(0, take).flatMap((r) => this.fhirMapper.vitalsToObservations(r.vitalsJson, {
+      idBase: `reading-${r.id}`, patientReference: `Patient/${r.patientId}`,
+      encounterReference: `Encounter/${r.encounterId}`, effectiveDateTime: r.measuredAt.toISOString(),
+    }));
+    if (parsed.id) resources = resources.filter((o) => o.id === parsed.id);
+    if (parsed.code) { const code = parsed.code.split("|").at(-1); resources = resources.filter((o) => o.code.coding?.some((c) => c.code === code)); }
+    if (parsed.category && !["vital-signs", "http://terminology.hl7.org/CodeSystem/observation-category|vital-signs"].includes(parsed.category)) resources = [];
+    if (parsed.status && parsed.status !== "final") resources = [];
+    if (parsed.date) { const day = /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null; if (!day) throw new BadRequestException("Malformed date"); resources = resources.filter((o) => o.effectiveDateTime?.slice(0,10) === day); }
+    return this.toObservationSearchBundle(resources.slice(0, take));
   }
 
   async readObservationById(
-    facilityId: string,
-    opaqueId: string,
-    userId: string | undefined,
-    ip: string | undefined,
-    userAgent: string | undefined
+    facilityId: string, opaqueId: string, userId: string | undefined,
+    ip: string | undefined, userAgent: string | undefined
   ): Promise<FhirObservation> {
+    void userId; void ip; void userAgent;
     const parsed = parseFhirObservationOpaqueId(opaqueId);
-    if (!parsed) {
-      throw new NotFoundException("Observation not found");
-    }
-
-    if (parsed.kind === "encounter") {
-      const encounter = await this.prisma.encounter.findFirst({
-      select: ENCOUNTER_CORE_SELECT,
-      where: { id: parsed.encounterId, facilityId },
-      });
-      if (!encounter) {
-        throw new NotFoundException("Observation not found");
-      }
-      await this.audit.log(AuditAction.ENCOUNTER_VIEW, "ENCOUNTER", {
-        userId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        entityId: encounter.id,
-        ip,
-        userAgent,
-        metadata: { source: "fhir", fhirObservationRead: true },
-      });
-      const list = this.fhirMapper.vitalsToObservations(encounter.vitals, {
-        idBase: encounter.id,
-        patientReference: `Patient/${encounter.patientId}`,
-        encounterReference: `Encounter/${encounter.id}`,
-        effectiveDateTime: encounter.updatedAt.toISOString(),
-      });
-      const found = list.find((o) => o.id === opaqueId);
-      if (!found) {
-        throw new NotFoundException("Observation not found");
-      }
-      return found;
-    }
-
-    const patient = await this.prisma.patient.findFirst({
-      where: { id: parsed.patientId, facilityId },
-    });
-    if (!patient) {
-      throw new NotFoundException("Observation not found");
-    }
-    await this.audit.log(AuditAction.PATIENT_VIEW, "PATIENT", {
-      userId,
-      facilityId,
-      patientId: patient.id,
-      entityId: patient.id,
-      ip,
-      userAgent,
-      metadata: { source: "fhir", fhirObservationRead: true },
-    });
-    const list = this.fhirMapper.vitalsToObservations(patient.latestVitalsJson, {
-      idBase: `${patient.id}-latest`,
-      patientReference: `Patient/${patient.id}`,
-      effectiveDateTime: patient.latestVitalsAt?.toISOString(),
-    });
-    const found = list.find((o) => o.id === opaqueId);
-    if (!found) {
-      throw new NotFoundException("Observation not found");
-    }
+    if (!parsed || parsed.kind !== "reading") throw new NotFoundException("Observation not found");
+    const row = await this.prisma.triageVitalsReading.findFirst({ where: { id: parsed.readingId, facilityId, status: "ACTIVE" } });
+    if (!row) throw new NotFoundException("Observation not found");
+    const found = this.fhirMapper.vitalsToObservations(row.vitalsJson, { idBase: `reading-${row.id}`, patientReference: `Patient/${row.patientId}`, encounterReference: `Encounter/${row.encounterId}`, effectiveDateTime: row.measuredAt.toISOString() }).find((o) => o.id === opaqueId);
+    if (!found) throw new NotFoundException("Observation not found");
     return found;
   }
 
@@ -252,7 +147,6 @@ export class FhirResourceService {
     return {
       resourceType: "Bundle",
       type: "searchset",
-      total: resources.length,
       entry: resources.map((resource) => ({
         fullUrl: resource.id ? `/fhir/Observation/${encodeURIComponent(resource.id)}` : undefined,
         resource,

@@ -17,7 +17,7 @@ describe("MEDORA.RD.P0.3A FHIR foundation", () => {
   afterAll(() => { delete process.env.MEDORA_INTEROP_ENABLED; });
   const capabilities = new FhirCapabilityRegistry();
   test("FHIR-001–004 capability registry exposes only evidenced read/search", () => {
-    expect(FHIR_CAPABILITIES).toHaveLength(14);
+    expect(FHIR_CAPABILITIES).toHaveLength(22);
     expect(capabilities.enabled().every((c) => ["read", "search-type"].includes(c.interaction) && c.evidenceTestIds.length > 0)).toBe(true);
     expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([{ code: "patient.read", resourceType: "Patient", interaction: "read" }]));
     expect(capabilities.enabled().find((c) => c.resourceType === "Observation" && c.interaction === "read")?.humanRoles).not.toContain(RoleCode.FRONT_DESK);
