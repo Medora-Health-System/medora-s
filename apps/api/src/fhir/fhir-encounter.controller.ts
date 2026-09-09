@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param, Req, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Controller, Get, Header, Param, Query, Req, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { assertZod } from "../common/http/zod-parse";
@@ -20,12 +20,21 @@ export class FhirEncounterController {
   /** FHIR R4 instance read: `GET [base]/Encounter/{id}` */
   @Get(":id")
   @Header("Content-Type", "application/fhir+json; charset=utf-8")
+  @Header("Cache-Control", "no-store")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   @RequireFhirCapability("Encounter", "read")
   async read(@Param("id") id: string, @Req() req: { user?: { userId?: string; facilityId?: string }; ip?: string; headers?: Record<string, string | string[] | undefined> }) {
     const facilityId = (req as typeof req & { fhirContext: FhirRequestContext }).fhirContext.facilityId;
     const validId = assertZod(fhirResourceIdParamSchema.safeParse(id));
     return this.fhirResource.readEncounter(facilityId, validId, req.user?.userId, req.ip, this.ua(req));
+  }
+
+  @Get()
+  @Header("Cache-Control", "no-store")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireFhirCapability("Encounter", "search-type")
+  search(@Query() query: Record<string, unknown>, @Req() req: { fhirContext: FhirRequestContext }) {
+    return this.fhirResource.searchEncounters(req.fhirContext.facilityId, query);
   }
 
   private ua(req: { headers?: Record<string, string | string[] | undefined> }): string | undefined {

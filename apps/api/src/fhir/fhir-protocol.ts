@@ -1,7 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 
 export const FHIR_LOGICAL_ID_RE = /^[A-Za-z0-9\-.]{1,64}$/;
-export const FHIR_RESOURCE_TYPES = ["Patient", "Encounter", "Observation", "Organization", "Location", "Practitioner"] as const;
+export const FHIR_RESOURCE_TYPES = ["Patient", "Encounter", "Observation", "Organization", "Location", "Practitioner", "PractitionerRole"] as const;
 
 export function parseLogicalId(value: unknown): string {
   if (typeof value !== "string" || !FHIR_LOGICAL_ID_RE.test(value)) throw new BadRequestException("Malformed FHIR logical ID");
@@ -13,6 +13,21 @@ export function parseRelativeReference(value: unknown, allowed: readonly string[
   const match = /^([A-Z][A-Za-z]+)\/([A-Za-z0-9\-.]{1,64})$/.exec(value);
   if (!match || !allowed.includes(match[1]!)) throw new BadRequestException("Malformed relative reference");
   return { resourceType: match[1]!, id: match[2]! };
+}
+
+/** Strict P0.3B search-reference grammar: ResourceType/logical-id, relative only. */
+export function parseFhirReference<T extends (typeof FHIR_RESOURCE_TYPES)[number]>(
+  value: unknown,
+  expectedResourceType: T,
+): { resourceType: T; id: string } {
+  if (typeof value !== "string" || value.length > 128 || value.includes("%")) {
+    throw new BadRequestException("Malformed FHIR reference");
+  }
+  const match = /^([A-Z][A-Za-z]+)\/([^/]+)$/.exec(value);
+  if (!match || match[1] !== expectedResourceType) {
+    throw new BadRequestException("Malformed FHIR reference");
+  }
+  return { resourceType: expectedResourceType, id: parseLogicalId(match[2]) };
 }
 
 export function parseStrictSearch(query: Record<string, unknown>, allowed: readonly string[], policy = FHIR_REQUEST_POLICY) {

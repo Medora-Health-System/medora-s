@@ -13,10 +13,14 @@ import { FhirMediaInterceptor } from "./fhir-media.interceptor";
 import { BASE_PROFILE, FHIR_JURISDICTION_PROFILES, JurisdictionProfileRegistry } from "./jurisdiction-profile.registry";
 import { FhirCapabilityGuard } from "./fhir-capability.guard";
 import { FhirR4StructuralValidator } from "./fhir-validator";
+import { FhirLocationController, FhirOrganizationController, FhirPractitionerController, FhirPractitionerRoleController } from "./fhir-administrative.controller";
+import { FhirAdministrativeService } from "./fhir-administrative.service";
+import { FhirReferenceResolver } from "./fhir-reference.resolver";
+import { FhirSearchService } from "./fhir-search";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule],
-  controllers: [FhirController, FhirPatientController, FhirEncounterController, FhirObservationController],
+  controllers: [FhirController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
     AuditService,
@@ -32,6 +36,9 @@ import { FhirR4StructuralValidator } from "./fhir-validator";
       useFactory: (profiles: readonly typeof BASE_PROFILE[]) => new JurisdictionProfileRegistry(profiles),
     },
     FhirR4StructuralValidator,
+    FhirAdministrativeService,
+    FhirReferenceResolver,
+    FhirSearchService,
   ],
   exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry],
 })

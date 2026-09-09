@@ -1,7 +1,8 @@
 import type { Encounter, EncounterStatus, EncounterType } from "@prisma/client";
 import type { FhirEncounter, FhirEncounterStatus } from "./fhir-resource.types";
+import { fhirReference } from "../fhir/fhir-reference.resolver";
 
-function mapEncounterStatus(status: EncounterStatus): FhirEncounterStatus {
+export function mapEncounterStatus(status: EncounterStatus): FhirEncounterStatus {
   switch (status) {
     case "OPEN":
       return "in-progress";
@@ -9,8 +10,6 @@ function mapEncounterStatus(status: EncounterStatus): FhirEncounterStatus {
       return "finished";
     case "CANCELLED":
       return "cancelled";
-    default:
-      return "unknown";
   }
 }
 
@@ -31,7 +30,7 @@ function mapEncounterClass(type: EncounterType): { code: string; display: string
 /** Core fields only — must not require D3B columns (e.g. hospitalEpisodeId). */
 export type FhirEncounterSource = Pick<
   Encounter,
-  "id" | "status" | "type" | "patientId" | "chiefComplaint" | "createdAt" | "dischargedAt"
+  "id" | "status" | "type" | "patientId" | "facilityId" | "chiefComplaint" | "createdAt" | "dischargedAt"
 >;
 
 /**
@@ -52,7 +51,8 @@ export function mapEncounterToFhir(encounter: FhirEncounterSource): FhirEncounte
       code: ec.code,
       display: ec.display,
     },
-    subject: { reference: `Patient/${encounter.patientId}` },
+    subject: fhirReference("Patient", encounter.patientId),
+    serviceProvider: fhirReference("Organization", encounter.facilityId),
     period: {
       start: encounter.createdAt.toISOString(),
       end: encounter.dischargedAt ? encounter.dischargedAt.toISOString() : undefined,

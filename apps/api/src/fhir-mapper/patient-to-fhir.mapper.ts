@@ -1,6 +1,7 @@
 import type { Patient, PatientSex, SexAtBirth } from "@prisma/client";
 import type { FhirAdministrativeGender, FhirPatient } from "./fhir-resource.types";
 import { identifierSystemFacilityMrn, identifierSystemGlobalMrn } from "./fhir-systems";
+import { fhirReference } from "../fhir/fhir-reference.resolver";
 
 function mapSexToAdministrativeGender(sex: PatientSex, sexAtBirth: SexAtBirth | null): FhirAdministrativeGender {
   switch (sex) {
@@ -55,11 +56,13 @@ export function mapPatientToFhir(patient: Patient): FhirPatient {
   return {
     resourceType: "Patient",
     id: patient.id,
+    active: true,
     identifier: identifiers,
     name: [{ family: patient.lastName, given: [patient.firstName] }],
     gender: mapSexToAdministrativeGender(patient.sex, patient.sexAtBirth),
     birthDate: patient.dob ? toDateOnly(patient.dob) : undefined,
     telecom: telecom.length ? telecom : undefined,
     address: address.length ? address : undefined,
+    managingOrganization: fhirReference("Organization", patient.facilityId),
   };
 }

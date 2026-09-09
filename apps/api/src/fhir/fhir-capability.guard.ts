@@ -4,7 +4,7 @@ import type { RoleCode } from "@prisma/client";
 import { FhirCapabilityRegistry, type FhirInteraction } from "./fhir-capability.registry";
 
 export const FHIR_CAPABILITY_METADATA = "fhir-capability";
-export type RequiredFhirCapability = { resourceType: "Patient" | "Encounter" | "Observation"; interaction: FhirInteraction };
+export type RequiredFhirCapability = { resourceType: import("./fhir-capability.registry").FhirCapability["resourceType"]; interaction: FhirInteraction };
 export const RequireFhirCapability = (resourceType: RequiredFhirCapability["resourceType"], interaction: FhirInteraction) =>
   SetMetadata(FHIR_CAPABILITY_METADATA, { resourceType, interaction } satisfies RequiredFhirCapability);
 
@@ -17,7 +17,8 @@ export class FhirCapabilityGuard implements CanActivate {
     const required = this.reflector.getAllAndOverride<RequiredFhirCapability>(FHIR_CAPABILITY_METADATA, [context.getHandler(), context.getClass()]);
     if (!required) throw new ForbiddenException("FHIR capability policy is required");
     const request = context.switchToHttp().getRequest();
-    const capability = this.registry.enabled(request.fhirContext?.jurisdiction).find((entry) => entry.resourceType === required.resourceType && entry.interaction === required.interaction);
+    const resourceType = required.resourceType;
+    const capability = this.registry.enabled(request.fhirContext?.jurisdiction).find((entry) => entry.resourceType === resourceType && entry.interaction === required.interaction);
     if (!capability) throw new NotFoundException("FHIR interaction is disabled");
     const role = request.userRole as RoleCode | undefined;
     if (!role || !capability.humanRoles.includes(role)) throw new ForbiddenException("FHIR capability is not permitted for this role");

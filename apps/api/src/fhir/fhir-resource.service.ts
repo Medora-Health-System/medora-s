@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -9,6 +9,8 @@ import type { FhirBundle } from "./fhir-bundle.types";
 import type { ParsedFhirObservationSearch } from "./dto/fhir-read.schemas";
 import { parseFhirObservationOpaqueId } from "./fhir-observation-id";
 import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
+import { FhirSearchService, searchBundle } from "./fhir-search";
+import { parseFhirReference } from "./fhir-protocol";
 
 @Injectable()
 export class FhirResourceService {
@@ -16,8 +18,54 @@ export class FhirResourceService {
     private readonly prisma: PrismaService,
     private readonly patientsService: PatientsService,
     private readonly audit: AuditService,
-    private readonly fhirMapper: FhirMapperService
+    private readonly fhirMapper: FhirMapperService,
+    private readonly search: FhirSearchService
   ) {}
+
+  async searchPatients(facilityId: string, query: Record<string, unknown>): Promise<FhirBundle> {
+    const parsed = this.search.parse(query, ["_id", "identifier", "family", "given", "name", "birthdate", "gender", "_count", "_cursor"]);
+    const v = parsed.values;
+    const identifier = v.identifier?.includes("|") ? v.identifier.split("|").at(-1) : v.identifier;
+    const patientSex = v.gender ? ({ male: "MALE", female: "FEMALE", other: "OTHER", unknown: "UNKNOWN" } as const)[v.gender as "male"] : undefined;
+    if (v.gender && !patientSex) throw new BadRequestException("Invalid gender");
+    const rows = await this.prisma.patient.findMany({ where: {
+      facilityId,
+      ...(v._id ? { id: v._id } : {}),
+      ...(identifier ? { OR: [{ mrn: identifier }, { globalMrn: identifier }] } : {}),
+      ...(v.family ? { lastName: { startsWith: v.family, mode: "insensitive" } } : {}),
+      ...(v.given ? { firstName: { startsWith: v.given, mode: "insensitive" } } : {}),
+      ...(v.name ? { OR: [{ firstName: { startsWith: v.name, mode: "insensitive" } }, { lastName: { startsWith: v.name, mode: "insensitive" } }] } : {}),
+      ...(v.birthdate ? { dob: this.date(v.birthdate) } : {}), ...(patientSex ? { sex: patientSex } : {}),
+      ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {}),
+    }, orderBy: { id: "asc" }, take: parsed.count + 1 });
+    const page = rows.slice(0, parsed.count).map((p) => this.fhirMapper.toFhirPatient(p));
+    return searchBundle(this.search.baseUrl(), "Patient", query, page, rows.length > parsed.count) as FhirBundle;
+  }
+
+  async searchEncounters(facilityId: string, query: Record<string, unknown>): Promise<FhirBundle> {
+    const parsed = this.search.parse(query, ["_id", "patient", "subject", "date", "status", "class", "_count", "_cursor"]);
+    const v = parsed.values;
+    const patientRef = v.patient ?? v.subject;
+    const patientId = patientRef ? parseFhirReference(patientRef, "Patient").id : undefined;
+    const status = v.status ? ({ "in-progress": "OPEN", finished: "CLOSED", cancelled: "CANCELLED" } as const)[v.status as "in-progress"] : undefined;
+    if (v.status && !status) throw new BadRequestException("Unsupported Encounter status");
+    const type = v.class ? ({ AMB: "OUTPATIENT", IMP: "INPATIENT", EMER: "EMERGENCY" } as const)[v.class as "AMB"] : undefined;
+    if (v.class && !type) throw new BadRequestException("Unsupported Encounter class");
+    const date = v.date ? this.date(v.date) : undefined;
+    const rows = await this.prisma.encounter.findMany({ select: ENCOUNTER_CORE_SELECT, where: { facilityId,
+      ...(v._id ? { id: v._id } : {}), ...(patientId ? { patientId } : {}), ...(status ? { status } : {}), ...(type ? { type } : {}),
+      ...(date ? { createdAt: { gte: date, lt: new Date(date.getTime() + 86400000) } } : {}), ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {})
+    }, orderBy: { id: "asc" }, take: parsed.count + 1 });
+    const page = rows.slice(0, parsed.count).map((e) => this.fhirMapper.toFhirEncounter(e));
+    return searchBundle(this.search.baseUrl(), "Encounter", query, page, rows.length > parsed.count) as FhirBundle;
+  }
+
+  private date(value: string): Date {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException("Malformed date");
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== value) throw new BadRequestException("Malformed date");
+    return date;
+  }
 
   async readPatient(
     facilityId: string,
