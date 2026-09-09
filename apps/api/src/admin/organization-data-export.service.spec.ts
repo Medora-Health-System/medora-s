@@ -126,11 +126,15 @@ describe("OrganizationDataExportService", () => {
   const originalMfaKey = process.env.MFA_SECRET_ENCRYPTION_KEY;
 
   beforeEach(() => {
+    // Keep expiration tests deterministic as wall-clock time advances. Production
+    // expiration enforcement remains exercised; only the test clock is fixed.
+    jest.useFakeTimers({ now: new Date("2026-09-08T12:00:00.000Z") });
     assertScope.mockResolvedValue(undefined);
     process.env.MFA_SECRET_ENCRYPTION_KEY = crypto.randomBytes(32).toString("base64");
   });
 
   afterAll(() => {
+    jest.useRealTimers();
     if (originalMfaKey === undefined) {
       delete process.env.MFA_SECRET_ENCRYPTION_KEY;
       return;

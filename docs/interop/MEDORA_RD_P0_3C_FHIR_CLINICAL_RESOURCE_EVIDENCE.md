@@ -42,26 +42,26 @@ The labels below are deliberately evidence-based; no item is marked verified mer
 | C-SEC-02 | tenant-scoped Observation search | PASS — VERIFIED BY TEST |
 | C-SEC-03 | stable Observation reading identity | PASS — VERIFIED BY TEST |
 | C-SEC-04 | canonical Observation measurement time | PASS — VERIFIED BY TEST |
-| C-SEC-05 | voided vital hidden | NOT VERIFIED |
+| C-SEC-05 | voided vital hidden | PASS — VERIFIED BY TEST |
 | C-SEC-06 | Condition tenant read | PASS — VERIFIED BY TEST |
 | C-SEC-07 | Condition tenant search | PASS — VERIFIED BY TEST |
 | C-SEC-08 | Condition terminology integrity | PASS — VERIFIED BY TEST |
-| C-SEC-09 | Condition status integrity | NOT VERIFIED |
+| C-SEC-09 | Condition status integrity | PASS — VERIFIED BY TEST |
 | C-SEC-10 | Allergy not advertised without identity | PASS — VERIFIED BY TEST |
 | C-SEC-11 | ServiceRequest tenant read | PASS — VERIFIED BY TEST |
 | C-SEC-12 | ServiceRequest tenant search | PASS — VERIFIED BY TEST |
 | C-SEC-13 | medication exclusion | PASS — VERIFIED BY TEST |
-| C-SEC-14 | ServiceRequest status integrity | NOT VERIFIED |
+| C-SEC-14 | ServiceRequest status integrity | PASS — VERIFIED BY TEST |
 | C-SEC-15 | requester reference safety | PASS — VERIFIED BY TEST |
 | C-SEC-16 | DiagnosticReport tenant read | PASS — VERIFIED BY TEST |
 | C-SEC-17 | DiagnosticReport tenant search | PASS — VERIFIED BY TEST |
 | C-SEC-18 | basedOn reference safety | PASS — VERIFIED BY TEST |
 | C-SEC-19 | no internal storage URL | PASS — VERIFIED BY TEST |
 | C-SEC-20 | no fabricated ImagingStudy | PASS — VERIFIED BY TEST |
-| C-SEC-21 | DiagnosticReport status integrity | NOT VERIFIED |
+| C-SEC-21 | DiagnosticReport status integrity | PASS — VERIFIED BY TEST |
 | C-SEC-22 | CarePlan tenant read | PASS — VERIFIED BY TEST |
 | C-SEC-23 | CarePlan tenant search | PASS — VERIFIED BY TEST |
-| C-SEC-24 | CarePlan status/intent integrity | NOT VERIFIED |
+| C-SEC-24 | CarePlan status/intent integrity | PASS — VERIFIED BY TEST |
 | C-SEC-25 | no fabricated CareTeam | PASS — VERIFIED BY TEST |
 | C-SEC-26 | central reference construction | PASS — VERIFIED BY TEST |
 | C-SEC-27 | same-tenant Patient references | PASS — VERIFIED BY TEST |
@@ -79,28 +79,28 @@ The labels below are deliberately evidence-based; no item is marked verified mer
 | C-SEC-39 | Cache-Control no-store | PASS — VERIFIED BY TEST |
 | C-SEC-40 | server-owned base URL, no profile fabrication, and real PostgreSQL E2E | PASS — VERIFIED BY TEST |
 
-## Final verification evidence (2026-09-09)
+## Final closure verification evidence (2026-09-09)
 
-The disposable native PostgreSQL 16 database was created with `.cursor/scripts/cloud-agent-install.sh`; all 192 committed migrations were deployed. The real `AppModule`/`PrismaService`/PostgreSQL/JWT two-facility P0.3C suite passed **1 suite / 6 tests**. The combined P0.3A/P0.3B/P0.3C FHIR regression run passed **6 suites / 46 tests**. P0.1 passed **1 suite / 13 tests**. P0.2 executed **4 suites / 93 tests**, with **3 suites passing, 1 failing; 80 tests passing and 13 failing** because time-sensitive export fixtures are expired as of the 2026-09-09 system date. Medication deployment validation executed twice: after clinical-content seeding it still failed hard acceptance with 41/64 searches and 43/64 orderability cases passing, and 23 failures (21 missing family, 2 hidden by ranking).
+The disposable native PostgreSQL 16 database used all 192 committed migrations. A single combined gate covering P0.1, corrected P0.2, P0.3A, P0.3B PostgreSQL tenant E2E, P0.3C PostgreSQL tenant/role/capability E2E, and the new exhaustive status checks passed **11 suites / 144 tests**. The focused status suite passed **1 suite / 5 tests** and enumerates every canonical `TriageVitalsReadingStatus`, `DiagnosisStatus`, `OrderStatus`, `CarePlanStatus`, and `CarePlanComponentStatus`. The `Result` model has no independent status enum: tests exhaust every parent `OrderStatus` combined with the canonical `verifiedAt` evidence, and unknown values fail closed.
+
+### P0.2 deterministic-time correction
+
+On untouched main (`fa27e8c928891c5a3e97f605a49ead1a3c1ab7e3`), the exact P0.2 command reproduced **1 failed / 2 passed suites; 13 failed / 67 passed tests (80 total)** because fixed signed-envelope fixtures had expired relative to wall-clock time. This is a **PRE-EXISTING BASELINE TEST DEFECT**. The service test now fixes Jest's clock to the fixture epoch; no production source or expiration window changed. The corrected P0.2 suites pass **3 suites / 80 tests**, including the explicit expired-export rejection test.
+
+### Medication Validation baseline comparison
+
+The authoritative deployment workflow was run against equivalent seeded disposable PostgreSQL data on untouched main and this branch. Both produced identical functional results: **26 families, 64 queries, 41/64 search pass, 43/64 orderability pass, 23 hard failures (21 `MISSING_FAMILY`, 2 `HIDDEN_BY_RANKING`)**. Classification: **PRE-EXISTING BASELINE FAILURE / NO P0.3C REGRESSION**. No medication implementation was changed.
 
 Exact commands:
 
-- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/fhir/fhir-clinical-tenant.e2e.spec.ts`
-- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/fhir/fhir-foundation.spec.ts src/fhir/fhir-module-di.spec.ts src/fhir/fhir-administrative.spec.ts src/fhir/fhir-administrative-tenant.e2e.spec.ts src/fhir/fhir-clinical.spec.ts src/fhir/fhir-clinical-tenant.e2e.spec.ts`
-- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/encounters/encounters.service.provider-documentation-versions.spec.ts`
-- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/encounters/encounters.service.provider-documentation-versions.spec.ts src/admin/organization-data-export-envelope.spec.ts src/admin/organization-data-export.service.spec.ts src/admin/organization-data-export-authz.e2e.spec.ts`
+- `cd /tmp/medora-main-baseline && corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/admin/organization-data-export-envelope.spec.ts src/admin/organization-data-export.service.spec.ts src/admin/organization-data-export-authz.e2e.spec.ts`
+- `corepack pnpm --filter @medora/api exec jest --config jest.config.cjs --runInBand --runTestsByPath src/admin/organization-data-export-envelope.spec.ts src/admin/organization-data-export.service.spec.ts src/admin/organization-data-export-authz.e2e.spec.ts src/encounters/encounters.service.provider-documentation-versions.spec.ts src/fhir/fhir-foundation.spec.ts src/fhir/fhir-module-di.spec.ts src/fhir/fhir-administrative.spec.ts src/fhir/fhir-administrative-tenant.e2e.spec.ts src/fhir/fhir-clinical.spec.ts src/fhir/fhir-clinical-status.spec.ts src/fhir/fhir-clinical-tenant.e2e.spec.ts`
+- `cd /tmp/medora-main-baseline && corepack pnpm --filter @medora/api medication:validate:deployment`
 - `corepack pnpm --filter @medora/api medication:validate:deployment`
-
-Source baseline presented for correction: `55ca722b64dd67cbc9d02d06dd67058bca3397f7` (the reconstructed local equivalent is `94baaab1b5129f874f1f082ed299441105f988fa`). The final correction head is reported from Git in the delivery response because a commit cannot contain its own SHA.
-
-Remaining limitations are unchanged: AllergyIntolerance is blocked/unadvertised; corrected/amended DiagnosticReport semantics and atomic analyte Observations remain deferred without canonical evidence. C-SEC-05, 09, 14, 21, and 24 remain NOT VERIFIED because the final suite did not exhaustively exercise every void/status enum transition.
-
-Build/validation commands completed successfully:
-
 - `corepack pnpm --filter @medora/api build`
-- `corepack pnpm --filter @medora/web build` (non-blocking stale Browserslist-data warning)
+- `corepack pnpm --filter @medora/web build`
 - `corepack pnpm --filter @medora/api exec prisma validate`
-- `corepack pnpm -r lint` (all workspace lint scripts are placeholders)
+- `corepack pnpm -r lint`
 - `git diff --check`
 
-No Prisma schema change or production migration was added by P0.3C.
+No Prisma schema change or production migration was added. AllergyIntolerance remains **IMPLEMENTATION BLOCKED / NOT ADVERTISED**. Corrected/amended DiagnosticReport distinctions and atomic analyte Observations remain deferred without canonical evidence. The final commit SHA is reported in delivery because a commit cannot contain its own hash.
