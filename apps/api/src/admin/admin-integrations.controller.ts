@@ -9,6 +9,7 @@ import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guar
 export class AdminIntegrationsController {
   constructor(private readonly service: AdminIntegrationsService) {}
   @Get("permission-options") permissions(@Req() req: any) { return this.service.authorize(req.user.userId).then(() => this.service.permissions()); }
+  @Get("facility-options") facilities(@Req() req: any) { return this.service.facilityOptions(req.user.userId); }
   @Get() list(@Req() req: any) { return this.service.list(req.user.userId); }
   @Get(":id") get(@Req() req: any, @Param("id") id: string) { return this.service.get(req.user.userId, id); }
   @Post() create(@Req() req: any, @Body() body: unknown) { const parsed = integrationInputSchema.safeParse(body); if (!parsed.success) throw new BadRequestException(parsed.error.flatten()); return this.service.create(req.user.userId, parsed.data); }

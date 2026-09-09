@@ -210,14 +210,18 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
   const isPlatformAnnouncementPath =
     normalized === "platform-announcements/active" ||
     /^platform-announcements\/[^/]+\/acknowledge$/.test(normalized);
+  // Platform integration administration is deliberately not tied to the
+  // browser's currently selected clinical facility. Authorization is enforced
+  // by the Nest platform-admin guard and facility grants are checked there.
+  const isPlatformIntegrationAdminPath = /^admin\/integrations(?:\/|$)/.test(normalized);
 
   /** Phase 14G-A — JWT-only routes; MSPP-only users may have no facility cookie/header. */
-  if (!facilityId && !isPlatformAnnouncementPath) {
+  if (!facilityId && !isPlatformAnnouncementPath && !isPlatformIntegrationAdminPath) {
     await refreshOnce();
     facilityId = await getFacilityId(req, accessToken, apiUrl);
   }
 
-  if (!facilityId && !isPlatformAnnouncementPath) {
+  if (!facilityId && !isPlatformAnnouncementPath && !isPlatformIntegrationAdminPath) {
     const res = NextResponse.json({ message: "No facility selected." }, { status: 400 });
     if (requestId) res.headers.set("x-request-id", requestId);
     return res;
