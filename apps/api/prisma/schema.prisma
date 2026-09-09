@@ -649,6 +649,22 @@ model Integration {
   id                     String                       @id @default(uuid())
   displayName            String                       @db.VarChar(160)
   partnerName            String                       @db.VarChar(200)
+  organizationRegistrationId String?                  @db.VarChar(160)
+  website                String?                      @db.VarChar(2048)
+  addressLine1           String?                      @db.VarChar(200)
+  addressLine2           String?                      @db.VarChar(200)
+  city                   String?                      @db.VarChar(120)
+  stateProvinceRegion    String?                      @db.VarChar(120)
+  postalCode             String?                      @db.VarChar(32)
+  country                String?                      @db.VarChar(2)
+  primaryContactFirstName String?                     @db.VarChar(100)
+  primaryContactLastName String?                      @db.VarChar(100)
+  primaryContactJobTitle String?                      @db.VarChar(160)
+  primaryContactDepartment String?                    @db.VarChar(160)
+  primaryContactEmail    String?                      @db.VarChar(254)
+  primaryContactPhone    String?                      @db.VarChar(64)
+  primaryContactExtension String?                     @db.VarChar(20)
+  primaryContactMobile   String?                      @db.VarChar(64)
   organizationType       IntegrationOrganizationType
   protocol               IntegrationProtocol
   direction              IntegrationDirection
@@ -658,8 +674,11 @@ model Integration {
   provisioningState      IntegrationProvisioningState @default(PENDING_PROVISIONING)
   sourceSystemIdentifier String?                      @db.VarChar(160)
   technicalContactName   String?                      @db.VarChar(160)
+  technicalContactJobTitle String?                    @db.VarChar(160)
   technicalContactEmail  String?                      @db.VarChar(254)
   technicalContactPhone  String?                      @db.VarChar(64)
+  technicalContactExtension String?                   @db.VarChar(20)
+  technicalContactSameAsPrimary Boolean               @default(false)
   endpointConfig         Json?
   disabledAt             DateTime?
   disabledById           String?

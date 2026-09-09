@@ -72,4 +72,28 @@ describe("proxyNestRequest status propagation", () => {
     const res = await proxyNestRequest(req, "orders/items/x/cancel");
     expect(res.status).toBe(409);
   });
+
+  it("allows only platform integration-admin routes without clinical facility context", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith("/auth/me")) return Promise.resolve(new Response(JSON.stringify({ facilityRoles: [] }), { status: 200, headers: { "content-type": "application/json" } }));
+      return Promise.resolve(new Response(JSON.stringify([{ id: "integration-1" }]), { status: 200, headers: { "content-type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const req = new NextRequest("https://app.example.test/api/admin/integrations", { headers: { cookie: "accessToken=test-token" } });
+    req.cookies.set("accessToken", "test-token");
+    const res = await proxyNestRequest(req, "admin/integrations");
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith("https://api.example.test/admin/integrations", expect.objectContaining({ method: "GET" }));
+  });
+
+  it("continues to reject an ordinary clinical route without facility context", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ facilityRoles: [] }), { status: 200, headers: { "content-type": "application/json" } })));
+    vi.stubGlobal("fetch", fetchMock);
+    const req = new NextRequest("https://app.example.test/api/backend/patients", { headers: { cookie: "accessToken=test-token" } });
+    req.cookies.set("accessToken", "test-token");
+    const res = await proxyNestRequest(req, "patients");
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ message: "No facility selected." });
+    expect(fetchMock.mock.calls.every(([url]) => String(url).endsWith("/auth/me"))).toBe(true);
+  });
 });
