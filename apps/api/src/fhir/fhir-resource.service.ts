@@ -112,43 +112,63 @@ export class FhirResourceService {
     userId: string | undefined, ip: string | undefined, userAgent: string | undefined,
     query: Record<string, unknown> = {}
   ): Promise<FhirBundle> {
-    void userId; void ip; void userAgent;
     const take = Math.min(parsed.count ?? 20, 50);
     const cursorReading = parsed.cursor ? parseFhirObservationOpaqueId(parsed.cursor) : undefined;
     if (parsed.cursor && (!cursorReading || cursorReading.kind !== "reading")) throw new BadRequestException("Invalid _cursor");
+    const cursorReadingId = cursorReading?.kind === "reading" ? cursorReading.readingId : undefined;
     const requestedReading = parsed.id ? parseFhirObservationOpaqueId(parsed.id) : undefined;
     if (parsed.id && (!requestedReading || requestedReading.kind !== "reading")) return searchBundle(this.search.baseUrl(), "Observation", query, [], false) as FhirBundle;
-    const rows = await this.prisma.triageVitalsReading.findMany({
-      where: { facilityId, status: "ACTIVE", ...(requestedReading?.kind === "reading" ? { id: requestedReading.readingId } : {}), ...(cursorReading?.kind === "reading" ? { id: { gte: cursorReading.readingId } } : {}), ...(parsed.encounterId ? { encounterId: parsed.encounterId } : {}), ...(parsed.patientId ? { patientId: parsed.patientId } : {}) },
-      orderBy: { id: "asc" }, take: take + 1,
-    });
-    let resources = rows.slice(0, take).flatMap((r) => this.fhirMapper.vitalsToObservations(r.vitalsJson, {
-      idBase: `reading-${r.id}`, patientReference: `Patient/${r.patientId}`,
-      encounterReference: `Encounter/${r.encounterId}`, effectiveDateTime: r.measuredAt.toISOString(),
-    }));
+    if (parsed.category && !["vital-signs", "http://terminology.hl7.org/CodeSystem/observation-category|vital-signs"].includes(parsed.category)) return searchBundle(this.search.baseUrl(), "Observation", query, [], false) as FhirBundle;
+    if (parsed.status && parsed.status !== "final") return searchBundle(this.search.baseUrl(), "Observation", query, [], false) as FhirBundle;
+    const measuredAt = parsed.date ? this.observationDay(parsed.date) : undefined;
+    const code = parsed.code?.split("|").at(-1);
+    const resources: FhirObservation[] = [];
+    const sourceRows = new Map<string, { id: string; patientId: string; encounterId: string }>();
+    let scanAfter: string | undefined;
+    while (resources.length <= take) {
+      const lowerBound = scanAfter ? { gt: scanAfter } : cursorReadingId ? { gte: cursorReadingId } : undefined;
+      const rows = await this.prisma.triageVitalsReading.findMany({
+        where: { facilityId, status: "ACTIVE", ...(requestedReading?.kind === "reading" ? { id: requestedReading.readingId } : lowerBound ? { id: lowerBound } : {}), ...(parsed.encounterId ? { encounterId: parsed.encounterId } : {}), ...(parsed.patientId ? { patientId: parsed.patientId } : {}), ...(measuredAt ? { measuredAt } : {}) },
+        orderBy: { id: "asc" }, take: 51,
+      });
+      for (const row of rows) {
+        sourceRows.set(row.id, row);
+        const mapped = this.fhirMapper.vitalsToObservations(row.vitalsJson, { idBase: `reading-${row.id}`, patientReference: `Patient/${row.patientId}`, encounterReference: `Encounter/${row.encounterId}`, effectiveDateTime: row.measuredAt.toISOString() });
+        for (const observation of mapped) if ((!parsed.cursor || observation.id! > parsed.cursor) && (!parsed.id || observation.id === parsed.id) && (!code || observation.code.coding?.some((coding) => coding.code === code))) resources.push(observation);
+      }
+      if (rows.length < 51 || requestedReading) break;
+      scanAfter = rows.at(-1)!.id;
+    }
     resources.sort((a, b) => (a.id ?? "").localeCompare(b.id ?? ""));
-    if (parsed.cursor) resources = resources.filter((o) => (o.id ?? "") > parsed.cursor!);
-    if (parsed.id) resources = resources.filter((o) => o.id === parsed.id);
-    if (parsed.code) { const code = parsed.code.split("|").at(-1); resources = resources.filter((o) => o.code.coding?.some((c) => c.code === code)); }
-    if (parsed.category && !["vital-signs", "http://terminology.hl7.org/CodeSystem/observation-category|vital-signs"].includes(parsed.category)) resources = [];
-    if (parsed.status && parsed.status !== "final") resources = [];
-    if (parsed.date) { const day = /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null; if (!day) throw new BadRequestException("Malformed date"); resources = resources.filter((o) => o.effectiveDateTime?.slice(0,10) === day); }
     const page = resources.slice(0, take);
-    return searchBundle(this.search.baseUrl(), "Observation", query, page, resources.length > take || rows.length > take) as FhirBundle;
+    const auditedReadings = new Set<string>();
+    for (const observation of page) {
+      const source = parseFhirObservationOpaqueId(observation.id ?? "");
+      if (!source || source.kind !== "reading" || auditedReadings.has(source.readingId)) continue;
+      auditedReadings.add(source.readingId);
+      const row = sourceRows.get(source.readingId);
+      if (row) await this.auditObservation(row, facilityId, userId, ip, userAgent, "search");
+    }
+    return searchBundle(this.search.baseUrl(), "Observation", query, page, resources.length > take) as FhirBundle;
   }
 
   async readObservationById(
     facilityId: string, opaqueId: string, userId: string | undefined,
     ip: string | undefined, userAgent: string | undefined
   ): Promise<FhirObservation> {
-    void userId; void ip; void userAgent;
     const parsed = parseFhirObservationOpaqueId(opaqueId);
     if (!parsed || parsed.kind !== "reading") throw new NotFoundException("Observation not found");
     const row = await this.prisma.triageVitalsReading.findFirst({ where: { id: parsed.readingId, facilityId, status: "ACTIVE" } });
     if (!row) throw new NotFoundException("Observation not found");
     const found = this.fhirMapper.vitalsToObservations(row.vitalsJson, { idBase: `reading-${row.id}`, patientReference: `Patient/${row.patientId}`, encounterReference: `Encounter/${row.encounterId}`, effectiveDateTime: row.measuredAt.toISOString() }).find((o) => o.id === opaqueId);
     if (!found) throw new NotFoundException("Observation not found");
+    await this.auditObservation(row, facilityId, userId, ip, userAgent, "read");
     return found;
+  }
+
+  private observationDay(value: string) { const start = this.date(value); return { gte: start, lt: new Date(start.getTime() + 86400000) }; }
+  private auditObservation(row: { id: string; patientId: string; encounterId: string }, facilityId: string, userId: string | undefined, ip: string | undefined, userAgent: string | undefined, interaction: "read" | "search") {
+    return this.audit.log(AuditAction.ENCOUNTER_VIEW, "TRIAGE_VITALS_READING", { userId, facilityId, patientId: row.patientId, encounterId: row.encounterId, entityId: row.id, ip, userAgent, metadata: { source: "fhir", resourceType: "Observation", interaction } });
   }
 
 }
