@@ -310,7 +310,7 @@ export const MEDUI_ES_1G_OVERLAY: Record<string, string> = {
   "bedBoard.statusViewEncounter": "Ver el encuentro clínico",
   "bedBoard.transferIconLabel": "Traslado pendiente",
   "bedBoard.transferPending": "Traslado pendiente",
-  "bedBoard.unitEd": "ED",
+  "bedBoard.unitEd": "Urgencias",
   "bedBoard.unitIcu": "ICU",
   "bedBoard.unitMs": "Medicina/cirugía",
   "bedBoard.unitObs": "Observación",

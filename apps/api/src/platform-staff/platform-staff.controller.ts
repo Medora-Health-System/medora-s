@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
-import { createFacilityDtoSchema, facilityBillingIdentityPatchDtoSchema, facilityBillingWorkflowPatchDtoSchema, setFacilityLanguageDtoSchema, updateFacilityServiceConfigDtoSchema } from "@medora/shared";
+import { createFacilityDtoSchema, facilityBillingIdentityPatchDtoSchema, facilityBillingWorkflowPatchDtoSchema, setFacilityLanguageDtoSchema, updateFacilityServiceConfigDtoSchema, type SetFacilityLanguageDto } from "@medora/shared";
 import { AdminFacilitiesService } from "../admin/admin-facilities.service";
 import { AuthGuard } from "@nestjs/passport";
 import { changePersonaSchema, classifyStaffSchema, governanceBootstrapSchema, grantCapabilitySchema, provisionStaffSchema, revokeCapabilitySchema, staffLifecycleSchema } from "./dto/platform-staff.dto";
@@ -34,7 +34,7 @@ export class PlatformStaffController {
   @Get("facilities/:id/configuration") @RequirePlatformCapabilities(["FACILITY_CONFIGURE"], { requireRecentMfa: true })
   async facilityConfiguration(@Req() req:any,@Param("id") id:string) { const actor=this.actor(req); const [facility,billingIdentity,billingWorkflow,departments]=await Promise.all([this.staff.getPlatformFacility(id),this.facilities.getBillingIdentityForPlatform(actor,id),this.facilities.getBillingWorkflowForPlatform(actor,id),this.facilities.listDepartmentsForPlatform(actor,id)]);return {facility,billingIdentity,billingWorkflow,departments:departments.items}; }
   @Patch("facilities/:id/language") @RequirePlatformCapabilities(["FACILITY_CONFIGURE"], { requireRecentMfa: true })
-  language(@Req()req:any,@Param("id")id:string,@Body()body:unknown){const dto=this.parse<{defaultLanguage:"fr"|"en"}>(setFacilityLanguageDtoSchema,body);return this.facilities.setLanguageForPlatform(id,dto.defaultLanguage,this.actor(req));}
+  language(@Req()req:any,@Param("id")id:string,@Body()body:unknown){const dto=this.parse<SetFacilityLanguageDto>(setFacilityLanguageDtoSchema,body);return this.facilities.setLanguageForPlatform(id,dto.defaultLanguage,this.actor(req));}
   @Patch("facilities/:id/service-config") @RequirePlatformCapabilities(["FACILITY_CONFIGURE"], { requireRecentMfa: true })
   serviceConfig(@Req()req:any,@Param("id")id:string,@Body()body:unknown){const dto=this.parse<any>(updateFacilityServiceConfigDtoSchema,body);return this.facilities.updateServiceConfigForPlatform(id,dto,this.actor(req));}
   @Patch("facilities/:id/billing-identity") @RequirePlatformCapabilities(["FACILITY_CONFIGURE"], { requireRecentMfa: true })

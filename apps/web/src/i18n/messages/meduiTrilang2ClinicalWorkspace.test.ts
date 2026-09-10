@@ -32,7 +32,7 @@ import {
 } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 
 const EXPECTED_OVERLAY_SIZE = 1329;
-const EXPECTED_REMAINING_PLACEHOLDERS = 23013;
+const EXPECTED_REMAINING_PLACEHOLDERS = 0;
 
 const SCREENSHOT_ES: Record<(typeof MEDUI_TRILANG_2_PRODUCTION_SCREENSHOT_KEYS)[number], string> = {
   "diagnosisEntry.icdSearchLabel": "Buscar CIE-10-CM (código o texto diagnóstico)",

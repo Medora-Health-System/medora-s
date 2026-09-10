@@ -54,6 +54,7 @@ import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverla
 import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
 import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
 import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
+import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompleteOverlay";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -151,10 +152,10 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const extraFr = frPaths.filter((p) => !enSet.has(p));
     expect(extraFr.every(isFrLegacyOnlyPath)).toBe(true);
     expect(extraFrUnmanaged.length).toBe(0);
-    expect(extraFr.length).toBe(67);
+    expect(extraFr.length).toBe(0);
   });
 
-  it("every ES leaf is a hidden placeholder, an APPROVED canon overlay, or a governed 1E/1F/1G/1H/1I/1J.B/1K overlay, never EN/FR copy", () => {
+  it("every ES leaf is governed Spanish, approved canon, or English source provenance — never a sentinel", () => {
     const es1eKeys = new Set(Object.keys(MEDUI_ES_1E_OVERLAY));
     const es1fKeys = new Set(Object.keys(MEDUI_ES_1F_OVERLAY));
     const es1gKeys = new Set(Object.keys(MEDUI_ES_1G_OVERLAY));
@@ -166,6 +167,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     const es1k1Keys = new Set(Object.keys(MEDUI_ES_1K1_OVERLAY));
     const esTrilangKeys = new Set(Object.keys(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY));
     const esTrilang2Keys = new Set(Object.keys(MEDUI_TRILANG_2_OVERLAY));
+    const esPublicCompleteKeys = new Set(Object.keys(MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY));
     const governedKeys = new Set([
       ...es1eKeys,
       ...es1fKeys,
@@ -178,6 +180,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
       ...es1k1Keys,
       ...esTrilangKeys,
       ...esTrilang2Keys,
+      ...esPublicCompleteKeys,
     ]);
     const enByPath = new Map(collectStringLeaves(en).map((x) => [x.path, x.value]));
     const frByPath = new Map(collectStringLeaves(fr).map((x) => [x.path, x.value]));
@@ -214,10 +217,11 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         expect(value, path).toBe(MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY[path]);
       } else if (esTrilang2Keys.has(path)) {
         expect(value, path).toBe(MEDUI_TRILANG_2_OVERLAY[path]);
+      } else if (esPublicCompleteKeys.has(path)) {
+        expect(value, path).toBe(MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY[path]);
       } else {
-        expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
-        expect(value).toBe(hiddenSpanishPlaceholder(path));
-        expect(value.startsWith(UNLOCALIZED_ES_PREFIX)).toBe(true);
+        expect(isHiddenSpanishPlaceholder(value), path).toBe(false);
+        expect(value, path).toBe(enByPath.get(path));
       }
       const enVal = enByPath.get(path);
       const frVal = frByPath.get(path);
@@ -266,7 +270,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         "Verbal (1–5)",
         "Motor (1–6)",
       ]);
-      if (enVal && enVal !== overlay && !governedKeys.has(path)) expect(value).not.toBe(enVal);
+      if (enVal && enVal !== overlay && !governedKeys.has(path) && !overlay) expect(value).toBe(enVal);
       if (enVal && governedKeys.has(path) && value === enVal && !identicalOk.has(value)) {
         const looksLikeEnglishSentence =
           /\b(the|and|with|without|please|could not|unable to|requires|before|after|complete|patient|encounter|discharge|nursing|provider)\b/i.test(
@@ -276,7 +280,7 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
           expect(value, `ES===EN at ${path}`).not.toBe(enVal);
         }
       }
-      if (frVal && !governedKeys.has(path)) expect(value).not.toBe(frVal);
+      if (frVal && !governedKeys.has(path) && frVal !== enVal) expect(value).not.toBe(frVal);
       const emptyAllowed =
         (es1eKeys.has(path) && MEDUI_ES_1E_OVERLAY[path] === "") ||
         (es1fKeys.has(path) && MEDUI_ES_1F_OVERLAY[path] === "") ||
@@ -288,7 +292,9 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
         (es1kPublicKeys.has(path) && MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY[path] === "") ||
         (es1k1Keys.has(path) && MEDUI_ES_1K1_OVERLAY[path] === "") ||
         (esTrilangKeys.has(path) && MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY[path] === "") ||
-        (esTrilang2Keys.has(path) && MEDUI_TRILANG_2_OVERLAY[path] === "");
+        (esTrilang2Keys.has(path) && MEDUI_TRILANG_2_OVERLAY[path] === "") ||
+        (esPublicCompleteKeys.has(path) && MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY[path] === "") ||
+        enVal === "";
       if (!emptyAllowed) {
         expect(value).not.toBe("");
       }
@@ -425,11 +431,11 @@ describe("MEDUI.ES.1C hidden Spanish catalog + tri-lingual isolation", () => {
     expect(printEs).not.toBe(printFr);
   });
 
-  it("Platform Admin island stays EN/FR and does not DOM-rewrite for es", () => {
-    expect(parsePlatformUiLanguage("es")).toBeNull();
-    expect(canRunPlatformAdminDomRewrite("es")).toBe(false);
-    expect(platformLanguageSelectOptions().map((o) => o.value).sort()).toEqual(["en", "fr"]);
-    expect(platformLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+  it("Platform Admin supports EN/FR/ES and unknown locales still do not become FR", () => {
+    expect(parsePlatformUiLanguage("es")).toBe("es");
+    expect(canRunPlatformAdminDomRewrite("es")).toBe(true);
+    expect(platformLanguageSelectOptions().map((o) => o.value)).toEqual(["en", "fr", "es"]);
+    expect(platformLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
   });
 
   it("locale persistence hydrates stored es to public ES after 1K", () => {

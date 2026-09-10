@@ -115,8 +115,10 @@ describe("MEDUI.ES.1B.1 zero-fallback display isolation", () => {
     expect(es.title).toBe("missing.cert.title");
   });
 
-  it("Platform Admin unsupported locale does not become FR", () => {
-    expect(parsePlatformUiLanguage("es")).toBeNull();
-    expect(canRunPlatformAdminDomRewrite("es")).toBe(false);
+  it("Platform Admin locale does not become FR for unknown values; es is supported", () => {
+    expect(parsePlatformUiLanguage("es")).toBe("es");
+    expect(canRunPlatformAdminDomRewrite("es")).toBe(true);
+    expect(parsePlatformUiLanguage("de")).toBeNull();
+    expect(canRunPlatformAdminDomRewrite("de")).toBe(false);
   });
 });

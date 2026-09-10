@@ -3,7 +3,11 @@
  * Never fall back English → French or French → English. Never treat patient language as UI locale.
  */
 
-import { parseProductUiLanguage, resolveChartCertificationLocalizationKeys } from "@medora/shared";
+import {
+  parseProductUiLanguage,
+  publicUiLastResortCopy,
+  resolveChartCertificationLocalizationKeys,
+} from "@medora/shared";
 
 export type CertificationDeficiencyDisplayInput = {
   title: string;
@@ -21,6 +25,7 @@ function translateOrNull(t: (key: string) => string, key: string | null | undefi
 }
 
 function unlocalizedFindingLabel(
+  language: string,
   deficiency: CertificationDeficiencyDisplayInput,
   mappedKey: string | null | undefined,
   explicitKey: string | null | undefined
@@ -29,7 +34,7 @@ function unlocalizedFindingLabel(
   if (key) return key;
   const code = deficiency.stableCode?.trim();
   if (code) return code;
-  return "UNLOCALIZED_SOURCE";
+  return publicUiLastResortCopy(language);
 }
 
 /**
@@ -52,8 +57,14 @@ export function resolveCertificationDeficiencyDisplay(
     translateOrNull(t, mapped?.descriptionKey) ??
     null;
 
-  const unlocalizedTitle = unlocalizedFindingLabel(deficiency, mapped?.titleKey, deficiency.titleKey);
+  const unlocalizedTitle = unlocalizedFindingLabel(
+    language,
+    deficiency,
+    mapped?.titleKey,
+    deficiency.titleKey
+  );
   const unlocalizedDescription = unlocalizedFindingLabel(
+    language,
     deficiency,
     mapped?.descriptionKey,
     deficiency.descriptionKey
@@ -66,16 +77,9 @@ export function resolveCertificationDeficiencyDisplay(
     };
   }
 
-  if (parsed === "fr") {
-    return {
-      title: titleFromKey ?? unlocalizedTitle,
-      description: descriptionFromKey ?? unlocalizedDescription,
-    };
-  }
-
   return {
-    title: unlocalizedTitle,
-    description: unlocalizedDescription,
+    title: titleFromKey ?? unlocalizedTitle,
+    description: descriptionFromKey ?? unlocalizedDescription,
   };
 }
 

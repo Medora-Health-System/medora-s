@@ -57,6 +57,30 @@ export function isHiddenSpanishPlaceholder(value: string): boolean {
   return value.startsWith(UNLOCALIZED_ES_PREFIX) && value.length > UNLOCALIZED_ES_PREFIX.length;
 }
 
+/** Last-resort public UI copy — never sentinel syntax, never a raw dotted key. */
+export const PUBLIC_UI_LAST_RESORT_COPY = {
+  en: "Unavailable",
+  fr: "Indisponible",
+  es: "No disponible",
+} as const;
+
+export function isUnlocalizedPublicUiValue(value: string): boolean {
+  return isHiddenSpanishPlaceholder(value) || value === "UNLOCALIZED_SOURCE";
+}
+
+export function publicUiLastResortCopy(language: string | null | undefined): string {
+  const parsed = parseProductUiLanguage(language);
+  if (parsed === "fr") return PUBLIC_UI_LAST_RESORT_COPY.fr;
+  if (parsed === "es") return PUBLIC_UI_LAST_RESORT_COPY.es;
+  return PUBLIC_UI_LAST_RESORT_COPY.en;
+}
+
+export function reportPublicUiLocalizationGap(language: string, key: string): void {
+  if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+    console.warn("[i18n] public UI localization gap", { language, key });
+  }
+}
+
 /** How catalog search / order labels pick EN vs FR stored fields. */
 export type CatalogLabelStrategy = "en_strict" | "fr_preferred" | "es_preferred" | "unlocalized";
 

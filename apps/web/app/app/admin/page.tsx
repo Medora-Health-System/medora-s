@@ -566,7 +566,7 @@ export default function AdminPage() {
       ) : null}
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
         {ready && canCreateFacilities ? (
-          <><li><Link href="/app/admin/integrations" style={{ display: "inline-block", padding: "12px 20px", backgroundColor: "#0f766e", color: "white", borderRadius: 4, textDecoration: "none", fontWeight: 600 }}>Integrations</Link></li><li>
+          <><li><Link href="/app/admin/integrations" style={{ display: "inline-block", padding: "12px 20px", backgroundColor: "#0f766e", color: "white", borderRadius: 4, textDecoration: "none", fontWeight: 600 }}>{t("adminHub.integrationsLink")}</Link></li><li>
             <Link
               href="/app/admin/mspp-access"
               style={{

@@ -1,1 +1,20 @@
-import Link from"next/link";import{Page}from"@/features/platform/PlatformUi";import{OperationalProjection}from"@/features/platform/OperationalProjection";import{RoiAggregate}from"@/features/platform/RoiAggregate";export default function Compliance(){return <Page area="compliance" title="Compliance" subtitle="PHI-minimized evidence, controls, export monitoring, and ROI counts."><Link className="button" href="/platform/security#audit">Enterprise audit</Link><OperationalProjection kind="compliance" title="compliance controls" path="/platform/operations/compliance"/><OperationalProjection kind="exports" title="export monitoring" path="/platform/operations/exports"/><RoiAggregate/></Page>}
+"use client";
+import Link from "next/link";
+import { Page } from "@/features/platform/PlatformUi";
+import { OperationalProjection } from "@/features/platform/OperationalProjection";
+import { RoiAggregate } from "@/features/platform/RoiAggregate";
+import { useI18n } from "@/i18n/I18nProvider";
+
+export default function Compliance() {
+  const { t } = useI18n();
+  return (
+    <Page area="compliance" title={t("compliance.title")} subtitle={t("compliance.subtitle")}>
+      <Link className="button" href="/platform/security#audit">
+        {t("compliance.enterpriseAudit")}
+      </Link>
+      <OperationalProjection kind="compliance" title={t("projection.complianceTitle")} path="/platform/operations/compliance" />
+      <OperationalProjection kind="exports" title={t("projection.exportsTitle")} path="/platform/operations/exports" />
+      <RoiAggregate />
+    </Page>
+  );
+}

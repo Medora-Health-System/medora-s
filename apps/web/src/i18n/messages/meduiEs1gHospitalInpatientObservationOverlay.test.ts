@@ -343,14 +343,15 @@ describe("MEDUI.ES.1G 1I / 1J / authored stay unlocalized", () => {
     }
   });
 
-  it("complaint-intel inserted narrative remains placeholders", () => {
+  it("complaint-intel inserted narrative remains English source (not Spanish overlay)", () => {
     const prefix = "providerDocumentationComplaintIntel";
     const leaves = collectLeaves(getByPath(es, prefix), prefix);
     expect(leaves.size).toBeGreaterThan(100);
     let n = 0;
     for (const [path, value] of leaves) {
       expect(MEDUI_ES_1G_OVERLAY[path]).toBeUndefined();
-      expect(isHiddenSpanishPlaceholder(value), path).toBe(true);
+      expect(isHiddenSpanishPlaceholder(value), path).toBe(false);
+      expect(value, path).toBe(getByPath(en, path));
       n += 1;
       if (n >= 40) break;
     }
@@ -478,7 +479,7 @@ describe("MEDUI.ES.1G overlay accounting", () => {
     // eslint-disable-next-line no-console
     console.log(JSON.stringify(report, null, 2));
 
-    expect(before1g.totalLeaves).toBe(44266);
+    expect(before1g.totalLeaves).toBe(44346);
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before1g.placeholders - replaced);
     expect(byClass.OUT_OF_SCOPE ?? 0).toBe(0);

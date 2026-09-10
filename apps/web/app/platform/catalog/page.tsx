@@ -1,1 +1,48 @@
-import Link from"next/link";import{Page}from"@/features/platform/PlatformUi";import{OperationalProjection}from"@/features/platform/OperationalProjection";export default function Catalog(){return <Page area="catalog" title="Catalog / Configuration" subtitle="Platform-safe classification audit with explicitly scoped governed engines."><OperationalProjection kind="catalog" title="catalog classification audit" path="/platform/operations/catalog-audit"/><section className="platform-panel"><h2>Governed administration engines</h2><p className="notice">These tools retain their existing backend role guards and require a care-workspace facility authority. Platform capability alone does not grant clinical catalog mutation authority.</p><div className="module-grid"><Link className="module-card" href="/app/admin/medication-master"><h2>Medication master</h2><p>Global catalog administration under existing guard.</p></Link><Link className="module-card" href="/app/admin/medication-governance"><h2>Medication governance</h2><p>Review, activation, RxNorm, and safety governance.</p></Link><Link className="module-card" href="/app/admin/catalog-import"><h2>Catalog import</h2><p>Controlled dry-run and commit workflow.</p></Link><Link className="module-card" href="/app/admin/er-procedure-catalog-import"><h2>Procedure catalog import</h2><p>Existing bounded import engine.</p></Link><Link className="module-card" href="/app/admin/enterprise-clinical-rules"><h2>Clinical rules administration</h2><p>Existing clinical-rule governance; no engine changes.</p></Link><Link className="module-card" href="/app/admin/order-set-analytics"><h2>Order-set analytics</h2><p>Facility-scoped administrative analytics.</p></Link><Link className="module-card" href="/app/admin/medical-exam-analytics"><h2>Medical-exam analytics</h2><p>Facility-scoped administrative analytics.</p></Link></div></section></Page>}
+"use client";
+import Link from "next/link";
+import { Page } from "@/features/platform/PlatformUi";
+import { OperationalProjection } from "@/features/platform/OperationalProjection";
+import { useI18n } from "@/i18n/I18nProvider";
+
+export default function Catalog() {
+  const { t } = useI18n();
+  return (
+    <Page area="catalog" title={t("catalog.title")} subtitle={t("catalog.subtitle")}>
+      <OperationalProjection kind="catalog" title={t("projection.catalogTitle")} path="/platform/operations/catalog-audit" />
+      <section className="platform-panel">
+        <h2>{t("catalog.enginesTitle")}</h2>
+        <p className="notice">{t("catalog.enginesNotice")}</p>
+        <div className="module-grid">
+          <Link className="module-card" href="/app/admin/medication-master">
+            <h2>{t("catalog.medMaster")}</h2>
+            <p>{t("catalog.medMasterDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/medication-governance">
+            <h2>{t("catalog.medGov")}</h2>
+            <p>{t("catalog.medGovDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/catalog-import">
+            <h2>{t("catalog.import")}</h2>
+            <p>{t("catalog.importDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/er-procedure-catalog-import">
+            <h2>{t("catalog.procImport")}</h2>
+            <p>{t("catalog.procImportDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/enterprise-clinical-rules">
+            <h2>{t("catalog.rules")}</h2>
+            <p>{t("catalog.rulesDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/order-set-analytics">
+            <h2>{t("catalog.orderSet")}</h2>
+            <p>{t("catalog.analyticsDesc")}</p>
+          </Link>
+          <Link className="module-card" href="/app/admin/medical-exam-analytics">
+            <h2>{t("catalog.examAnalytics")}</h2>
+            <p>{t("catalog.analyticsDesc")}</p>
+          </Link>
+        </div>
+      </section>
+    </Page>
+  );
+}

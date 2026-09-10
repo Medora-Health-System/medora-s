@@ -9,6 +9,7 @@
     "start": "next start -H 0.0.0.0 -p 5000",
     "lint": "node -e \"console.log('lint not configured yet')\"",
     "test": "vitest run",
+    "i18n:audit": "vitest run src/i18n/messages/publicCatalogParity.test.ts src/i18n/messages/publicCatalogAdversarialAudit.test.ts src/i18n/platformCatalogParity.test.ts src/i18n/authenticatedI18nSmoke.test.ts",
     "icons:generate": "node scripts/generate-brand-icons.mjs"
   },
   "dependencies": {

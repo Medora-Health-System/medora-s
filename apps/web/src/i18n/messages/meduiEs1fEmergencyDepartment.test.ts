@@ -472,8 +472,8 @@ describe("MEDUI.ES.1F overlay accounting", () => {
       )
     );
 
-    expect(live.totalLeaves).toBe(44266);
-    expect(after1f.totalLeaves).toBe(44266);
+    expect(live.totalLeaves).toBe(44346);
+    expect(after1f.totalLeaves).toBe(44346);
     expect(uniqueOverlayPaths.size).toBe(overlayEntries.length);
     expect(outOfScope, outOfScope.join(", ")).toEqual([]);
     expect(reviewRequiredOverlays, reviewRequiredOverlays.join(", ")).toEqual([]);
@@ -483,9 +483,9 @@ describe("MEDUI.ES.1F overlay accounting", () => {
     expect(nonEmptyOverlayEntries).toBe(2737 - 43);
     expect(emptyOverlayEntries).toEqual([...MEDUI_ES_1F_EMPTY_OVERLAY_PATHS].sort());
     expect(emptyOverlayEntries).toHaveLength(43);
-    expect(before1f.placeholders).toBe(43671);
-    expect(after1f.placeholders).toBe(43671 - 2737);
-    expect(live.placeholders).toBe(23013);
+    expect(before1f.placeholders).toBe(43751);
+    expect(after1f.placeholders).toBe(43751 - 2737);
+    expect(live.placeholders).toBe(0);
     expect(before1f.placeholders - after1f.placeholders).toBe(2737);
 
     for (const path of overlayPaths) {

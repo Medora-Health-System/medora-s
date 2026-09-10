@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { messages, type MessageKey } from "./messages";
-import { canonicalEn, canonicalFr, platformText, translatePlatformText } from "./platformText";
+import { canonicalEn, canonicalEs, canonicalFr, platformText, translatePlatformText } from "./platformText";
 import {
   canRunPlatformAdminDomRewrite,
   isPlatformUiLanguage,
   parsePlatformUiLanguage,
   PLATFORM_DEFAULT_UI_LANGUAGE,
   PLATFORM_UI_LANGUAGES,
+  platformLanguageSelectOptions,
   type PlatformUiLanguage,
 } from "./platformLocale";
 
@@ -19,6 +20,7 @@ const STORAGE = "medora.locale";
 const PLATFORM_BCP47: Record<PlatformUiLanguage, string> = {
   en: "en-US",
   fr: "fr-FR",
+  es: "es-419",
 };
 
 const I18n = createContext({
@@ -30,8 +32,8 @@ const I18n = createContext({
 });
 
 /**
- * Platform Admin i18n island.
- * MutationObserver rewrite is EN/FR-only and must not run for future product UI languages.
+ * Platform Admin i18n island — EN / FR / ES keyed catalog plus complete
+ * source-literal rewrite for remaining hardcoded chrome.
  */
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setState] = useState<Locale>(PLATFORM_DEFAULT_UI_LANGUAGE);
@@ -53,13 +55,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (!canRunPlatformAdminDomRewrite(locale)) return;
     document.documentElement.lang = locale;
     const root = document.body;
-    const reverse = new Map(Object.entries(platformText.fr).map(([en, fr]) => [fr, en]));
-    const canonicalReverse = new Map(Object.entries(canonicalFr).map(([en, fr]) => [fr, en]));
+    const reverseFr = new Map(Object.entries(platformText.fr).map(([en, fr]) => [fr, en]));
+    const reverseEs = new Map(Object.entries(platformText.es).map(([en, es]) => [es, en]));
+    const canonicalReverseFr = new Map(Object.entries(canonicalFr).map(([en, fr]) => [fr, en]));
+    const canonicalReverseEs = new Map(Object.entries(canonicalEs).map(([en, es]) => [es, en]));
     const localize = (raw: string) => {
-      const exact = reverse.get(raw) ?? canonicalReverse.get(raw) ?? raw;
+      const exact =
+        reverseFr.get(raw) ??
+        reverseEs.get(raw) ??
+        canonicalReverseFr.get(raw) ??
+        canonicalReverseEs.get(raw) ??
+        raw;
       if (locale === "fr") return canonicalFr[exact] ?? translatePlatformText("fr", exact);
-      if (locale === "en") return canonicalEn[exact] ?? exact;
-      return raw;
+      if (locale === "es") return canonicalEs[exact] ?? translatePlatformText("es", exact);
+      return canonicalEn[exact] ?? exact;
     };
     const visit = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE && node.textContent) {
@@ -103,11 +112,11 @@ export function LanguageSelector() {
   const { locale, setLocale, t } = useI18n();
   return (
     <div role="group" aria-label={t("common.language")} className="language-selector">
-      {PLATFORM_UI_LANGUAGES.map((code, index) => (
-        <span key={code}>
+      {platformLanguageSelectOptions().map((opt, index) => (
+        <span key={opt.value}>
           {index > 0 ? <span aria-hidden> | </span> : null}
-          <button aria-pressed={locale === code} onClick={() => setLocale(code)}>
-            {code.toUpperCase()}
+          <button aria-pressed={locale === opt.value} onClick={() => setLocale(opt.value)}>
+            {opt.label}
           </button>
         </span>
       ))}

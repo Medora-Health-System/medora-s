@@ -179,8 +179,10 @@ describe("MEDUI.ES.1I overlay ownership", () => {
       expect(path.startsWith("providerDocumentationComplaintIntel"), path).toBe(false);
       expect(path.startsWith("providerDischargeDocumentation19Y"), path).toBe(false);
     }
-    expect(isHiddenSpanishPlaceholder(getByPath(es, "packetWizard.consentFull") as string)).toBe(true);
-    expect(isHiddenSpanishPlaceholder(getByPath(es, "printOutput.erPacket.emtalaNoData") as string)).toBe(true);
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "packetWizard.consentFull") as string)).toBe(false);
+    expect(getByPath(es, "packetWizard.consentFull")).toBe(getByPath(en, "packetWizard.consentFull"));
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "printOutput.erPacket.emtalaNoData") as string)).toBe(false);
+    expect(getByPath(es, "printOutput.erPacket.emtalaNoData")).toBe(getByPath(en, "printOutput.erPacket.emtalaNoData"));
   });
 
   it("does not overlay authored insert snippets", () => {
@@ -190,7 +192,8 @@ describe("MEDUI.ES.1I overlay ownership", () => {
       "encounterClinicTab.observationMdmSnippetContinuedRationale",
     ]) {
       expect(MEDUI_ES_1I_OVERLAY[path], path).toBeUndefined();
-      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(true);
+      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(false);
+      expect(getByPath(es, path), path).toBe(getByPath(en, path));
     }
   });
 });
@@ -516,12 +519,12 @@ describe("MEDUI.ES.1I overlay accounting", () => {
     // eslint-disable-next-line no-console
     console.log(JSON.stringify(report, null, 2));
 
-    expect(before1i.totalLeaves).toBe(44266);
+    expect(before1i.totalLeaves).toBe(44346);
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before1i.placeholders - replaced);
-    expect(overlayEntries.length).toBe(2777);
-    expect(before1i.placeholders).toBe(31049);
-    expect(after.placeholders).toBe(28272);
+    expect(overlayEntries.length).toBe(2790);
+    expect(before1i.placeholders).toBe(31129);
+    expect(after.placeholders).toBe(28339);
   });
 
   it("overlay keys are sorted and live es exposes every 1I overlay value", () => {

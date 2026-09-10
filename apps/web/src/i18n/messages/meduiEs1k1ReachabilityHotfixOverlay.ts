@@ -108,6 +108,7 @@ export const MEDUI_ES_1K1_OVERLAY: Record<string, string> = {
   "adminHub.complianceLink": "Cumplimiento de auditoría",
   "adminHub.emptyFacilities": "No hay establecimientos.",
   "adminHub.enterpriseClinicalRulesLink": "Editor de reglas clínicas",
+  "adminHub.integrationsLink": "Integraciones",
   "adminHub.enterpriseWorkflowLink": "Panel de flujos de trabajo empresariales",
   "adminHub.erProcedureCatalogLink": "Importación del catálogo de procedimientos de urgencias (HCPCS/CPT)",
   "adminHub.errorLoadFacilities": "No se pudieron cargar los establecimientos.",

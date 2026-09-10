@@ -120,6 +120,8 @@ describe("printFacilityHeader", () => {
     const html = buildPrintDocumentFooterHtml("es", "7/2/2026, 11:19:48 PM", esc, (_lang, key) => key);
     expect(html).not.toContain("Document generated on");
     expect(html).not.toContain("Document généré le");
-    expect(html).toContain("UNLOCALIZED_SOURCE");
+    expect(html).not.toContain("UNLOCALIZED_SOURCE");
+    expect(html).not.toContain("UNLOCALIZED_ES::");
+    expect(html).toContain("No disponible");
   });
 });
