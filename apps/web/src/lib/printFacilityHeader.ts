@@ -4,8 +4,9 @@
  */
 
 import {
-  UNLOCALIZED_CATALOG_SOURCE,
   isHiddenSpanishPlaceholder,
+  isUnlocalizedPublicUiValue,
+  publicUiLastResortCopy,
   formatEnterpriseFacilityAddressLines,
   projectEnterpriseFacilityIdentity,
   resolveDocumentFacilityIdentitySource,
@@ -233,16 +234,14 @@ export function buildPrintDocumentFooterHtml(
   if (
     !resolved ||
     resolved === "printOutput.common.documentFooter" ||
-    resolved === UNLOCALIZED_CATALOG_SOURCE ||
+    isUnlocalizedPublicUiValue(resolved) ||
     isHiddenSpanishPlaceholder(resolved)
   ) {
-    const marker =
-      resolved && isHiddenSpanishPlaceholder(resolved) ? resolved : UNLOCALIZED_CATALOG_SOURCE;
-    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(marker)}</p>`;
+    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(publicUiLastResortCopy(language))}</p>`;
   }
   const footer = resolved.replace("{date}", printDate);
   if (footer.includes("{date}")) {
-    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(UNLOCALIZED_CATALOG_SOURCE)}</p>`;
+    return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(publicUiLastResortCopy(language))}</p>`;
   }
   return `<p style="margin-top:24px;font-size:11px;color:#64748b;text-align:center;">${esc(footer)}</p>`;
 }

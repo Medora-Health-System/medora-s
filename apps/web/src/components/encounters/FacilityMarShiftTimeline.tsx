@@ -7,7 +7,6 @@ import {
   type MarShiftTimelineShiftCode,
   isMarShiftTimelineItemActionable,
   formatMarShiftTimelineClinicalDateTime,
-  buildMarShiftTimelineTitle,
   isMarMedicationResponseInternalSecondaryText,
   resolveMarMedicationResponseBadgeLabelKey,
   resolveMarShiftTimelineLatestResponsePainScores,
@@ -261,14 +260,17 @@ export function FacilityMarShiftTimeline({
   }, [onRegisterCloseDrawer]);
 
   const title = (() => {
+    const suffix = t("marShiftTimeline.titleFallback");
     const raw = data?.title?.trim();
     if (raw) {
-      return raw
-        .replace(/\s+MAR\s+SHIFT\s+TIMELINE$/i, " Shift Timeline")
-        .replace(/\s+SHIFT\s+TIMELINE$/i, " Shift Timeline");
+      const facilityPart = raw
+        .replace(/\s+MAR\s+SHIFT\s+TIMELINE$/i, "")
+        .replace(/\s+SHIFT\s+TIMELINE$/i, "")
+        .trim();
+      return facilityPart ? `${facilityPart} ${suffix}` : suffix;
     }
-    if (data?.facility?.name) return buildMarShiftTimelineTitle(data.facility.name);
-    return t("marShiftTimeline.titleFallback");
+    if (data?.facility?.name) return `${data.facility.name} ${suffix}`;
+    return suffix;
   })();
 
   const viewerName = data?.viewer?.displayName?.trim() || "—";
@@ -398,7 +400,9 @@ export function FacilityMarShiftTimeline({
               >
                 {MAR_SHIFT_TIMELINE_SHIFT_CODES.map((code) => (
                   <option key={code} value={code}>
-                    {MAR_SHIFT_TIMELINE_SHIFT_LABELS[code]}
+                    {code === "CUSTOM"
+                      ? t("marShiftTimeline.shiftCustom")
+                      : MAR_SHIFT_TIMELINE_SHIFT_LABELS[code]}
                   </option>
                 ))}
               </select>

@@ -61,6 +61,8 @@ import { MEDUI_ES_1JB_OVERLAY } from "./meduiEs1jSafeChromeOverlay";
 import { MEDUI_ES_1K_OVERLAY, MEDUI_ES_1K_EMPTY_OVERLAY_PATHS } from "./meduiEs1kSafeChromeOverlay";
 import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY, MEDUI_ES_1K_PUBLIC_CHROME_EMPTY_OVERLAY_PATHS } from "./meduiEs1kPublicChromeOverlay";
 import { MEDUI_TRILANG_2_CERTIFIED_PREFIXES } from "./meduiTrilang2ClinicalWorkspaceOverlay";
+import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompleteOverlay";
+import en from "./en";
 import es from "./es";
 
 const webRoot = join(import.meta.dirname, "../..");
@@ -297,7 +299,9 @@ describe("MEDUI.ES.1K legal freeze + Platform Admin isolation", () => {
       expect(MEDUI_ES_1H_OVERLAY[path], path).toBeUndefined();
       expect(MEDUI_ES_1I_OVERLAY[path], path).toBeUndefined();
       expect(MEDUI_ES_1JB_OVERLAY[path], path).toBeUndefined();
-      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(true);
+      expect(MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY[path], path).toBeUndefined();
+      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(false);
+      expect(getByPath(es, path), path).toBe(getByPath(en, path));
     }
     const usFederal = readFileSync(
       join(repoRoot, "apps/api/prisma/registration-packets/legal-sources/us-federal.json"),
@@ -307,15 +311,15 @@ describe("MEDUI.ES.1K legal freeze + Platform Admin isolation", () => {
     expect(usFederal).not.toMatch(/LEGAL_CONTENT_APPROVED/);
   });
 
-  it("Platform Admin remains a legacy EN/FR island and never DOM-rewrites es", () => {
-    expect(parsePlatformUiLanguage("es")).toBeNull();
-    expect(canRunPlatformAdminDomRewrite("es")).toBe(false);
+  it("Platform Admin is EN/FR/ES and DOM-rewrites Spanish", () => {
+    expect(parsePlatformUiLanguage("es")).toBe("es");
+    expect(canRunPlatformAdminDomRewrite("es")).toBe(true);
     expect(canRunPlatformAdminDomRewrite("en")).toBe(true);
-    expect(platformLanguageSelectOptions().map((o) => o.value).sort()).toEqual(["en", "fr"]);
-    expect(platformLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(false);
+    expect(platformLanguageSelectOptions().map((o) => o.value)).toEqual(["en", "fr", "es"]);
+    expect(platformLanguageSelectOptions().some((o) => /español/i.test(o.label))).toBe(true);
     const platformProvider = readFileSync(join(webRoot, "i18n/I18nProvider.tsx"), "utf8");
     expect(platformProvider).toContain("canRunPlatformAdminDomRewrite");
-    expect(platformProvider).not.toMatch(/Español/);
+    expect(platformProvider).toMatch(/Español|platformLanguageSelectOptions/);
   });
 });
 
@@ -496,12 +500,12 @@ describe("MEDUI.ES.1K prior overlays remain composed", () => {
     expect(i18nMessage("es", "common.save")).toBe(MEDUI_ES_1E_OVERLAY["common.save"]);
     expect(i18nMessage("es", "nav.trackboard")).toBe(MEDUI_ES_1E_OVERLAY["nav.trackboard"]);
     const leaves = collectLeaves(es);
-    expect(leaves.size).toBe(44266);
+    expect(leaves.size).toBe(44346);
     let placeholders = 0;
     for (const value of leaves.values()) {
       if (isHiddenSpanishPlaceholder(value)) placeholders += 1;
     }
-    expect(placeholders).toBe(23013);
+    expect(placeholders).toBe(0);
     expect(placeholders).toBeLessThan(leaves.size);
   });
 });
@@ -580,10 +584,10 @@ describe("MEDUI.ES.1K remaining placeholder classification", () => {
     const placeholders = Object.values(byClass).reduce((a, b) => a + b, 0);
     expect(unknownReachable, unknownReachable.slice(0, 40).join("\n")).toEqual([]);
     expect(byClass.UNKNOWN).toBe(0);
-    expect(byClass.LEGAL_REVIEW_REQUIRED).toBe(53);
+    expect(byClass.LEGAL_REVIEW_REQUIRED).toBe(0);
     expect(remainingModal, remainingModal.join("\n")).toEqual([]);
     expect(remainingRx, remainingRx.join("\n")).toEqual([]);
-    expect(placeholders).toBe(23013);
+    expect(placeholders).toBe(0);
     expect(reachableUiInUnlocalized, "reachable UI still in UNLOCALIZED_SOURCE").toBe(0);
     console.log("MEDUI.ES.1K_PLACEHOLDER_CLASSES", JSON.stringify(byClass));
   });

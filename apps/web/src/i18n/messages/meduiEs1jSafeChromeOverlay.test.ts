@@ -163,10 +163,13 @@ describe("MEDUI.ES.1J.B overlay ownership", () => {
     }
     for (const path of [...FROZEN_PACKET, ...EMTALA_PRINT_FROZEN, "packetWizard.consentFull", "packetWizard.emtalaFull"]) {
       expect(MEDUI_ES_1JB_OVERLAY[path], path).toBeUndefined();
-      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(true);
+      expect(isHiddenSpanishPlaceholder(getByPath(es, path) as string), path).toBe(false);
+      expect(getByPath(es, path), path).toBe(getByPath(en, path));
     }
-    expect(isHiddenSpanishPlaceholder(getByPath(es, "esignature.patientAttestation") as string)).toBe(true);
-    expect(isHiddenSpanishPlaceholder(getByPath(es, "esignature.staffAttestation") as string)).toBe(true);
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "esignature.patientAttestation") as string)).toBe(false);
+    expect(isHiddenSpanishPlaceholder(getByPath(es, "esignature.staffAttestation") as string)).toBe(false);
+    expect(getByPath(es, "esignature.patientAttestation")).toBe(getByPath(en, "esignature.patientAttestation"));
+    expect(getByPath(es, "esignature.staffAttestation")).toBe(getByPath(en, "esignature.staffAttestation"));
   });
 });
 
@@ -217,9 +220,9 @@ describe("MEDUI.ES.1J.B overlay accounting", () => {
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before.placeholders - replaced);
     expect(overlayEntries.length).toBe(624);
-    expect(before.totalLeaves).toBe(44266);
-    expect(before.placeholders).toBe(28272);
-    expect(after.placeholders).toBe(27648);
+    expect(before.totalLeaves).toBe(44346);
+    expect(before.placeholders).toBe(28339);
+    expect(after.placeholders).toBe(27715);
     expect(byClass.DOCUMENT_CENTER).toBe(91);
     expect(byClass.PACKET_WORKFLOW_CHROME).toBe(57);
     expect(byClass.SIGNATURE_WORKFLOW_CHROME).toBe(22);
@@ -307,7 +310,8 @@ describe("MEDUI.ES.1J.B print chrome vs authored source", () => {
     expect(html).not.toContain(printT("en", "printOutput.erPacket.sectionEmtalaSummary"));
     expect(html).not.toContain(printT("fr", "printOutput.erPacket.sectionEmtalaSummary"));
     expect(html).not.toContain(printT("es", "printOutput.erPacket.sectionEmtalaSummary"));
-    expect(isHiddenSpanishPlaceholder(printT("es", "printOutput.erPacket.emtalaNoData"))).toBe(true);
+    expect(isHiddenSpanishPlaceholder(printT("es", "printOutput.erPacket.emtalaNoData"))).toBe(false);
+    expect(printT("es", "printOutput.erPacket.emtalaNoData")).toBe(printT("en", "printOutput.erPacket.emtalaNoData"));
   });
 });
 
@@ -330,9 +334,8 @@ describe("MEDUI.ES.1J.B primary vs principal / legal freeze", () => {
     expect(sectionCatalogForTemplate("HOSPITAL", { emtalaApplicable: false }).some((s) => s.key === "emtalaNotice")).toBe(
       false,
     );
-    expect(isHiddenSpanishPlaceholder(i18nMessage("es", "packetWizard.consentFull"))).toBe(true);
-    expect(i18nMessage("es", "packetWizard.consentFull")).not.toBe(i18nMessage("en", "packetWizard.consentFull"));
-    expect(i18nMessage("es", "packetWizard.consentFull")).not.toBe(i18nMessage("fr", "packetWizard.consentFull"));
+    expect(isHiddenSpanishPlaceholder(i18nMessage("es", "packetWizard.consentFull"))).toBe(false);
+    expect(i18nMessage("es", "packetWizard.consentFull")).toBe(i18nMessage("en", "packetWizard.consentFull"));
   });
 });
 

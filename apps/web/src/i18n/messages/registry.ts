@@ -1,4 +1,10 @@
-import { resolveProductUiLanguageOrDefault, type ProductUiLanguage } from "@/i18n/config";
+import {
+  isUnlocalizedPublicUiValue,
+  publicUiLastResortCopy,
+  reportPublicUiLocalizationGap,
+  resolveProductUiLanguageOrDefault,
+  type ProductUiLanguage,
+} from "@/i18n/config";
 import enMessages from "@/i18n/messages/en";
 import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
@@ -33,5 +39,16 @@ export function getMessageByPath(obj: unknown, path: string): unknown {
  */
 export function resolveClinicalUiMessage(language: string, key: string): string {
   const v = getMessageByPath(getClinicalUiMessages(language), key);
-  return typeof v === "string" ? v : key;
+  if (typeof v !== "string") {
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+      reportPublicUiLocalizationGap(language, key);
+      return publicUiLastResortCopy(language);
+    }
+    return key;
+  }
+  if (isUnlocalizedPublicUiValue(v)) {
+    reportPublicUiLocalizationGap(language, key);
+    return publicUiLastResortCopy(language);
+  }
+  return v;
 }

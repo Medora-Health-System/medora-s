@@ -1,5 +1,8 @@
 import { applyApprovedSpanishTerminology, isHiddenSpanishPlaceholder } from "@medora/shared";
-import { createHiddenSpanishCatalog } from "./hiddenSpanishCatalog";
+import {
+  applyEnglishSourceForRemainingSentinels,
+  createHiddenSpanishCatalog,
+} from "./hiddenSpanishCatalog";
 import en from "./en";
 import { MEDUI_ES_1E_OVERLAY } from "./meduiEs1eCorePlatformOverlay";
 import { MEDUI_ES_1F_OVERLAY } from "./meduiEs1fEmergencyDepartmentOverlay";
@@ -12,28 +15,20 @@ import { MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY } from "./meduiEs1kPublicChromeOverla
 import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
 import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
 import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
+import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompleteOverlay";
 
 /**
- * MEDUI.ES.1D+1E+1F+1G+1H+1I+1J.B Spanish product UI catalog.
+ * MEDUI public Spanish product UI catalog.
  *
  * Pipeline:
  *  1. createHiddenSpanishCatalog(en) → all leaves become UNLOCALIZED_ES::<path>
  *  2. applyApprovedSpanishTerminology  → 1D canon overlays (46 APPROVED uiMessageKeys)
- *  3. applyGovernedSpanishOverlay(1E) → core platform / auth / registration / chart
- *  4. applyGovernedSpanishOverlay(1F) → Emergency Department chrome
- *  5. applyGovernedSpanishOverlay(1G) → Hospital / Inpatient / Observation chrome
- *  6. applyGovernedSpanishOverlay(1H) → Orders / MAR / pharmacy / lab / imaging chrome
- *  7. applyGovernedSpanishOverlay(1I) → Clinic / Dental / Billing / revenue chrome
- *  8. applyGovernedSpanishOverlay(1J.B) → print / document / consent SAFE chrome
- *  9. applyGovernedSpanishOverlay(1K) → encounter close/discharge/admission modals + Rx print chrome
- * 10. applyGovernedSpanishOverlay(1K public chrome) → reachable clinical/encounter/ED/chart/care-plan UI chrome
- * 11. applyGovernedSpanishOverlay(1K.1) → admin hub / public-health / users / audit reachable chrome
- * 12. applyGovernedSpanishOverlay(TRILANG.1) → clinical safety, discharge chrome, specialty packs
- * 13. applyGovernedSpanishOverlay(TRILANG.2) → Clinic / ED / Hospital / Observation / Inpatient workspace chrome
+ *  3–13. governed Spanish overlays (1E through TRILANG.2)
+ * 14. applyGovernedSpanishOverlay(PUBLIC_CATALOG_COMPLETE) → remaining public chrome
+ * 15. applyEnglishSourceForRemainingSentinels → legal/source leaves keep English provenance
  *
- * After MEDUI.ES.1K, Español is publicly selectable. Remaining keys stay UNLOCALIZED_ES::<path>.
- * Legal/source packet bodies and EMTALA print legal keys stay frozen.
- * Required clinical workspace chrome must be fully authored before merge (no visible sentinels).
+ * Español is publicly selectable. Public chrome must be Spanish. Source clinical packs
+ * and legally frozen packet/EMTALA bodies keep English source text (not sentinel syntax).
  */
 
 export function applyGovernedSpanishOverlay<T>(
@@ -75,6 +70,11 @@ const { tree: after1k } = applyGovernedSpanishOverlay(after1jb, MEDUI_ES_1K_OVER
 const { tree: after1kPublic } = applyGovernedSpanishOverlay(after1k, MEDUI_ES_1K_PUBLIC_CHROME_OVERLAY);
 const { tree: after1k1 } = applyGovernedSpanishOverlay(after1kPublic, MEDUI_ES_1K1_OVERLAY);
 const { tree: afterTrilang1 } = applyGovernedSpanishOverlay(after1k1, MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY);
-const { tree: esMessages } = applyGovernedSpanishOverlay(afterTrilang1, MEDUI_TRILANG_2_OVERLAY);
+const { tree: afterTrilang2 } = applyGovernedSpanishOverlay(afterTrilang1, MEDUI_TRILANG_2_OVERLAY);
+const { tree: afterPublicComplete } = applyGovernedSpanishOverlay(
+  afterTrilang2,
+  MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY
+);
+const { tree: esMessages } = applyEnglishSourceForRemainingSentinels(afterPublicComplete, en);
 
 export default esMessages;

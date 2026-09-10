@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import en from "@/i18n/messages/en";
 import fr from "@/i18n/messages/fr";
+import es from "@/i18n/messages/es";
 import {
   looksLikeFrenchCertificationUiText,
   resolveCertificationDeficiencyDisplay,
 } from "./certificationDeficiencyDisplay";
 
-function tFor(lang: "en" | "fr") {
-  const root = lang === "en" ? en : fr;
+function tFor(lang: "en" | "fr" | "es") {
+  const root = lang === "en" ? en : lang === "fr" ? fr : es;
   return (key: string) => {
     const parts = key.split(".");
     let cur: unknown = root;
@@ -144,15 +145,33 @@ describe("certificationDeficiencyDisplay locale isolation", () => {
     expect(looksLikeFrenchCertificationUiText(display.description)).toBe(false);
   });
 
-  it("unsupported es does not present EN or FR certification copy", () => {
-    const display = resolveCertificationDeficiencyDisplay(tFor("en"), "es", {
+  it("Spanish locale uses Spanish certification copy, not EN or FR", () => {
+    const display = resolveCertificationDeficiencyDisplay(tFor("es"), "es", {
       title: "Discharge Follow-Up Missing",
       description: "Documentez le suivi structuré.",
       titleKey: "edLifecycle.certification.b1.codes.DISCHARGE_FOLLOW_UP_MISSING.title",
+      descriptionKey: "edLifecycle.certification.b1.codes.DISCHARGE_FOLLOW_UP_MISSING.description",
       stableCode: "DISCHARGE_FOLLOW_UP_MISSING",
     });
     expect(display.title).not.toMatch(/follow-up/i);
     expect(display.title).not.toMatch(/Suivi/i);
-    expect(display.title).toBe("edLifecycle.certification.b1.codes.DISCHARGE_FOLLOW_UP_MISSING.title");
+    expect(display.title).toMatch(/alta|seguimiento/i);
+    expect(display.description).not.toContain("Documentez");
+    expect(display.title).not.toBe("UNLOCALIZED_SOURCE");
+  });
+
+  it("Spanish missing keys do not consume EN or FR API titles", () => {
+    const tMissing = (key: string) => key;
+    const display = resolveCertificationDeficiencyDisplay(tMissing, "es", {
+      title: "Discharge Follow-Up Missing",
+      description: "Documentez le suivi structuré.",
+      titleKey: "edLifecycle.certification.missing.doesNotExist.title",
+      descriptionKey: "edLifecycle.certification.missing.doesNotExist.description",
+      stableCode: "DISCHARGE_FOLLOW_UP_MISSING",
+    });
+    expect(display.title).not.toMatch(/follow-up/i);
+    expect(display.title).not.toMatch(/Suivi/i);
+    expect(display.title).toBe("edLifecycle.certification.missing.doesNotExist.title");
+    expect(display.title).not.toBe("UNLOCALIZED_SOURCE");
   });
 });

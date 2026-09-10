@@ -1,4 +1,9 @@
-import { adaptProductUiToCatalogLabelStrategy, catalogLabelStrategyForProductUi, type ProductUiLanguage } from "@/i18n/config";
+import {
+  adaptProductUiToCatalogLabelStrategy,
+  catalogLabelStrategyForProductUi,
+  publicUiLastResortCopy,
+  type ProductUiLanguage,
+} from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
@@ -231,7 +236,7 @@ export function getOrderItemDisplayLabelForLanguage(
       item.catalogImagingStudy?.code?.trim() ||
       item.catalogMedication?.code?.trim() ||
       item.enterpriseProcedureId?.trim() ||
-      "UNLOCALIZED_SOURCE"
+      publicUiLastResortCopy(language)
     );
   }
   if (strategy === "fr_preferred") return orderItemDisplayLabelFr(item);

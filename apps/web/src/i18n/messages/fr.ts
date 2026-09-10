@@ -2247,6 +2247,7 @@ export default {
     revenuePaymentLink: "Paiements et ERA",
     enterpriseWorkflowLink: "Tableau de bord des flux d’entreprise",
     enterpriseClinicalRulesLink: "Éditeur de règles cliniques",
+    integrationsLink: "Intégrations",
   },
   revenueCycle: {
     title: "Cycle de revenus",
@@ -17970,6 +17971,7 @@ export default {
     viewingAsLine: "Session de : {name}",
     unassignedNurse: "Non assigné(e)",
     shiftLabel: "Quart :",
+    shiftCustom: "Personnalisé",
     shiftHoursLine: "{range}",
     patientRoomColumn: "Patient / Chambre",
     prnRowLabel: "PRN",

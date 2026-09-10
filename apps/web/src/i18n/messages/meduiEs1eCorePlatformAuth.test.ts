@@ -469,7 +469,7 @@ describe("MEDUI.ES.1E overlay accounting", () => {
     expect(before1d.totalLeaves).toBe(after1e.totalLeaves);
     expect(before1d.placeholders).toBe(before1d.totalLeaves);
     expect(canonReplaced).toBe(46);
-    expect(before1e.placeholders).toBe(44220);
+    expect(before1e.placeholders).toBe(44300);
     expect(uniqueOverlayPaths.size).toBe(overlayEntries.length);
     expect(outOfScope, outOfScope.join(", ")).toEqual([]);
     expect(reviewRequiredOverlays, reviewRequiredOverlays.join(", ")).toEqual([]);
@@ -483,8 +483,8 @@ describe("MEDUI.ES.1E overlay accounting", () => {
       "encounterChrome.quickActions",
       "patientQuickActions.sectionTitle",
     ]);
-    expect(after1e.placeholders).toBe(43671);
-    expect(after1e.totalLeaves).toBe(44266);
+    expect(after1e.placeholders).toBe(43751);
+    expect(after1e.totalLeaves).toBe(44346);
     expect(before1e.placeholders - after1e.placeholders).toBe(549);
 
     for (const path of overlayPaths) {
