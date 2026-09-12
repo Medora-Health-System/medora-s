@@ -65,6 +65,7 @@ export class PatientRecordsService {
       return {
         availability: "NOT_DOCUMENTED" as const,
         nkda: false,
+        dataConflict: false,
         active: [] as AllergyEntry[],
         inactive: [] as AllergyEntry[],
         legacySummary: null,
@@ -74,7 +75,7 @@ export class PatientRecordsService {
     const selections = Array.isArray(allergies.allergyDetailSelections)
       ? allergies.allergyDetailSelections.filter((v): v is string => typeof v === "string")
       : [];
-    const nkda = allergies.nkda === true || selections.includes("NKDA");
+    const rawNkda = allergies.nkda === true || selections.includes("NKDA");
 
     const entries = Array.isArray(allergies.entries) ? allergies.entries : [];
     const projected = entries
@@ -106,9 +107,20 @@ export class PatientRecordsService {
       this.text(allergies.allergyNote, 1000) ??
       this.text(allergies.additionalAllergyInfo, 1000);
 
+    // Safety rule: contradictory NKDA + allergy content must never be projected as
+    // "NOT_PRESENT". Prefer the positive allergy signal and explicitly surface the conflict.
+    const dataConflict = rawNkda && Boolean(active.length || legacySummary);
+    const nkda = rawNkda && !dataConflict;
+    const availability = active.length || legacySummary
+      ? ("PRESENT" as const)
+      : nkda
+        ? ("NOT_PRESENT" as const)
+        : ("NOT_DOCUMENTED" as const);
+
     return {
-      availability: nkda ? ("NOT_PRESENT" as const) : active.length || legacySummary ? ("PRESENT" as const) : ("NOT_DOCUMENTED" as const),
+      availability,
       nkda,
+      dataConflict,
       active,
       inactive,
       legacySummary,
@@ -200,6 +212,7 @@ export class PatientRecordsService {
       userAgent: context.userAgent,
       metadata: {
         availability: projection.availability,
+        dataConflict: projection.dataConflict,
         activeCount: projection.active.length,
         inactiveCount: projection.inactive.length,
       },
@@ -256,76 +269,6 @@ export class PatientRecordsService {
         lotNumber: row.lotNumber,
         administeredAt: row.administeredAt.toISOString(),
         nextDueAt: row.nextDueAt?.toISOString() ?? null,
-      })),
-    };
-  }
-
-  async listDocuments(access: PatientPortalAccessContext, context: RequestContext) {
-    // Conservative V1 release rule: only finalized registration packets are patient-visible.
-    // Clinical, emergency, billing, legal, administrative, and ad-hoc uploads require a
-    // dedicated patient-release authority before they can be exposed through this portal.
-    const rows = await this.prisma.enterpriseDocument.findMany({
-      where: {
-        facilityId: access.facilityId,
-        patientId: access.patientId,
-        status: "ACTIVE",
-        category: "REGISTRATION",
-        packetSource: { is: { finalizedAt: { not: null } } },
-      },
-      select: {
-        id: true,
-        encounterId: true,
-        category: true,
-        type: true,
-        title: true,
-        fileName: true,
-        mimeType: true,
-        fileSize: true,
-        pageCount: true,
-        signatureStatus: true,
-        lockedAt: true,
-        uploadedAt: true,
-        packetSource: {
-          select: {
-            packetType: true,
-            packetVersion: true,
-            locale: true,
-            finalizedAt: true,
-          },
-        },
-      },
-      orderBy: { uploadedAt: "desc" },
-      take: 100,
-    });
-
-    await this.audit.record("PATIENT_PORTAL_DOCUMENT_LIST_VIEW", "ENTERPRISE_DOCUMENT_LIST", {
-      portalAccountId: access.portalAccountId,
-      sessionId: access.sessionId,
-      facilityId: access.facilityId,
-      patientId: access.patientId,
-      ip: context.ip,
-      userAgent: context.userAgent,
-      metadata: { count: rows.length, releasePolicy: "FINALIZED_REGISTRATION_PACKETS_V1" },
-    });
-
-    return {
-      documents: rows.map((row) => ({
-        id: row.id,
-        encounterId: row.encounterId,
-        category: row.category,
-        type: row.type,
-        title: row.title,
-        fileName: row.fileName,
-        mimeType: row.mimeType,
-        fileSize: row.fileSize,
-        pageCount: row.pageCount,
-        signatureStatus: row.signatureStatus,
-        lockedAt: row.lockedAt?.toISOString() ?? null,
-        uploadedAt: row.uploadedAt.toISOString(),
-        packetType: row.packetSource?.packetType ?? null,
-        packetVersion: row.packetSource?.packetVersion ?? null,
-        locale: row.packetSource?.locale ?? null,
-        finalizedAt: row.packetSource?.finalizedAt?.toISOString() ?? null,
       })),
     };
   }
