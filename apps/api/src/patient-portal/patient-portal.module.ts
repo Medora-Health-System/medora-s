@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
+import { AuditService } from "../common/services/audit.service";
+import { DocumentsModule } from "../documents/documents.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { PatientAppointmentsController } from "./appointments/patient-appointments.controller";
 import { PatientAppointmentsService } from "./appointments/patient-appointments.service";
@@ -23,13 +25,17 @@ import { PatientProfileController } from "./profile/patient-profile.controller";
 import { PatientProfileService } from "./profile/patient-profile.service";
 import { PatientDiagnosticResultsController } from "./records/patient-diagnostic-results.controller";
 import { PatientDiagnosticResultsService } from "./records/patient-diagnostic-results.service";
+import { PatientDocumentReleaseController } from "./records/patient-document-release.controller";
+import { PatientDocumentReleaseService } from "./records/patient-document-release.service";
+import { PatientDocumentsController } from "./records/patient-documents.controller";
+import { PatientDocumentsService } from "./records/patient-documents.service";
 import { PatientMedicationsController } from "./records/patient-medications.controller";
 import { PatientMedicationsService } from "./records/patient-medications.service";
 import { PatientRecordsController } from "./records/patient-records.controller";
 import { PatientRecordsService } from "./records/patient-records.service";
 
 @Module({
-  imports: [PassportModule, PrismaModule, JwtModule.register({})],
+  imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({})],
   controllers: [
     PatientPortalAuthController,
     PatientOrganizationsController,
@@ -37,6 +43,8 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientPortalStaffActivationController,
     PatientDashboardController,
     PatientRecordsController,
+    PatientDocumentsController,
+    PatientDocumentReleaseController,
     PatientDiagnosticResultsController,
     PatientMedicationsController,
     PatientAppointmentsController,
@@ -54,10 +62,13 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientPortalActivationService,
     PatientDashboardService,
     PatientRecordsService,
+    PatientDocumentsService,
+    PatientDocumentReleaseService,
     PatientDiagnosticResultsService,
     PatientMedicationsService,
     PatientAppointmentsService,
     PatientProfileService,
+    AuditService,
   ],
   exports: [
     PatientPortalRepository,
