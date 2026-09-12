@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AiCoreModule } from "./core/ai-core.module";
 import { AiProviderModule } from "./providers/ai-provider.module";
 import { AiAuditModule } from "./audit/ai-audit.module";
+import { EncounterAiSnapshotModule } from "./snapshot/encounter-ai-snapshot.module";
 
 /**
  * Medora AI backend foundation module.
@@ -10,7 +11,7 @@ import { AiAuditModule } from "./audit/ai-audit.module";
  * no clinical engines, no external model connections, and no database changes.
  */
 @Module({
-  imports: [AiCoreModule, AiProviderModule, AiAuditModule],
-  exports: [AiCoreModule, AiProviderModule, AiAuditModule],
+  imports: [AiCoreModule, AiProviderModule, AiAuditModule, EncounterAiSnapshotModule],
+  exports: [AiCoreModule, AiProviderModule, AiAuditModule, EncounterAiSnapshotModule],
 })
 export class AiModule {}
