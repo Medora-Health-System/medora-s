@@ -59,7 +59,7 @@ For a fresh disposable agent, `bash .cursor/scripts/cloud-agent-install.sh` does
 
 ### Known pre-existing issues
 
-- **Global guard ordering**: `app.module.ts` registers a global `APP_GUARD` `RolesGuard` (from `common/auth/roles.guard.ts`) that runs before the controller-level `AuthGuard("jwt")`. This causes all protected API endpoints with `@RequireRoles(...)` to return 403 "Authentication required" because `req.user` is null when the global guard checks it. Unprotected endpoints (`/health`, `/auth/login`, `/auth/me`) work fine.
+- **Global guard ordering**: `app.module.ts` no longer registers a global `APP_GUARD` `RolesGuard`. All protected controllers use `@UseGuards(AuthGuard("jwt"), RolesGuard)` at the controller level, which NestJS executes in declaration order: `AuthGuard("jwt")` authenticates and binds the session-bound user, then `RolesGuard` enforces facility membership and required roles. Regression coverage lives in `apps/api/src/common/guards/guard-ordering.regression.spec.ts`.
 - **Jest e2e tests**: `auth.e2e.spec.ts` and `rbac.e2e.spec.ts` fail because Jest's `moduleNameMapper` maps `@medora/shared` to the TypeScript source which uses `.js` extensions in ESM imports that Jest cannot resolve.
 - **Track Board `apiFetch` double prefix**: `app/app/page.tsx` passes `/api/backend/trackboard?status=OPEN` to `apiFetch()` which already prepends `/api/backend`, causing a double-prefix URL.
 
