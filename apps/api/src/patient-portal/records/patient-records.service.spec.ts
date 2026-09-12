@@ -48,4 +48,149 @@ describe("PatientRecordsService", () => {
     );
     expect(audit.record).not.toHaveBeenCalled();
   });
+
+  it("projects allergies from the patient longitudinal profile without exposing provenance or staff ids", async () => {
+    const prisma = {
+      patient: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "patient-a",
+          clinicalHistoryProfileJson: {
+            version: "19T.3",
+            updatedAt: "2026-09-01T00:00:00.000Z",
+            updatedBy: "staff-secret",
+            provenance: { allergies: { reviewerId: "staff-secret" } },
+            allergies: {
+              entries: [
+                {
+                  id: "alg-1",
+                  substance: "Penicillin",
+                  reaction: "Hives",
+                  severity: "MODERATE",
+                  verificationStatus: "CLINICIAN_VERIFIED",
+                  status: "ACTIVE",
+                  updatedByUserId: "staff-secret",
+                },
+              ],
+            },
+          },
+        }),
+      },
+    } as any;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+    const service = new PatientRecordsService(prisma, audit);
+
+    const result = await service.listAllergies(access, {});
+
+    expect(prisma.patient.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "patient-a", facilityId: "facility-a" },
+      })
+    );
+    expect(result.active).toEqual([
+      expect.objectContaining({
+        id: "alg-1",
+        substance: "Penicillin",
+        reaction: "Hives",
+        severity: "MODERATE",
+      }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain("staff-secret");
+    expect(audit.record).toHaveBeenCalledWith(
+      "PATIENT_PORTAL_ALLERGY_VIEW",
+      "ALLERGY_LIST",
+      expect.objectContaining({ patientId: "patient-a", facilityId: "facility-a" })
+    );
+  });
+
+  it("represents NKDA as not present", async () => {
+    const prisma = {
+      patient: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "patient-a",
+          clinicalHistoryProfileJson: {
+            allergies: { nkda: true, entries: [] },
+          },
+        }),
+      },
+    } as any;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+    const service = new PatientRecordsService(prisma, audit);
+
+    const result = await service.listAllergies(access, {});
+    expect(result).toEqual(
+      expect.objectContaining({ availability: "NOT_PRESENT", nkda: true, active: [] })
+    );
+  });
+
+  it("lists immunizations using facilityId + patientId and returns patient-safe vaccine data", async () => {
+    const prisma = {
+      vaccineAdministration: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "vac-1",
+            encounterId: "enc-1",
+            doseNumber: 2,
+            lotNumber: "LOT123",
+            administeredAt: new Date("2026-08-01T12:00:00.000Z"),
+            nextDueAt: null,
+            vaccineCatalog: {
+              code: "FLU",
+              name: "Influenza vaccine",
+              description: null,
+              manufacturer: "Example Manufacturer",
+            },
+          },
+        ]),
+      },
+    } as any;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+    const service = new PatientRecordsService(prisma, audit);
+
+    const result = await service.listImmunizations(access, {});
+
+    expect(prisma.vaccineAdministration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { facilityId: "facility-a", patientId: "patient-a" },
+      })
+    );
+    expect(result.immunizations[0]).toEqual(
+      expect.objectContaining({
+        id: "vac-1",
+        vaccineCode: "FLU",
+        doseNumber: 2,
+        administeredAt: "2026-08-01T12:00:00.000Z",
+      })
+    );
+  });
+
+  it("only releases finalized registration packets through the document list", async () => {
+    const prisma = {
+      enterpriseDocument: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as any;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+    const service = new PatientRecordsService(prisma, audit);
+
+    await service.listDocuments(access, {});
+
+    expect(prisma.enterpriseDocument.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          facilityId: "facility-a",
+          patientId: "patient-a",
+          status: "ACTIVE",
+          category: "REGISTRATION",
+          packetSource: { is: { finalizedAt: { not: null } } },
+        },
+      })
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      "PATIENT_PORTAL_DOCUMENT_LIST_VIEW",
+      "ENTERPRISE_DOCUMENT_LIST",
+      expect.objectContaining({
+        metadata: { count: 0, releasePolicy: "FINALIZED_REGISTRATION_PACKETS_V1" },
+      })
+    );
+  });
 });
