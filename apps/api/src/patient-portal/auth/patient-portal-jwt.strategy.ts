@@ -19,6 +19,7 @@ export class PatientPortalJwtStrategy extends PassportStrategy(Strategy, "patien
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: secret,
+      issuer: config.get<string>("PATIENT_PORTAL_TOKEN_ISSUER") ?? "medora-patient",
     });
   }
 
