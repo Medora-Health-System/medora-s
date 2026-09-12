@@ -15,6 +15,8 @@ import { PatientPortalStaffActivationController } from "./organizations/patient-
 import { PatientPortalAuditService } from "./patient-portal-audit.service";
 import { PatientPortalActivationRepository } from "./persistence/patient-portal-activation.repository";
 import { PatientPortalRepository } from "./persistence/patient-portal.repository";
+import { PatientRecordsController } from "./records/patient-records.controller";
+import { PatientRecordsService } from "./records/patient-records.service";
 
 @Module({
   imports: [PassportModule, PrismaModule, JwtModule.register({})],
@@ -23,6 +25,7 @@ import { PatientPortalRepository } from "./persistence/patient-portal.repository
     PatientOrganizationsController,
     PatientPortalActivationController,
     PatientPortalStaffActivationController,
+    PatientRecordsController,
   ],
   providers: [
     PatientPortalRepository,
@@ -34,6 +37,7 @@ import { PatientPortalRepository } from "./persistence/patient-portal.repository
     PatientPortalFacilityGuard,
     PatientOrganizationsService,
     PatientPortalActivationService,
+    PatientRecordsService,
   ],
   exports: [
     PatientPortalRepository,
