@@ -102,7 +102,7 @@ describe("PatientRecordsService", () => {
     );
   });
 
-  it("represents NKDA as not present", async () => {
+  it("represents clean NKDA as not present", async () => {
     const prisma = {
       patient: {
         findFirst: jest.fn().mockResolvedValue({
@@ -118,8 +118,48 @@ describe("PatientRecordsService", () => {
 
     const result = await service.listAllergies(access, {});
     expect(result).toEqual(
-      expect.objectContaining({ availability: "NOT_PRESENT", nkda: true, active: [] })
+      expect.objectContaining({
+        availability: "NOT_PRESENT",
+        nkda: true,
+        dataConflict: false,
+        active: [],
+      })
     );
+  });
+
+  it("never reports NKDA when active allergy content conflicts with the NKDA flag", async () => {
+    const prisma = {
+      patient: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "patient-a",
+          clinicalHistoryProfileJson: {
+            allergies: {
+              nkda: true,
+              entries: [
+                {
+                  id: "alg-1",
+                  substance: "Penicillin",
+                  status: "ACTIVE",
+                },
+              ],
+            },
+          },
+        }),
+      },
+    } as any;
+    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
+    const service = new PatientRecordsService(prisma, audit);
+
+    const result = await service.listAllergies(access, {});
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        availability: "PRESENT",
+        nkda: false,
+        dataConflict: true,
+      })
+    );
+    expect(result.active).toHaveLength(1);
   });
 
   it("lists immunizations using facilityId + patientId and returns patient-safe vaccine data", async () => {
