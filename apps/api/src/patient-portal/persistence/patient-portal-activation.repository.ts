@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 
 export type PatientPortalActivationRow = {
@@ -100,7 +101,7 @@ export class PatientPortalActivationRepository {
           "id", "portalAccountId", "patientId", "facilityId", "status",
           "verificationMethod", "verifiedAt"
         ) VALUES (
-          ${crypto.randomUUID()}, ${input.portalAccountId}, ${input.patientId}, ${input.facilityId},
+          ${randomUUID()}, ${input.portalAccountId}, ${input.patientId}, ${input.facilityId},
           'VERIFIED'::"PatientPortalLinkStatus",
           'FACILITY_ACTIVATION_CODE'::"PatientPortalVerificationMethod",
           CURRENT_TIMESTAMP
