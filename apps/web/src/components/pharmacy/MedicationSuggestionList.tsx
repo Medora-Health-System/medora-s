@@ -4,6 +4,7 @@ import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { getCatalogResultOneLineDisplay } from "@/lib/catalogDisplayLabel";
+import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { useI18n } from "@/lib/i18n";
 
 const rowStyle: React.CSSProperties = {
@@ -35,6 +36,8 @@ export function MedicationSuggestionList({
         const isSelected = idx === selectedIndex;
         const badge = stockBadge?.(med);
         const oneLine = getCatalogResultOneLineDisplay(med, language, t);
+        const subtitle = formatCatalogMedicationSubtitleForLocale(med, language);
+        const metadataLine = subtitle || oneLine.metadata;
         return (
           <button
             key={med.id}
@@ -53,8 +56,8 @@ export function MedicationSuggestionList({
           >
             <div style={{ fontWeight: 500, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
               <span>{oneLine.primary}</span>
-              {oneLine.metadata ? (
-                <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{oneLine.metadata}</span>
+              {metadataLine ? (
+                <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{metadataLine}</span>
               ) : null}
               {med.isEssential && (
                 <span style={{ fontSize: 11, color: "#1976d2" }}>

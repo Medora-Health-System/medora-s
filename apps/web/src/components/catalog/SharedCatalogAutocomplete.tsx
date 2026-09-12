@@ -10,6 +10,7 @@ import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSea
 import { type SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { getCatalogSearchItemDisplayLabel, getCatalogResultOneLineDisplay } from "@/lib/catalogDisplayLabel";
+import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { compactMedicationRoute, MK_EXPANSION_WAVE2_SPECIALTY_PACKS, resolveMkExpansionWave2PackTitle } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -384,6 +385,8 @@ export function SharedCatalogAutocomplete({
               const isActive = idx === activeIdx;
               const badge = catalogType === "MEDICATION" ? stockBadge?.(item) : null;
               const oneLine = getCatalogResultOneLineDisplay(item, language, t);
+              const subtitle = item.type === "MEDICATION" ? formatCatalogMedicationSubtitleForLocale(item, language) : null;
+              const metadataLine = subtitle || oneLine.metadata;
               const displayLine = catalogListDisplayLine(item, language, t);
               return (
                 <button
@@ -408,8 +411,8 @@ export function SharedCatalogAutocomplete({
                     <span>
                       <HighlightMatch text={displayLine} needle={needle} />
                     </span>
-                    {oneLine.metadata ? (
-                      <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{oneLine.metadata}</span>
+                    {metadataLine ? (
+                      <span style={{ fontWeight: 400, fontSize: 11, color: "#64748b" }}>{metadataLine}</span>
                     ) : null}
                     {item.type === "MEDICATION" && item.isEssential && (
                       <span style={{ fontSize: 11, color: "#1976d2" }}>

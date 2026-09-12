@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isHiddenSpanishPlaceholder } from "@medora/shared";
+import { hiddenSpanishPlaceholder, isHiddenSpanishPlaceholder, PUBLIC_UI_LAST_RESORT_COPY } from "@medora/shared";
 import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
 import en from "./en";
 import fr from "./fr";
 import es from "./es";
+import {
+  applyEnglishSourceForRemainingSentinels,
+  createHiddenSpanishCatalog,
+} from "./hiddenSpanishCatalog";
 import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompleteOverlay";
 import {
   CRITICAL_PUBLIC_UI_NAMESPACES,
@@ -110,5 +114,103 @@ describe("public catalog parity (EN/FR/ES)", () => {
     expect(resolveClinicalUiMessage("es", missing)).toBe(missing);
     expect(resolveClinicalUiMessage("en", missing)).toBe(missing);
     expect(resolveClinicalUiMessage("fr", missing)).toBe(missing);
+  });
+});
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+describe("public catalog parity governance", () => {
+  it("applyEnglishSourceForRemainingSentinels does not copy English for ungoverned paths", () => {
+    const source = { legal: "Legal text", source: "Source text", public: "Public text" };
+    const hidden = createHiddenSpanishCatalog(source);
+    const { tree, copied } = applyEnglishSourceForRemainingSentinels(hidden, source);
+    expect(copied).toBe(0);
+    expect((tree as Record<string, string>).legal).toMatch(/^UNLOCALIZED_ES::/);
+    expect((tree as Record<string, string>).public).toMatch(/^UNLOCALIZED_ES::/);
+  });
+
+  it("applyEnglishSourceForRemainingSentinels copies governed frozen legal paths", () => {
+    const source = {
+      esignature: { patientAttestation: "Patient attestation", other: "Other" },
+    };
+    const hidden = createHiddenSpanishCatalog(source);
+    const { tree, copied } = applyEnglishSourceForRemainingSentinels(hidden, source);
+    expect(copied).toBe(1);
+    expect((tree as Record<string, Record<string, string>>).esignature.patientAttestation).toBe(
+      "Patient attestation"
+    );
+    expect((tree as Record<string, Record<string, string>>).esignature.other).toMatch(
+      /^UNLOCALIZED_ES::/
+    );
+  });
+
+  it("applyEnglishSourceForRemainingSentinels copies governed source-language clinical paths", () => {
+    const source = {
+      providerDocumentationComplaintIntel: {
+        abdominal: { diffAppendicitis: "Diff appendicitis" },
+      },
+    };
+    const hidden = createHiddenSpanishCatalog(source);
+    const { tree, copied } = applyEnglishSourceForRemainingSentinels(hidden, source);
+    expect(copied).toBe(1);
+    expect(
+      (tree as Record<string, Record<string, Record<string, string>>>).providerDocumentationComplaintIntel
+        .abdominal.diffAppendicitis
+    ).toBe("Diff appendicitis");
+  });
+
+  it("EN_COMPLETE fails when the English catalog is actually incomplete", () => {
+    const brokenEn = { reportsOps: { title: "reportsOps.title" }, common: { save: "Save" } };
+    const brokenFr = { reportsOps: { title: "Rapports" }, common: { save: "Enregistrer" } };
+    const brokenEs = { reportsOps: { title: "Informes" }, common: { save: "Guardar" } };
+    const report = auditPublicCatalogParity(brokenEn, brokenFr, brokenEs);
+    expect(report.EN_COMPLETE).toBe(false);
+    expect(report.VERDICT).toBe("FAIL");
+    expect(
+      report.findings.some((f) => f.code === "EN_INCOMPLETE" && f.path === "reportsOps.title")
+    ).toBe(true);
+  });
+
+  it("Spanish parity detects sentinels, raw keys, and unintended generic English fallback", () => {
+    const sentinelEs = deepClone(es) as Record<string, unknown>;
+    (sentinelEs.reportsOps as Record<string, unknown>).title = hiddenSpanishPlaceholder(
+      "reportsOps.title"
+    );
+    let report = auditPublicCatalogParity(en, fr, sentinelEs);
+    expect(report.ES_COMPLETE).toBe(false);
+    expect(report.VERDICT).toBe("FAIL");
+    expect(
+      report.findings.some((f) => f.code === "ES_SENTINEL" && f.path === "reportsOps.title")
+    ).toBe(true);
+
+    const rawEs = deepClone(es) as Record<string, unknown>;
+    (rawEs.reportsOps as Record<string, unknown>).title = "reportsOps.title";
+    report = auditPublicCatalogParity(en, fr, rawEs);
+    expect(report.RAW_KEYS).toBeGreaterThan(0);
+    expect(report.VERDICT).toBe("FAIL");
+    expect(
+      report.findings.some((f) => f.code === "RAW_KEY_VALUE" && f.path === "reportsOps.title")
+    ).toBe(true);
+
+    const fallbackEs = deepClone(es) as Record<string, unknown>;
+    (fallbackEs.reportsOps as Record<string, unknown>).title = PUBLIC_UI_LAST_RESORT_COPY.es;
+    report = auditPublicCatalogParity(en, fr, fallbackEs);
+    expect(report.ES_COMPLETE).toBe(false);
+    expect(report.VERDICT).toBe("FAIL");
+    expect(
+      report.findings.some((f) => f.code === "ES_GENERIC_FALLBACK" && f.path === "reportsOps.title")
+    ).toBe(true);
+  });
+
+  it("classification-based governance remains enforced for legal and source-language paths", () => {
+    for (const path of FROZEN_LEGAL_SOURCE_PATHS) {
+      expect(isFrozenLegalSourcePath(path), path).toBe(true);
+    }
+    expect(
+      isSourceLanguageContentPath("providerDocumentationComplaintIntel.abdominal.diffAppendicitis")
+    ).toBe(true);
+    expect(isFrozenLegalSourcePath("reportsOps.title")).toBe(false);
+    expect(isSourceLanguageContentPath("reportsOps.title")).toBe(false);
   });
 });

@@ -92,6 +92,7 @@ export function looksLikeRawMessageKey(path: string, value: string): boolean {
 export type CatalogParityFinding = {
   code:
     | "EN_ONLY"
+    | "EN_INCOMPLETE"
     | "FR_MISSING"
     | "ES_MISSING"
     | "FR_EXTRA"
@@ -152,10 +153,11 @@ export function auditPublicCatalogParity(
     }
   }
   for (const [path, value] of enLeaves) {
-    if (looksLikeRawMessageKey(path, value)) findings.push({ code: "RAW_KEY_VALUE", path });
-    if (!value.trim() && path !== "billing.encounterTypeFallback") {
-      // intentional empty chrome is allowed when EN is empty
+    if (looksLikeRawMessageKey(path, value)) findings.push({ code: "EN_INCOMPLETE", path });
+    if (isHiddenSpanishPlaceholder(value) || value === "UNLOCALIZED_SOURCE") {
+      findings.push({ code: "EN_INCOMPLETE", path });
     }
+    // Intentionally empty English chrome is allowed; do not flag it as incomplete.
   }
   for (const [path, value] of frLeaves) {
     if (looksLikeRawMessageKey(path, value)) findings.push({ code: "RAW_KEY_VALUE", path });
@@ -166,7 +168,8 @@ export function auditPublicCatalogParity(
   const RAW_KEYS = findings.filter((f) => f.code === "RAW_KEY_VALUE").length;
   const EMPTY_KEYS = findings.filter((f) => f.code === "EMPTY_VALUE").length;
   const EXTRA_KEYS = findings.filter((f) => f.code === "FR_EXTRA" || f.code === "ES_EXTRA").length;
-  const EN_COMPLETE = findings.filter((f) => f.code === "EN_ONLY").length === 0;
+  const EN_COMPLETE =
+    findings.filter((f) => f.code === "EN_ONLY" || f.code === "EN_INCOMPLETE").length === 0;
   const FR_COMPLETE = findings.filter((f) => f.code === "FR_MISSING").length === 0;
   const ES_COMPLETE =
     findings.filter((f) => f.code === "ES_MISSING" || f.code === "ES_SENTINEL" || f.code === "ES_GENERIC_FALLBACK")
