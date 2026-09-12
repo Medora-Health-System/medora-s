@@ -7,6 +7,15 @@ export type PatientPortalJwtPayload = {
   jti?: string;
 };
 
+export type PatientPortalRefreshJwtPayload = {
+  sub: string;
+  sid: string;
+  type: "patient_refresh";
+  principal: "patient";
+  iss: string;
+  jti?: string;
+};
+
 export type PatientPortalPrincipal = {
   portalAccountId: string;
   sessionId: string;
