@@ -1,23 +1,16 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as argon2 from "argon2";
 import { randomUUID } from "crypto";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
-import { PatientPortalRepository } from "../persistence/patient-portal.repository";
+import { PatientPortalRepository, type PatientPortalAccountRow } from "../persistence/patient-portal.repository";
 import type {
   PatientPortalJwtPayload,
   PatientPortalPrincipal,
   PatientPortalRefreshJwtPayload,
 } from "./patient-portal.types";
-import type {
-  PatientPortalLoginBody,
-  PatientPortalRegisterBody,
-} from "./patient-portal-auth.schemas";
+import type { PatientPortalLoginBody, PatientPortalRegisterBody } from "./patient-portal-auth.schemas";
 
 export type PatientPortalSessionTokens = {
   accessToken: string;
@@ -76,31 +69,66 @@ export class PatientPortalAuthService {
     return decoded?.exp && decoded?.iat ? Math.max(0, decoded.exp - decoded.iat) : null;
   }
 
+  private accountView(account: PatientPortalAccountRow) {
+    return {
+      id: account.id,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      email: account.email,
+      phone: account.phone,
+      preferredLanguage: account.preferredLanguage,
+    };
+  }
+
+  private async issueTokens(account: PatientPortalAccountRow, sessionId: string) {
+    const accessPayload: PatientPortalJwtPayload = {
+      sub: account.id,
+      sid: sessionId,
+      type: "patient_access",
+      principal: "patient",
+      jti: randomUUID(),
+    };
+    const refreshPayload: PatientPortalRefreshJwtPayload = {
+      sub: account.id,
+      sid: sessionId,
+      type: "patient_refresh",
+      principal: "patient",
+      jti: randomUUID(),
+    };
+
+    const accessToken = await this.jwt.signAsync(accessPayload, {
+      secret: this.accessSecret(),
+      expiresIn: this.accessTtl() as never,
+      issuer: this.issuer(),
+    });
+    const refreshToken = await this.jwt.signAsync(refreshPayload, {
+      secret: this.refreshSecret(),
+      expiresIn: this.refreshTtl() as never,
+      issuer: this.issuer(),
+    });
+    return { accessToken, refreshToken };
+  }
+
   async register(
     body: PatientPortalRegisterBody,
     context: { ip?: string | null; userAgent?: string | null }
   ) {
-    const id = randomUUID();
     const email = body.email?.trim().toLowerCase() ?? null;
     const phone = body.phone?.trim() ?? null;
-    const passwordHash = await argon2.hash(body.password);
-
-    let account;
-    try {
-      account = await this.repo.createAccount({
-        id,
-        email,
-        phone,
-        passwordHash,
-        firstName: body.firstName.trim(),
-        lastName: body.lastName.trim(),
-        dob: new Date(`${body.dateOfBirth}T00:00:00.000Z`),
-        preferredLanguage: body.preferredLanguage,
-      });
-    } catch {
-      // Do not reveal whether the duplicate was email or phone.
+    if ((email && (await this.repo.findAccountByIdentifier(email))) || (phone && (await this.repo.findAccountByIdentifier(phone)))) {
       throw new ConflictException("A patient portal account already uses this contact information");
     }
+
+    const account = await this.repo.createAccount({
+      id: randomUUID(),
+      email,
+      phone,
+      passwordHash: await argon2.hash(body.password),
+      firstName: body.firstName.trim(),
+      lastName: body.lastName.trim(),
+      dob: new Date(`${body.dateOfBirth}T00:00:00.000Z`),
+      preferredLanguage: body.preferredLanguage,
+    });
 
     await this.audit.record("PATIENT_PORTAL_REGISTER", "PATIENT_PORTAL_ACCOUNT", {
       portalAccountId: account.id,
@@ -121,13 +149,8 @@ export class PatientPortalAuthService {
     context: { ip?: string | null; userAgent?: string | null }
   ): Promise<PatientPortalSessionTokens> {
     const account = await this.repo.findAccountByIdentifier(body.identifier);
-    if (!account) {
-      throw new UnauthorizedException("Invalid credentials");
-    }
-
-    if (account.status !== "ACTIVE") {
-      throw new UnauthorizedException("Patient portal account not active");
-    }
+    if (!account) throw new UnauthorizedException("Invalid credentials");
+    if (account.status !== "ACTIVE") throw new UnauthorizedException("Patient portal account not active");
     if (account.lockedUntil && account.lockedUntil.getTime() > Date.now()) {
       throw new UnauthorizedException("Patient portal account locked");
     }
@@ -145,39 +168,11 @@ export class PatientPortalAuthService {
     }
 
     const sessionId = randomUUID();
-    const accessPayload: PatientPortalJwtPayload = {
-      sub: account.id,
-      sid: sessionId,
-      type: "patient_access",
-      principal: "patient",
-      iss: this.issuer(),
-      jti: randomUUID(),
-    };
-    const refreshPayload: PatientPortalRefreshJwtPayload = {
-      sub: account.id,
-      sid: sessionId,
-      type: "patient_refresh",
-      principal: "patient",
-      iss: this.issuer(),
-      jti: randomUUID(),
-    };
-
-    const accessToken = await this.jwt.signAsync(accessPayload, {
-      secret: this.accessSecret(),
-      expiresIn: this.accessTtl() as never,
-      issuer: this.issuer(),
-    });
-    const refreshToken = await this.jwt.signAsync(refreshPayload, {
-      secret: this.refreshSecret(),
-      expiresIn: this.refreshTtl() as never,
-      issuer: this.issuer(),
-    });
-    const refreshTokenHash = await argon2.hash(refreshToken);
-
+    const { accessToken, refreshToken } = await this.issueTokens(account, sessionId);
     await this.repo.createSession({
       id: sessionId,
       portalAccountId: account.id,
-      refreshTokenHash,
+      refreshTokenHash: await argon2.hash(refreshToken),
       expiresAt: this.tokenExpiry(refreshToken, 30 * 24 * 60 * 60 * 1000),
       deviceId: body.deviceId ?? null,
       deviceName: body.deviceName ?? null,
@@ -185,7 +180,6 @@ export class PatientPortalAuthService {
       ipCreated: context.ip,
     });
     await this.repo.markLoginSuccess(account.id);
-
     await this.audit.record("PATIENT_PORTAL_LOGIN", "PATIENT_PORTAL_SESSION", {
       portalAccountId: account.id,
       sessionId,
@@ -199,14 +193,7 @@ export class PatientPortalAuthService {
       accessToken,
       refreshToken,
       accessTokenTtlSeconds: this.tokenTtlSeconds(accessToken),
-      account: {
-        id: account.id,
-        firstName: account.firstName,
-        lastName: account.lastName,
-        email: account.email,
-        phone: account.phone,
-        preferredLanguage: account.preferredLanguage,
-      },
+      account: this.accountView(account),
     };
   }
 
@@ -221,75 +208,34 @@ export class PatientPortalAuthService {
       throw new UnauthorizedException("Invalid refresh token");
     }
 
-    if (
-      payload.type !== "patient_refresh" ||
-      payload.principal !== "patient" ||
-      !payload.sub ||
-      !payload.sid
-    ) {
+    if (payload.type !== "patient_refresh" || payload.principal !== "patient" || !payload.sub || !payload.sid) {
       throw new UnauthorizedException("Invalid refresh token");
     }
 
     const account = await this.repo.findAccountById(payload.sub);
-    if (!account || account.status !== "ACTIVE") {
-      throw new UnauthorizedException("Patient portal account not active");
-    }
     const session = await this.repo.findActiveSession(payload.sid, payload.sub);
-    if (!session?.refreshTokenHash) {
+    if (!account || account.status !== "ACTIVE" || !session?.refreshTokenHash) {
       throw new UnauthorizedException("Patient portal session not active");
     }
-    const refreshMatches = await argon2.verify(session.refreshTokenHash, refreshToken);
-    if (!refreshMatches) {
-      // Possible replay/stolen token: revoke this session instead of accepting any sibling token.
+
+    if (!(await argon2.verify(session.refreshTokenHash, refreshToken))) {
       await this.repo.revokeSession(payload.sid, payload.sub);
       throw new UnauthorizedException("Refresh token no longer valid");
     }
 
-    const nextAccessPayload: PatientPortalJwtPayload = {
-      sub: account.id,
-      sid: session.id,
-      type: "patient_access",
-      principal: "patient",
-      iss: this.issuer(),
-      jti: randomUUID(),
-    };
-    const nextRefreshPayload: PatientPortalRefreshJwtPayload = {
-      sub: account.id,
-      sid: session.id,
-      type: "patient_refresh",
-      principal: "patient",
-      iss: this.issuer(),
-      jti: randomUUID(),
-    };
-    const accessToken = await this.jwt.signAsync(nextAccessPayload, {
-      secret: this.accessSecret(),
-      expiresIn: this.accessTtl() as never,
-      issuer: this.issuer(),
-    });
-    const nextRefreshToken = await this.jwt.signAsync(nextRefreshPayload, {
-      secret: this.refreshSecret(),
-      expiresIn: this.refreshTtl() as never,
-      issuer: this.issuer(),
-    });
+    const next = await this.issueTokens(account, session.id);
     await this.repo.rotateRefreshToken(
       session.id,
       account.id,
-      await argon2.hash(nextRefreshToken),
-      this.tokenExpiry(nextRefreshToken, 30 * 24 * 60 * 60 * 1000)
+      await argon2.hash(next.refreshToken),
+      this.tokenExpiry(next.refreshToken, 30 * 24 * 60 * 60 * 1000)
     );
 
     return {
-      accessToken,
-      refreshToken: nextRefreshToken,
-      accessTokenTtlSeconds: this.tokenTtlSeconds(accessToken),
-      account: {
-        id: account.id,
-        firstName: account.firstName,
-        lastName: account.lastName,
-        email: account.email,
-        phone: account.phone,
-        preferredLanguage: account.preferredLanguage,
-      },
+      accessToken: next.accessToken,
+      refreshToken: next.refreshToken,
+      accessTokenTtlSeconds: this.tokenTtlSeconds(next.accessToken),
+      account: this.accountView(account),
     };
   }
 
@@ -308,12 +254,7 @@ export class PatientPortalAuthService {
       throw new UnauthorizedException("Patient portal account not active");
     }
     return {
-      id: account.id,
-      firstName: account.firstName,
-      lastName: account.lastName,
-      preferredLanguage: account.preferredLanguage,
-      email: account.email,
-      phone: account.phone,
+      ...this.accountView(account),
       emailVerified: !!account.emailVerifiedAt,
       phoneVerified: !!account.phoneVerifiedAt,
     };
