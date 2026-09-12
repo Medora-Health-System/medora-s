@@ -94,11 +94,11 @@ export class PatientDocumentsService {
         ON r."documentId" = d."id"
        AND r."patientId" = d."patientId"
        AND r."facilityId" = d."facilityId"
-       AND r."revokedAt" IS NULL
       WHERE d."facilityId" = ${access.facilityId}
         AND d."patientId" = ${access.patientId}
         AND d."status" = 'ACTIVE'
         ${documentId ? Prisma.sql`AND d."id" = ${documentId}` : Prisma.empty}
+        AND r."revokedAt" IS NULL
         AND (
           (d."category" = 'REGISTRATION' AND ps."finalizedAt" IS NOT NULL)
           OR r."id" IS NOT NULL
