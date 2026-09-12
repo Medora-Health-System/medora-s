@@ -19,6 +19,8 @@ import { PatientPortalStaffActivationController } from "./organizations/patient-
 import { PatientPortalAuditService } from "./patient-portal-audit.service";
 import { PatientPortalActivationRepository } from "./persistence/patient-portal-activation.repository";
 import { PatientPortalRepository } from "./persistence/patient-portal.repository";
+import { PatientProfileController } from "./profile/patient-profile.controller";
+import { PatientProfileService } from "./profile/patient-profile.service";
 import { PatientDiagnosticResultsController } from "./records/patient-diagnostic-results.controller";
 import { PatientDiagnosticResultsService } from "./records/patient-diagnostic-results.service";
 import { PatientMedicationsController } from "./records/patient-medications.controller";
@@ -38,6 +40,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientDiagnosticResultsController,
     PatientMedicationsController,
     PatientAppointmentsController,
+    PatientProfileController,
   ],
   providers: [
     PatientPortalRepository,
@@ -54,6 +57,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientDiagnosticResultsService,
     PatientMedicationsService,
     PatientAppointmentsService,
+    PatientProfileService,
   ],
   exports: [
     PatientPortalRepository,
