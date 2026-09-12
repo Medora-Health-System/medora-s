@@ -48,8 +48,8 @@ describe("MEDUI.ES.1D canon overlay + governance audits", () => {
     expect(remaining).toBe(leaves.length - replaced);
     // 1D overlays a small approved subset only; the rest stay placeholders.
     expect(replaced).toBe(46);
-    expect(leaves.length).toBe(44346);
-    expect(remaining).toBe(44300);
+    expect(leaves.length).toBe(44348);
+    expect(remaining).toBe(44302);
     expect(resolveClinicalUiMessage("es", "common.medication")).toBe(
       collectStringLeaves(es).find((l) => l.path === "common.medication")?.value
     );

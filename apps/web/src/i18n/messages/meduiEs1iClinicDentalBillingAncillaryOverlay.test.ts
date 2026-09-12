@@ -519,12 +519,12 @@ describe("MEDUI.ES.1I overlay accounting", () => {
     // eslint-disable-next-line no-console
     console.log(JSON.stringify(report, null, 2));
 
-    expect(before1i.totalLeaves).toBe(44346);
+    expect(before1i.totalLeaves).toBe(44348);
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before1i.placeholders - replaced);
     expect(overlayEntries.length).toBe(2790);
-    expect(before1i.placeholders).toBe(31129);
-    expect(after.placeholders).toBe(28339);
+    expect(before1i.placeholders).toBe(31130);
+    expect(after.placeholders).toBe(28340);
   });
 
   it("overlay keys are sorted and live es exposes every 1I overlay value", () => {

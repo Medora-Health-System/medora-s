@@ -500,7 +500,7 @@ describe("MEDUI.ES.1K prior overlays remain composed", () => {
     expect(i18nMessage("es", "common.save")).toBe(MEDUI_ES_1E_OVERLAY["common.save"]);
     expect(i18nMessage("es", "nav.trackboard")).toBe(MEDUI_ES_1E_OVERLAY["nav.trackboard"]);
     const leaves = collectLeaves(es);
-    expect(leaves.size).toBe(44346);
+    expect(leaves.size).toBe(44348);
     let placeholders = 0;
     for (const value of leaves.values()) {
       if (isHiddenSpanishPlaceholder(value)) placeholders += 1;

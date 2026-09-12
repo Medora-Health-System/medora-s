@@ -220,9 +220,9 @@ describe("MEDUI.ES.1J.B overlay accounting", () => {
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before.placeholders - replaced);
     expect(overlayEntries.length).toBe(624);
-    expect(before.totalLeaves).toBe(44346);
-    expect(before.placeholders).toBe(28339);
-    expect(after.placeholders).toBe(27715);
+    expect(before.totalLeaves).toBe(44348);
+    expect(before.placeholders).toBe(28340);
+    expect(after.placeholders).toBe(27716);
     expect(byClass.DOCUMENT_CENTER).toBe(91);
     expect(byClass.PACKET_WORKFLOW_CHROME).toBe(57);
     expect(byClass.SIGNATURE_WORKFLOW_CHROME).toBe(22);

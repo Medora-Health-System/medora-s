@@ -479,7 +479,7 @@ describe("MEDUI.ES.1G overlay accounting", () => {
     // eslint-disable-next-line no-console
     console.log(JSON.stringify(report, null, 2));
 
-    expect(before1g.totalLeaves).toBe(44346);
+    expect(before1g.totalLeaves).toBe(44348);
     expect(replaced).toBe(overlayEntries.length);
     expect(after.placeholders).toBe(before1g.placeholders - replaced);
     expect(byClass.OUT_OF_SCOPE ?? 0).toBe(0);
