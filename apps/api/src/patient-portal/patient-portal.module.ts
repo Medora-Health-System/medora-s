@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { PrismaModule } from "../prisma/prisma.module";
+import { PatientAppointmentsController } from "./appointments/patient-appointments.controller";
+import { PatientAppointmentsService } from "./appointments/patient-appointments.service";
 import { PatientPortalAuthController } from "./auth/patient-portal-auth.controller";
 import { PatientPortalAuthService } from "./auth/patient-portal-auth.service";
 import { PatientPortalJwtStrategy } from "./auth/patient-portal-jwt.strategy";
@@ -26,6 +28,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientPortalActivationController,
     PatientPortalStaffActivationController,
     PatientRecordsController,
+    PatientAppointmentsController,
   ],
   providers: [
     PatientPortalRepository,
@@ -38,6 +41,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientOrganizationsService,
     PatientPortalActivationService,
     PatientRecordsService,
+    PatientAppointmentsService,
   ],
   exports: [
     PatientPortalRepository,
