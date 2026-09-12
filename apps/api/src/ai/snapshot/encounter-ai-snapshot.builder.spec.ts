@@ -145,7 +145,10 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(snapshot.presentation.chiefComplaint).toBe("Chest pain");
     expect(snapshot.patientContext.age).toBeGreaterThan(0);
     expect(snapshot.patientContext.sexAtBirth).toBe("M");
-    expect(snapshot.clinicalDocumentation.providerNote).toBe("Provider note text");
+    expect(snapshot.clinicalDocumentation.providerNote).toEqual({
+      text: "Provider note text",
+      truncated: false,
+    });
 
     const parsed = encounterAiSnapshotSchema.safeParse(snapshot);
     if (!parsed.success) {
@@ -259,6 +262,211 @@ describe("EncounterAiSnapshotBuilder", () => {
       actorUserId: ACTOR_USER_ID,
     });
 
+    expect(snapshot1.snapshotVersion).not.toBe(snapshot2.snapshotVersion);
+  });
+
+  it("exposes truncation metadata on every bounded text field", async () => {
+    const longProviderNote = "a".repeat(60_000);
+    const longTreatmentPlan = "b".repeat(60_000);
+    const longDischargeSummary = { summary: "c".repeat(60_000) };
+    const longResultText = "d".repeat(60_000);
+    const longFollowUpNotes = "e".repeat(20_000);
+    const longAppointmentReason = "f".repeat(20_000);
+
+    const prismaMock = buildPrismaMock({
+      encounter: {
+        providerNote: longProviderNote,
+        treatmentPlan: longTreatmentPlan,
+        dischargeSummaryJson: longDischargeSummary,
+      },
+      prisma: {
+        order: {
+          findMany: jest.fn(async () => [
+            {
+              id: "order-1",
+              status: "PENDING",
+              createdAt: new Date(),
+              items: [
+                {
+                  id: "item-1",
+                  catalogItemType: "LAB_TEST",
+                  manualLabel: "CBC",
+                  status: "PENDING",
+                  lifecycleState: "ORDERED",
+                  createdAt: new Date(),
+                  completedAt: null,
+                  route: null,
+                  frequencyCode: null,
+                  medicationLifecycleStatus: null,
+                  enterpriseProcedureId: null,
+                },
+              ],
+            },
+          ]),
+        },
+        result: {
+          findMany: jest.fn(async () => [
+            {
+              id: "result-1",
+              orderItemId: "item-1",
+              resultText: longResultText,
+              criticalValue: true,
+              acknowledgedByProviderAt: null,
+              createdAt: new Date(),
+              verifiedAt: null,
+            },
+          ]),
+        },
+        followUp: {
+          findMany: jest.fn(async () => [
+            {
+              id: "fu-1",
+              reason: "primary-care",
+              status: "OPEN",
+              dueDate: new Date(),
+              notes: longFollowUpNotes,
+            },
+          ]),
+        },
+        appointment: {
+          findMany: jest.fn(async () => [
+            {
+              id: "appt-1",
+              status: "SCHEDULED",
+              scheduledStartAt: new Date(),
+              departmentId: "dept-1",
+              reason: longAppointmentReason,
+            },
+          ]),
+        },
+      },
+    });
+
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    expect(snapshot.clinicalDocumentation.providerNote).toEqual({
+      text: longProviderNote.slice(0, 50_000),
+      truncated: true,
+      originalLength: 60_000,
+    });
+    expect(snapshot.clinicalDocumentation.treatmentPlan).toEqual({
+      text: longTreatmentPlan.slice(0, 50_000),
+      truncated: true,
+      originalLength: 60_000,
+    });
+    expect(snapshot.diagnostics.results?.[0].resultText).toEqual({
+      text: longResultText.slice(0, 50_000),
+      truncated: true,
+      originalLength: 60_000,
+    });
+    expect(snapshot.disposition.dischargeSummary).toEqual({
+      text: JSON.stringify(longDischargeSummary).slice(0, 50_000),
+      truncated: true,
+      originalLength: JSON.stringify(longDischargeSummary).length,
+    });
+    expect(snapshot.disposition.followUps?.[0].instructions).toEqual({
+      text: longFollowUpNotes.slice(0, 10_000),
+      truncated: true,
+      originalLength: 20_000,
+    });
+    expect(snapshot.disposition.appointments?.[0].notes).toEqual({
+      text: longAppointmentReason.slice(0, 10_000),
+      truncated: true,
+      originalLength: 20_000,
+    });
+
+    const parsed = encounterAiSnapshotSchema.safeParse(snapshot);
+    expect(parsed.success).toBe(true);
+  });
+
+
+
+  it("preserves structured critical-result and pending-test states when resultText is truncated", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        order: {
+          findMany: jest.fn(async () => [
+            {
+              id: "order-1",
+              status: "PENDING",
+              createdAt: new Date(),
+              items: [
+                {
+                  id: "item-1",
+                  catalogItemType: "LAB_TEST",
+                  manualLabel: "CBC",
+                  status: "PENDING",
+                  lifecycleState: "ORDERED",
+                  createdAt: new Date(),
+                  completedAt: null,
+                  route: null,
+                  frequencyCode: null,
+                  medicationLifecycleStatus: null,
+                  enterpriseProcedureId: null,
+                },
+              ],
+            },
+          ]),
+        },
+        result: {
+          findMany: jest.fn(async () => [
+            {
+              id: "result-1",
+              orderItemId: "item-1",
+              resultText: "x".repeat(60_000),
+              criticalValue: true,
+              acknowledgedByProviderAt: null,
+              createdAt: new Date(),
+              verifiedAt: null,
+            },
+          ]),
+        },
+      },
+    });
+
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    expect(snapshot.diagnostics.results?.[0].resultText?.truncated).toBe(true);
+    expect(snapshot.diagnostics.results?.[0].criticalValue).toBe(true);
+    expect(snapshot.diagnostics.criticalResults?.length).toBe(1);
+    expect(snapshot.diagnostics.criticalResults?.[0].resultText?.truncated).toBe(true);
+    expect(snapshot.diagnostics.pendingTests).toContain("item-1");
+  });
+
+
+  it("changes snapshotVersion when truncation metadata changes", async () => {
+    const prismaMock1 = buildPrismaMock({
+      encounter: { providerNote: "a".repeat(60_000) },
+    });
+    const builder1 = await createBuilder(prismaMock1);
+    const snapshot1 = await builder1.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    const prismaMock2 = buildPrismaMock({
+      encounter: { providerNote: "b".repeat(60_000) },
+    });
+    const builder2 = await createBuilder(prismaMock2);
+    const snapshot2 = await builder2.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    expect(snapshot1.clinicalDocumentation.providerNote?.truncated).toBe(true);
+    expect(snapshot2.clinicalDocumentation.providerNote?.truncated).toBe(true);
     expect(snapshot1.snapshotVersion).not.toBe(snapshot2.snapshotVersion);
   });
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiBoundedTextSchema } from "./ai-bounded-text.schema.js";
 
 export const aiEncounterCareSettingSchema = z.enum([
   "EMERGENCY_DEPARTMENT",
@@ -78,8 +79,8 @@ export type AiStructuredDocumentationEntry = z.infer<typeof aiStructuredDocument
 
 export const aiClinicalDocumentationSchema = z.object({
   providerDocumentationStatus: z.string().nullable().optional(),
-  providerNote: z.string().max(50_000).nullable().optional(),
-  treatmentPlan: z.string().max(50_000).nullable().optional(),
+  providerNote: aiBoundedTextSchema.nullable().optional(),
+  treatmentPlan: aiBoundedTextSchema.nullable().optional(),
   structuredEntries: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
   reassessments: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
 });
@@ -110,7 +111,7 @@ export type AiOrder = z.infer<typeof aiOrderSchema>;
 export const aiResultSchema = z.object({
   id: z.string(),
   orderItemId: z.string().optional(),
-  resultText: z.string().max(50_000).nullable().optional(),
+  resultText: aiBoundedTextSchema.nullable().optional(),
   criticalValue: z.boolean().nullable().optional(),
   acknowledgedByProviderAt: z.string().datetime().nullable().optional(),
   resultedAt: z.string().datetime().nullable().optional(),
@@ -190,7 +191,7 @@ export const aiFollowUpSchema = z.object({
   type: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   dueDate: z.string().datetime().nullable().optional(),
-  instructions: z.string().max(10_000).nullable().optional(),
+  instructions: aiBoundedTextSchema.nullable().optional(),
 });
 
 export type AiFollowUp = z.infer<typeof aiFollowUpSchema>;
@@ -200,7 +201,7 @@ export const aiAppointmentSchema = z.object({
   status: z.string().nullable().optional(),
   scheduledAt: z.string().datetime().nullable().optional(),
   departmentCode: z.string().nullable().optional(),
-  notes: z.string().max(10_000).nullable().optional(),
+  notes: aiBoundedTextSchema.nullable().optional(),
 });
 
 export type AiAppointment = z.infer<typeof aiAppointmentSchema>;
@@ -208,7 +209,7 @@ export type AiAppointment = z.infer<typeof aiAppointmentSchema>;
 export const aiDispositionSchema = z.object({
   disposition: z.string().nullable().optional(),
   dischargeStatus: z.string().nullable().optional(),
-  dischargeSummary: z.string().max(50_000).nullable().optional(),
+  dischargeSummary: aiBoundedTextSchema.nullable().optional(),
   followUps: z.array(aiFollowUpSchema).max(50).optional(),
   appointments: z.array(aiAppointmentSchema).max(50).optional(),
 });

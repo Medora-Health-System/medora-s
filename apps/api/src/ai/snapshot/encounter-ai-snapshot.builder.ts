@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Injectable, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { EncounterAiSnapshot, AiEncounterContext } from "@medora/shared";
+import { toAiBoundedText } from "@medora/shared";
 import { EncounterType, BillingClassification } from "@prisma/client";
 import {
   resolveEncounterCareSetting,
@@ -43,12 +44,6 @@ function toIsoString(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-function truncate(text: string | null | undefined, maxChars: number): string | null {
-  if (!text) return null;
-  if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars);
 }
 
 @Injectable()
@@ -373,8 +368,8 @@ export class EncounterAiSnapshotBuilder {
   private buildClinicalDocumentation(
     encounter: Awaited<ReturnType<typeof this.findAuthorizedEncounter>>
   ): EncounterAiSnapshot["clinicalDocumentation"] {
-    const providerNote = truncate(encounter?.providerNote, MAX_PROVIDER_NOTE_CHARS);
-    const treatmentPlan = truncate(encounter?.treatmentPlan, MAX_TREATMENT_PLAN_CHARS);
+    const providerNote = toAiBoundedText(encounter?.providerNote, MAX_PROVIDER_NOTE_CHARS);
+    const treatmentPlan = toAiBoundedText(encounter?.treatmentPlan, MAX_TREATMENT_PLAN_CHARS);
 
     const structuredEntries: EncounterAiSnapshot["clinicalDocumentation"]["structuredEntries"] = [];
     const reassessments: EncounterAiSnapshot["clinicalDocumentation"]["reassessments"] = [];
@@ -426,11 +421,11 @@ export class EncounterAiSnapshotBuilder {
     }));
 
     const mappedResults = results.map((result) => {
-      const text = truncate(result.resultText, MAX_RESULT_TEXT_CHARS);
+      const resultText = toAiBoundedText(result.resultText, MAX_RESULT_TEXT_CHARS);
       return {
         id: result.id,
         orderItemId: result.orderItemId,
-        resultText: text,
+        resultText,
         criticalValue: result.criticalValue,
         acknowledgedByProviderAt: toIsoString(result.acknowledgedByProviderAt),
         resultedAt: toIsoString(result.createdAt),
@@ -535,7 +530,7 @@ export class EncounterAiSnapshotBuilder {
     appointments: Awaited<ReturnType<typeof this.findAppointments>>
   ): EncounterAiSnapshot["disposition"] {
     const dischargeSummary = encounter?.dischargeSummaryJson
-      ? truncate(JSON.stringify(encounter.dischargeSummaryJson), MAX_DISCHARGE_SUMMARY_CHARS)
+      ? toAiBoundedText(JSON.stringify(encounter.dischargeSummaryJson), MAX_DISCHARGE_SUMMARY_CHARS)
       : null;
 
     return {
@@ -547,14 +542,14 @@ export class EncounterAiSnapshotBuilder {
         type: followUp.reason,
         status: followUp.status,
         dueDate: toIsoString(followUp.dueDate),
-        instructions: truncate(followUp.notes, MAX_FOLLOWUP_INSTRUCTIONS_CHARS),
+        instructions: toAiBoundedText(followUp.notes, MAX_FOLLOWUP_INSTRUCTIONS_CHARS),
       })),
       appointments: appointments.map((appointment) => ({
         id: appointment.id,
         status: appointment.status,
         scheduledAt: toIsoString(appointment.scheduledStartAt),
         departmentCode: appointment.departmentId,
-        notes: truncate(appointment.reason, MAX_APPOINTMENT_NOTES_CHARS),
+        notes: toAiBoundedText(appointment.reason, MAX_APPOINTMENT_NOTES_CHARS),
       })),
     };
   }
