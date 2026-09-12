@@ -6,12 +6,13 @@ function boundedText(value: { text: string; truncated: boolean; originalLength?:
 }
 
 /**
- * Builds the minimum provider payload needed for chart review.
+ * Builds the minimum provider payload needed for clinical chart review.
  *
  * Intentionally excludes facility/encounter/patient IDs, exact DOB, internal
- * record IDs, signatures/credentials, and unrelated patient data. The
- * provider adapter receives snapshot provenance separately, but does not send
- * that provenance object to the external model.
+ * record IDs, opaque structured payloads, billing classification, diagnosis /
+ * procedure coding fields, signatures/credentials, and unrelated patient data.
+ * Snapshot provenance is retained server-side and is not serialized into the
+ * external provider request body.
  */
 export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
   return {
@@ -20,7 +21,6 @@ export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
       encounterType: snapshot.encounterContext.encounterType,
       status: snapshot.encounterContext.status,
       serviceLine: snapshot.encounterContext.serviceLine ?? null,
-      billingClassification: snapshot.encounterContext.billingClassification ?? null,
       workflowState: snapshot.encounterContext.workflowState ?? null,
       careSetting: snapshot.encounterContext.careSetting,
     },
@@ -37,13 +37,11 @@ export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
         namespace: entry.namespace,
         documentedAt: entry.documentedAt,
         version: entry.version,
-        payloadSummary: entry.payloadSummary,
       })),
       reassessments: (snapshot.clinicalDocumentation.reassessments ?? []).map((entry) => ({
         namespace: entry.namespace,
         documentedAt: entry.documentedAt,
         version: entry.version,
-        payloadSummary: entry.payloadSummary,
       })),
     },
     diagnostics: {
@@ -85,7 +83,6 @@ export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
         action: administration.action ?? null,
       })),
       procedures: (snapshot.treatments.procedures ?? []).map((procedure) => ({
-        catalogCode: procedure.catalogCode ?? null,
         displayLabel: procedure.displayLabel ?? null,
         performedAt: procedure.performedAt ?? null,
         status: procedure.status ?? null,
@@ -93,7 +90,6 @@ export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
     },
     diagnoses: {
       documentedDiagnoses: (snapshot.diagnoses.documentedDiagnoses ?? []).map((diagnosis) => ({
-        code: diagnosis.code ?? null,
         display: diagnosis.display ?? null,
         isPrimary: diagnosis.isPrimary ?? null,
         status: diagnosis.status ?? null,
