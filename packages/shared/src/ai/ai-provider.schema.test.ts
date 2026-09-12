@@ -8,17 +8,18 @@ import {
 } from "./ai-provider.schema.js";
 
 describe("AiProvider schema", () => {
-  it("accepts NO_OP provider", () => {
+  it("accepts supported providers", () => {
     expect(AiProviderName.safeParse("NO_OP").success).toBe(true);
+    expect(AiProviderName.safeParse("OPENAI").success).toBe(true);
   });
 
   it("rejects unknown provider", () => {
-    expect(AiProviderName.safeParse("OPENAI").success).toBe(false);
+    expect(AiProviderName.safeParse("UNKNOWN_PROVIDER").success).toBe(false);
   });
 
   it("accepts a valid config without secrets", () => {
     const config = {
-      provider: "NO_OP",
+      provider: "OPENAI",
       timeoutMs: 30_000,
     };
     expect(AiProviderConfigSchema.safeParse(config).success).toBe(true);
@@ -40,7 +41,7 @@ describe("AiProvider schema", () => {
     expect(AiProviderConfigSchema.safeParse(config).success).toBe(false);
   });
 
-  it("accepts a valid request envelope", () => {
+  it("accepts a valid request envelope with structured-output metadata", () => {
     const request = {
       providerOptions: { timeoutMs: 10_000 },
       snapshotContext: {
@@ -49,6 +50,9 @@ describe("AiProvider schema", () => {
         encounterId: "enc-1",
       },
       clinicalInput: { chiefComplaint: "chest pain" },
+      systemInstruction: "Return structured clinical review only.",
+      responseSchemaName: "clinical_review",
+      responseJsonSchema: { type: "object" },
     };
     expect(AiProviderRequestEnvelope.safeParse(request).success).toBe(true);
   });
@@ -62,10 +66,10 @@ describe("AiProvider schema", () => {
 
   it("accepts a valid response envelope", () => {
     const response = {
-      provider: "NO_OP",
-      model: "NO_OP",
+      provider: "OPENAI",
+      model: "test-model",
       output: { suggestions: [] },
-      latencyMs: 0,
+      latencyMs: 12,
       snapshotVersion: "v1/abc",
     };
     expect(AiProviderResponseEnvelope.safeParse(response).success).toBe(true);

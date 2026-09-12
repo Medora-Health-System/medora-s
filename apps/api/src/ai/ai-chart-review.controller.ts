@@ -2,16 +2,12 @@ import { BadRequestException, Controller, Get, Param, Req, UseGuards } from "@ne
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard.js";
-import { EncounterAiSnapshotBuilder } from "./snapshot/encounter-ai-snapshot.builder.js";
-import { DeterministicReviewEngine } from "./review/deterministic-review-engine.service.js";
+import { ClinicalReviewOrchestratorService } from "./review/clinical-review-orchestrator.service.js";
 
 @Controller("ai/chart-review")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AiChartReviewController {
-  constructor(
-    private readonly snapshotBuilder: EncounterAiSnapshotBuilder,
-    private readonly reviewEngine: DeterministicReviewEngine
-  ) {}
+  constructor(private readonly reviewOrchestrator: ClinicalReviewOrchestratorService) {}
 
   @Get(":encounterId")
   @RequireRoles(RoleCode.PROVIDER)
@@ -26,12 +22,10 @@ export class AiChartReviewController {
       throw new BadRequestException("Authenticated user required");
     }
 
-    const snapshot = await this.snapshotBuilder.build({
+    return this.reviewOrchestrator.run({
       facilityId,
       encounterId,
       actorUserId,
     });
-
-    return this.reviewEngine.run(snapshot);
   }
 }
