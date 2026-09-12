@@ -126,6 +126,25 @@ export class PatientPortalRepository {
     return rows[0]!;
   }
 
+  async updatePreferredLanguage(
+    accountId: string,
+    preferredLanguage: "en" | "es" | "fr",
+  ): Promise<PatientPortalAccountRow | null> {
+    const rows = await this.prisma.$queryRaw<PatientPortalAccountRow[]>(Prisma.sql`
+      UPDATE "PatientPortalAccount"
+      SET "preferredLanguage" = ${preferredLanguage},
+          "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "id" = ${accountId}
+        AND "status" = 'ACTIVE'::"PatientPortalAccountStatus"
+      RETURNING
+        "id", "email", "phone", "passwordHash", "status"::text AS "status",
+        "emailVerifiedAt", "phoneVerifiedAt", "firstName", "lastName", "dob",
+        "preferredLanguage", "failedLoginCount", "lockedUntil", "lastLoginAt",
+        "createdAt", "updatedAt"
+    `);
+    return rows[0] ?? null;
+  }
+
   async markLoginSuccess(accountId: string): Promise<void> {
     await this.prisma.$executeRaw(Prisma.sql`
       UPDATE "PatientPortalAccount"
