@@ -41,9 +41,4 @@ export class PatientRecordsController {
   async listImmunizations(@Req() req: any) {
     return this.records.listImmunizations(this.access(req), this.requestContext(req));
   }
-
-  @Get("documents")
-  async listDocuments(@Req() req: any) {
-    return this.records.listDocuments(this.access(req), this.requestContext(req));
-  }
 }
