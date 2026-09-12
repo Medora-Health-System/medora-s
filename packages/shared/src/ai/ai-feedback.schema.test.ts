@@ -14,9 +14,9 @@ describe("AiSuggestionFeedbackRequest", () => {
   });
 
   it("rejects free-text comments and unknown fields", () => {
-    expect(AiSuggestionFeedbackRequest.safeParse({ ...valid, comment: "patient narrative" }).success).toBe(true);
-    const parsed = AiSuggestionFeedbackRequest.parse({ ...valid, comment: "patient narrative" });
-    expect("comment" in parsed).toBe(false);
+    expect(
+      AiSuggestionFeedbackRequest.safeParse({ ...valid, comment: "patient narrative" }).success
+    ).toBe(false);
   });
 
   it("rejects malformed suggestion ids and ratings", () => {
