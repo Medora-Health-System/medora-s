@@ -3,7 +3,7 @@ export type PatientPortalJwtPayload = {
   sid: string;
   type: "patient_access";
   principal: "patient";
-  iss: string;
+  iss?: string;
   jti?: string;
 };
 
@@ -12,7 +12,7 @@ export type PatientPortalRefreshJwtPayload = {
   sid: string;
   type: "patient_refresh";
   principal: "patient";
-  iss: string;
+  iss?: string;
   jti?: string;
 };
 
