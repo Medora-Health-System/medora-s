@@ -15,7 +15,8 @@ import { TrackboardModule } from "./trackboard/trackboard.module";
 import { ClinicCareModule } from "./clinic-care/clinic-care.module";
 import { DentalCareModule } from "./dental-care/dental-care.module";
 import { AppointmentsModule } from "./appointments/appointments.module";
-import { TriageModule } from "./triage/triage.module";import { WorklistsModule } from "./worklists/worklists.module";
+import { TriageModule } from "./triage/triage.module";
+import { WorklistsModule } from "./worklists/worklists.module";
 import { ResultsModule } from "./results/results.module";
 import { PathwaysModule } from "./pathways/pathways.module";
 import { PharmacyInventoryModule } from "./pharmacy-inventory/pharmacy-inventory.module";
@@ -59,6 +60,7 @@ import { RequestLoggerMiddleware } from "./common/middleware/request-logger.midd
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
 import { PlatformAuditModule } from "./platform-audit/platform-audit.module";
 import { PlatformStaffModule } from "./platform-staff/platform-staff.module";
+import { PatientPortalModule } from "./patient-portal/patient-portal.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -126,6 +128,7 @@ const imports = [
   AiModule,
   PlatformAuditModule,
   PlatformStaffModule,
+  ...(process.env.PATIENT_PORTAL_ENABLED === "true" ? [PatientPortalModule] : []),
 ];
 
 @Module({
