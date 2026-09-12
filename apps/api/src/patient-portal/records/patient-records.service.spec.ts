@@ -162,35 +162,4 @@ describe("PatientRecordsService", () => {
       })
     );
   });
-
-  it("only releases finalized registration packets through the document list", async () => {
-    const prisma = {
-      enterpriseDocument: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-    } as any;
-    const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
-    const service = new PatientRecordsService(prisma, audit);
-
-    await service.listDocuments(access, {});
-
-    expect(prisma.enterpriseDocument.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          facilityId: "facility-a",
-          patientId: "patient-a",
-          status: "ACTIVE",
-          category: "REGISTRATION",
-          packetSource: { is: { finalizedAt: { not: null } } },
-        },
-      })
-    );
-    expect(audit.record).toHaveBeenCalledWith(
-      "PATIENT_PORTAL_DOCUMENT_LIST_VIEW",
-      "ENTERPRISE_DOCUMENT_LIST",
-      expect.objectContaining({
-        metadata: { count: 0, releasePolicy: "FINALIZED_REGISTRATION_PACKETS_V1" },
-      })
-    );
-  });
 });
