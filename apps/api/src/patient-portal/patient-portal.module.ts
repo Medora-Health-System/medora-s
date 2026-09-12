@@ -7,6 +7,8 @@ import { PatientAppointmentsService } from "./appointments/patient-appointments.
 import { PatientPortalAuthController } from "./auth/patient-portal-auth.controller";
 import { PatientPortalAuthService } from "./auth/patient-portal-auth.service";
 import { PatientPortalJwtStrategy } from "./auth/patient-portal-jwt.strategy";
+import { PatientDashboardController } from "./dashboard/patient-dashboard.controller";
+import { PatientDashboardService } from "./dashboard/patient-dashboard.service";
 import { PatientPortalAuthGuard } from "./guards/patient-portal-auth.guard";
 import { PatientPortalFacilityGuard } from "./guards/patient-portal-facility.guard";
 import { PatientOrganizationsController } from "./organizations/patient-organizations.controller";
@@ -29,6 +31,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientOrganizationsController,
     PatientPortalActivationController,
     PatientPortalStaffActivationController,
+    PatientDashboardController,
     PatientRecordsController,
     PatientDiagnosticResultsController,
     PatientAppointmentsController,
@@ -43,6 +46,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientPortalFacilityGuard,
     PatientOrganizationsService,
     PatientPortalActivationService,
+    PatientDashboardService,
     PatientRecordsService,
     PatientDiagnosticResultsService,
     PatientAppointmentsService,
