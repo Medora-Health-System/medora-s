@@ -39,3 +39,42 @@ ALTER TABLE "PatientDocumentRelease"
 ALTER TABLE "PatientDocumentRelease"
   ADD CONSTRAINT "PatientDocumentRelease_revokedByUserId_fkey"
   FOREIGN KEY ("revokedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Defense in depth: a release row can never authorize a different patient/facility than
+-- the document itself, even if a future caller bypasses the application service.
+CREATE OR REPLACE FUNCTION "enforcePatientDocumentReleaseScope"()
+RETURNS TRIGGER AS $$
+DECLARE
+  document_patient_id TEXT;
+  document_facility_id TEXT;
+  patient_facility_id TEXT;
+BEGIN
+  SELECT "patientId", "facilityId"
+    INTO document_patient_id, document_facility_id
+    FROM "EnterpriseDocument"
+    WHERE "id" = NEW."documentId";
+
+  IF document_patient_id IS NULL OR document_facility_id IS NULL
+     OR document_patient_id <> NEW."patientId"
+     OR document_facility_id <> NEW."facilityId" THEN
+    RAISE EXCEPTION 'PatientDocumentRelease scope does not match EnterpriseDocument';
+  END IF;
+
+  SELECT "facilityId"
+    INTO patient_facility_id
+    FROM "Patient"
+    WHERE "id" = NEW."patientId";
+
+  IF patient_facility_id IS NULL OR patient_facility_id <> NEW."facilityId" THEN
+    RAISE EXCEPTION 'PatientDocumentRelease patient does not belong to facility';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "PatientDocumentRelease_scope_guard"
+BEFORE INSERT OR UPDATE OF "documentId", "patientId", "facilityId"
+ON "PatientDocumentRelease"
+FOR EACH ROW
+EXECUTE FUNCTION "enforcePatientDocumentReleaseScope"();
