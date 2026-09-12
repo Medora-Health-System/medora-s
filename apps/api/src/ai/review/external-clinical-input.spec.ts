@@ -1,7 +1,7 @@
 import { buildExternalClinicalInput } from "./external-clinical-input.js";
 
 describe("buildExternalClinicalInput", () => {
-  it("excludes direct record identifiers and exact date of birth", () => {
+  it("excludes direct record identifiers, exact DOB, opaque payloads, and coding fields", () => {
     const snapshot = {
       snapshotVersion: "snapshot-v1",
       generatedAt: new Date().toISOString(),
@@ -12,6 +12,7 @@ describe("buildExternalClinicalInput", () => {
         country: "US",
         encounterType: "CLINIC",
         status: "OPEN",
+        billingClassification: "OUTPATIENT",
         careSetting: "OFFICE_OUTPATIENT_CLINIC",
       },
       patientContext: {
@@ -25,7 +26,12 @@ describe("buildExternalClinicalInput", () => {
         providerDocumentationStatus: "DRAFT",
         providerNote: { text: "Clinical note", truncated: false },
         structuredEntries: [
-          { id: "doc-internal-id", namespace: "ROS", documentedAt: "2026-09-12T20:00:00.000Z" },
+          {
+            id: "doc-internal-id",
+            namespace: "ROS",
+            documentedAt: "2026-09-12T20:00:00.000Z",
+            payloadSummary: { hiddenIdentifier: "opaque-secret" },
+          },
         ],
         reassessments: [],
       },
@@ -45,7 +51,7 @@ describe("buildExternalClinicalInput", () => {
       treatments: {
         medicationOrders: [{ id: "med-internal-id", displayLabel: "Acetaminophen" }],
         medicationAdministrations: [{ id: "mar-internal-id", orderItemId: "order-item-internal-id" }],
-        procedures: [{ id: "procedure-internal-id", displayLabel: "Procedure" }],
+        procedures: [{ id: "procedure-internal-id", catalogCode: "PROC-SECRET", displayLabel: "Procedure" }],
       },
       diagnoses: {
         documentedDiagnoses: [{ id: "dx-internal-id", code: "R05", display: "Cough" }],
@@ -65,6 +71,10 @@ describe("buildExternalClinicalInput", () => {
     expect(serialized).not.toContain("1984-01-01");
     expect(serialized).not.toContain("secret-key");
     expect(serialized).not.toContain("internal-id");
+    expect(serialized).not.toContain("opaque-secret");
+    expect(serialized).not.toContain("OUTPATIENT");
+    expect(serialized).not.toContain("PROC-SECRET");
+    expect(serialized).not.toContain("R05");
     expect(input.patient).toEqual({ age: 42, sexAtBirth: "F" });
     expect(input.diagnostics.orders[0]?.items[0]?.displayLabel).toBe("Chest x-ray");
   });
