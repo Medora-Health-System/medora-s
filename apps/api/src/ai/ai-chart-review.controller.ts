@@ -33,18 +33,10 @@ export class AiChartReviewController {
 
     await this.safeAudit("AI_REVIEW_REQUESTED", { facilityId, encounterId }, actorUserId);
     try {
-      const output = await this.reviewOrchestrator.run({
-        facilityId,
-        encounterId,
-        actorUserId,
-      });
+      const output = await this.reviewOrchestrator.run({ facilityId, encounterId, actorUserId });
       await this.safeAudit(
         "AI_REVIEW_COMPLETED",
-        {
-          facilityId,
-          encounterId,
-          snapshotVersion: output.suggestions[0]?.snapshotVersion,
-        },
+        { facilityId, encounterId, snapshotVersion: output.suggestions[0]?.snapshotVersion },
         actorUserId
       );
       return output;
@@ -63,23 +55,17 @@ export class AiChartReviewController {
   ) {
     const { facilityId, actorUserId } = this.resolveActor(req);
     const parsed = AiSuggestionFeedbackRequest.safeParse(body);
-    if (!parsed.success) {
-      throw new BadRequestException("Invalid AI suggestion feedback");
-    }
+    if (!parsed.success) throw new BadRequestException("Invalid AI suggestion feedback");
 
-    // Rebuild through the same authorized snapshot boundary used by chart
-    // review. This prevents feedback from being accepted for an encounter the
-    // actor cannot currently access and rejects feedback for stale suggestions.
-    const currentSnapshot = await this.snapshotBuilder.build({
-      facilityId,
-      encounterId,
-      actorUserId,
-    });
+    const currentSnapshot = await this.snapshotBuilder.build({ facilityId, encounterId, actorUserId });
     if (currentSnapshot.snapshotVersion !== parsed.data.snapshotVersion) {
       throw new ConflictException("AI suggestion is stale; refresh chart review before submitting feedback");
     }
 
-    await this.safeAudit(
+    // Feedback itself is an audit-backed record. Unlike review telemetry, do
+    // not report success if persistence fails; the UI should tell the provider
+    // that the feedback was not recorded.
+    await this.aiAudit.log(
       parsed.data.rating === "HELPFUL" ? "AI_SUGGESTION_HELPFUL" : "AI_SUGGESTION_NOT_HELPFUL",
       {
         facilityId,
@@ -97,13 +83,8 @@ export class AiChartReviewController {
   private resolveActor(req: any): { facilityId: string; actorUserId: string } {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const actorUserId = req.user?.userId;
-
-    if (!facilityId || typeof facilityId !== "string") {
-      throw new BadRequestException("Facility ID required");
-    }
-    if (!actorUserId || typeof actorUserId !== "string") {
-      throw new BadRequestException("Authenticated user required");
-    }
+    if (!facilityId || typeof facilityId !== "string") throw new BadRequestException("Facility ID required");
+    if (!actorUserId || typeof actorUserId !== "string") throw new BadRequestException("Authenticated user required");
     return { facilityId, actorUserId };
   }
 
@@ -115,9 +96,8 @@ export class AiChartReviewController {
     try {
       await this.aiAudit.log(action, metadata, actorUserId);
     } catch {
-      // AI audit telemetry must never block clinical care or the read-only
-      // decision-support response. The underlying audit service remains the
-      // source of truth when available; no PHI is emitted here on failure.
+      // Review audit telemetry must never block the read-only clinical support
+      // response. Do not emit chart data or provider errors to logs here.
     }
   }
 }
