@@ -53,6 +53,7 @@ import { ReportsModule } from "./reports/reports.module";
 import { RoiModule } from "./roi/roi.module";
 import { FacilitiesModule } from "./facilities/facilities.module";
 import { PlatformAnnouncementsModule } from "./platform-announcements/platform-announcements.module";
+import { AiModule } from "./ai/ai.module";
 import { AuditContextInterceptor } from "./common/audit/audit-context.interceptor";
 import { RequestLoggerMiddleware } from "./common/middleware/request-logger.middleware";
 import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error-metrics.module";
@@ -122,6 +123,7 @@ const imports = [
   RoiModule,
   FacilitiesModule,
   PlatformAnnouncementsModule,
+  AiModule,
   PlatformAuditModule,
   PlatformStaffModule,
 ];

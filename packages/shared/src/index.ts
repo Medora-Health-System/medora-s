@@ -805,3 +805,4 @@ export {
 export {
   enterpriseCarePlanTemplateClinicalTextFr,
 } from "./clinicalDocumentation/enterpriseCarePlanTemplateClinicalText.fr.js";
+export * from "./ai/index.js";
