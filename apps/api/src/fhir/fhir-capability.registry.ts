@@ -18,6 +18,13 @@ export type FhirCapability = {
   evidenceTestIds: readonly string[];
 };
 
+export const FHIR_PROPOSAL_PERMISSIONS = Object.freeze([
+  { resourceType: "Observation", code: "observation.propose" },
+  { resourceType: "Condition", code: "condition.propose" },
+  { resourceType: "ServiceRequest", code: "serviceRequest.propose" },
+  { resourceType: "DiagnosticReport", code: "diagnosticReport.propose" },
+] as const);
+
 const ADMIN_CLINICAL_ROLES = [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN] as const;
 const REGISTRATION_READ_ROLES = [...ADMIN_CLINICAL_ROLES, RoleCode.FRONT_DESK] as const;
 
@@ -48,11 +55,11 @@ export class FhirCapabilityRegistry {
   }
 
   permissionOptions() {
-    return this.enabled().map(({ resourceType, interaction, futureM2mScope }) => ({
-      code: futureM2mScope,
-      resourceType,
-      interaction,
-    }));
+    if ((process.env.MEDORA_INTEROP_ENABLED ?? "false").trim().toLowerCase() !== "true") return [];
+    return [
+      ...this.enabled().map(({ resourceType, interaction, futureM2mScope }) => ({ code: futureM2mScope, resourceType, interaction })),
+      ...FHIR_PROPOSAL_PERMISSIONS.map(({ resourceType, code }) => ({ code, resourceType, interaction: "propose" as const })),
+    ];
   }
 
   assertPermissionCodes(codes: readonly string[]): void {
