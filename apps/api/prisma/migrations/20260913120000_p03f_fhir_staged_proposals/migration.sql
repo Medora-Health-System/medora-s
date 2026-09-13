@@ -17,7 +17,10 @@ CREATE TABLE interop."FhirInboundProposal" (
   "reviewedByUserId" TEXT,
   "reviewDisposition" VARCHAR(32),
   "reviewReason" VARCHAR(500),
-  CONSTRAINT "FhirInboundProposal_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "FhirInboundProposal_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "FhirInboundProposal_resourceType_check" CHECK ("resourceType" IN ('Observation','Condition','ServiceRequest','DiagnosticReport')),
+  CONSTRAINT "FhirInboundProposal_status_check" CHECK ("status" IN ('PENDING_REVIEW','REJECTED','CANCELLED')),
+  CONSTRAINT "FhirInboundProposal_fingerprint_check" CHECK (char_length("requestFingerprint") = 64)
 );
 
 CREATE UNIQUE INDEX "FhirInboundProposal_idempotency_key"
