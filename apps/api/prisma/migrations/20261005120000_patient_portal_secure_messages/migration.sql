@@ -98,34 +98,32 @@ ALTER TABLE "PatientPortalMessage"
   ADD CONSTRAINT "PatientPortalMessage_senderUserId_fkey"
   FOREIGN KEY ("senderUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Defense in depth: a portal thread may only be created for the verified account/patient/facility tuple.
+-- Defense in depth: a portal thread may only be created for an active portal account,
+-- a verified account/patient/facility tuple, an active facility, and the patient's
+-- authoritative facility.
 CREATE OR REPLACE FUNCTION "enforcePatientPortalMessageThreadScope"()
 RETURNS TRIGGER AS $$
 DECLARE
-  patient_facility_id TEXT;
-  verified_link_exists BOOLEAN;
+  scope_is_valid BOOLEAN;
 BEGIN
-  SELECT "facilityId"
-    INTO patient_facility_id
-    FROM "Patient"
-    WHERE "id" = NEW."patientId";
-
-  IF patient_facility_id IS NULL OR patient_facility_id <> NEW."facilityId" THEN
-    RAISE EXCEPTION 'PatientPortalMessageThread patient does not belong to facility';
-  END IF;
-
   SELECT EXISTS (
     SELECT 1
     FROM "PatientPortalLink" l
+    INNER JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
+    INNER JOIN "Patient" p ON p."id" = l."patientId"
+    INNER JOIN "Facility" f ON f."id" = l."facilityId"
     WHERE l."portalAccountId" = NEW."portalAccountId"
       AND l."patientId" = NEW."patientId"
       AND l."facilityId" = NEW."facilityId"
       AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
       AND l."revokedAt" IS NULL
-  ) INTO verified_link_exists;
+      AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
+      AND p."facilityId" = NEW."facilityId"
+      AND f."isActive" = TRUE
+  ) INTO scope_is_valid;
 
-  IF NOT verified_link_exists THEN
-    RAISE EXCEPTION 'PatientPortalMessageThread requires a verified patient portal link';
+  IF NOT scope_is_valid THEN
+    RAISE EXCEPTION 'PatientPortalMessageThread requires an active verified patient portal scope';
   END IF;
 
   RETURN NEW;
@@ -139,7 +137,8 @@ FOR EACH ROW
 EXECUTE FUNCTION "enforcePatientPortalMessageThreadScope"();
 
 -- Defense in depth: patient-authored messages must come from the thread owner, and no
--- message can be appended after staff closes the thread.
+-- message can be appended after staff closes the thread. Staff authorization remains
+-- enforced by the existing JWT + RolesGuard application boundary.
 CREATE OR REPLACE FUNCTION "enforcePatientPortalMessageInsert"()
 RETURNS TRIGGER AS $$
 DECLARE
