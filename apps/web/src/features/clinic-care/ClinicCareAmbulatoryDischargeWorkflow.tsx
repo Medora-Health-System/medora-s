@@ -426,8 +426,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
   return (
     <div data-testid="clinic-care-d4c7-discharge-workflow" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={sectionShell}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.checkout.title")}</h3>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.checkout.subtitle")}</p>
+        <h3 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.checkout.title")}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }} role="radiogroup" aria-label={t("clinicCareD4c7.checkout.title")}>
           {CLINIC_AMBULATORY_CHECKOUT_STATES.map((state) => (
             <label key={state} style={{ display: "flex", gap: 8, fontSize: 13, color: "#0f172a", cursor: formDisabled ? "not-allowed" : "pointer" }}>
@@ -453,9 +452,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       </div>
 
       <div data-testid="clinic-care-ambulatory-provider-discharge" style={sectionShell}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c5b2.followUp.dischargeTitle")}</h3>
-        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.discharge.sharedEngineHint")}</p>
-        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c7a.discharge.singleEngineHint")}</p>
+        <h3 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c5b2.followUp.dischargeTitle")}</h3>
         <ProviderDischargeDocumentationSection
           facilityId={facilityId}
           patientId={patientId}
@@ -489,15 +486,17 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         </div>
       </div>
 
-      <div style={sectionShell} data-testid="clinic-care-d4c7-public-health-links">
-        <h3 style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.publicHealth.title")}</h3>
-        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.publicHealth.hint")}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 13 }}>
-          <Link href={vaccinationsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.vaccinations")}</Link>
-          <Link href={diseaseReportsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.diseaseReports")}</Link>
-          <Link href={buildClinicPharmacyEntryHref()} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.pharmacy.openEnterprise")}</Link>
+      {language === "fr" ? (
+        <div style={sectionShell} data-testid="clinic-care-d4c7-public-health-links">
+          <h3 style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.publicHealth.title")}</h3>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.publicHealth.hint")}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 13 }}>
+            <Link href={vaccinationsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.vaccinations")}</Link>
+            <Link href={diseaseReportsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.diseaseReports")}</Link>
+            <Link href={buildClinicPharmacyEntryHref()} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.pharmacy.openEnterprise")}</Link>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
