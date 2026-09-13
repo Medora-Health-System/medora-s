@@ -7,7 +7,7 @@ import { rule3MissingDisposition } from "./rules/rule-3-missing-disposition.rule
 import { rule4UnsignedProviderDocumentation } from "./rules/rule-4-unsigned-provider-documentation.rule.js";
 import { rule5OpenFollowUp } from "./rules/rule-5-open-follow-up.rule.js";
 import { rule6OrderMarMismatch } from "./rules/rule-6-order-mar-mismatch.rule.js";
-import { rule7ReassessmentAfterTreatment } from "./rules/rule-7-reassessment-after-treatment.rule.js";
+import { rule7TransitionReassessment } from "./rules/rule-7-transition-reassessment.rule.js";
 
 /**
  * Deterministic clinical review engine.
@@ -30,7 +30,7 @@ export class DeterministicReviewEngine {
     rule4UnsignedProviderDocumentation,
     rule5OpenFollowUp,
     rule6OrderMarMismatch,
-    rule7ReassessmentAfterTreatment,
+    rule7TransitionReassessment,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
