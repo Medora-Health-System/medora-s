@@ -22,6 +22,14 @@ describe("MEDORA.RD.P0.3A FHIR foundation", () => {
     expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([{ code: "patient.read", resourceType: "Patient", interaction: "read" }]));
     expect(capabilities.enabled().find((c) => c.resourceType === "Observation" && c.interaction === "read")?.humanRoles).not.toContain(RoleCode.FRONT_DESK);
   });
+  test("admin onboarding can stage evidenced scopes while runtime FHIR exposure remains fail-closed", () => {
+    process.env.MEDORA_INTEROP_ENABLED = "false";
+    expect(capabilities.enabled()).toEqual([]);
+    expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([{ code: "patient.read", resourceType: "Patient", interaction: "read" }]));
+    expect(() => capabilities.assertPermissionCodes(["patient.read"])).not.toThrow();
+    expect(() => capabilities.assertPermissionCodes(["patient.delete"])).toThrow("UNSUPPORTED_INTEGRATION_PERMISSION");
+    process.env.MEDORA_INTEROP_ENABLED = "true";
+  });
   test("FHIR-005 metadata is generated from registry and does not advertise writes", () => {
     const statement = new FhirController(capabilities).metadata() as any;
     expect(statement).toMatchObject({ resourceType: "CapabilityStatement", fhirVersion: "4.0.1", kind: "instance", rest: [{ mode: "server" }] });
