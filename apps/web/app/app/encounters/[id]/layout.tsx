@@ -78,7 +78,21 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
       }}
     >
       <div style={{ flex: "1 1 760px", minWidth: 0 }}>{children}</div>
-      <div style={{ flex: "0 1 320px", width: 320, maxWidth: "100%", padding: "20px 16px 40px 0", boxSizing: "border-box" }}>
+      <div
+        data-testid="ai-chart-review-sticky-rail"
+        style={{
+          flex: "0 1 320px",
+          width: 320,
+          maxWidth: "100%",
+          padding: "20px 16px 40px 0",
+          boxSizing: "border-box",
+          position: "sticky",
+          top: 12,
+          alignSelf: "flex-start",
+          maxHeight: "calc(100vh - 24px)",
+          overflowY: "auto",
+        }}
+      >
         <AiChartReviewPanel
           encounterId={encounterId}
           facilityId={facilityId}
