@@ -107,7 +107,11 @@ export function rule2PendingDiagnosticAtDischarge(
           },
         ],
         recommendedActions: [
-          { actionType: "ACKNOWLEDGE", label: "Acknowledge critical result" },
+          {
+            actionType: "NAVIGATE",
+            targetSection: "results",
+            label: "Review critical result",
+          },
         ],
       })
     );

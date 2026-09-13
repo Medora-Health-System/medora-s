@@ -64,50 +64,61 @@ describe("AiSuggestion schema", () => {
   });
 
   it("rejects autonomous order placement action type", () => {
-    const parsed = AiSuggestionActionType.safeParse("PLACE_ORDER");
-    expect(parsed.success).toBe(false);
+    expect(AiSuggestionActionType.safeParse("PLACE_ORDER").success).toBe(false);
   });
 
-  it("rejects sign-note action type", () => {
-    const parsed = AiSuggestionActionType.safeParse("SIGN_NOTE");
-    expect(parsed.success).toBe(false);
+  it("rejects sign-note and modify-chart action types", () => {
+    expect(AiSuggestionActionType.safeParse("SIGN_NOTE").success).toBe(false);
+    expect(AiSuggestionActionType.safeParse("MODIFY_CHART").success).toBe(false);
   });
 
-  it("rejects modify-chart action type", () => {
-    const parsed = AiSuggestionActionType.safeParse("MODIFY_CHART");
-    expect(parsed.success).toBe(false);
-  });
-
-  it("accepts REVIEW and NAVIGATE action types", () => {
+  it("allows only REVIEW and NAVIGATE suggestion actions", () => {
     expect(AiSuggestionActionType.safeParse("REVIEW").success).toBe(true);
     expect(AiSuggestionActionType.safeParse("NAVIGATE").success).toBe(true);
-    expect(AiSuggestionActionType.safeParse("ACKNOWLEDGE").success).toBe(true);
-    expect(AiSuggestionActionType.safeParse("DISMISS").success).toBe(true);
+    expect(AiSuggestionActionType.safeParse("ACKNOWLEDGE").success).toBe(false);
+    expect(AiSuggestionActionType.safeParse("DISMISS").success).toBe(false);
   });
 
   it("accepts all defined clinical categories", () => {
     for (const category of AiSuggestionCategory.options) {
-      expect(
-        AiSuggestion.safeParse({ ...validSuggestion, category }).success
-      ).toBe(true);
+      expect(AiSuggestion.safeParse({ ...validSuggestion, category }).success).toBe(true);
     }
   });
 
   it("accepts all defined priorities", () => {
     for (const priority of AiSuggestionPriority.options) {
-      expect(
-        AiSuggestion.safeParse({ ...validSuggestion, priority }).success
-      ).toBe(true);
+      expect(AiSuggestion.safeParse({ ...validSuggestion, priority }).success).toBe(true);
     }
   });
 
-  it("rejects clinical input in recommended action deep link", () => {
-    const badAction = {
+  it("accepts a query-free internal deep link", () => {
+    const action = {
       actionType: "NAVIGATE",
       targetSection: "results",
       label: "Open results",
-      deepLink: "/encounters/123/results?inject=ignore",
+      deepLink: "/encounters/123/results",
     };
-    expect(AiSuggestionRecommendedAction.safeParse(badAction).success).toBe(true);
+    expect(AiSuggestionRecommendedAction.safeParse(action).success).toBe(true);
+  });
+
+  it("rejects query-bearing, absolute, protocol-relative, and javascript deep links", () => {
+    const unsafeLinks = [
+      "/encounters/123/results?inject=ignore",
+      "https://example.com/results",
+      "//example.com/results",
+      "javascript:alert(1)",
+      "/encounters/123/results#fragment",
+    ];
+
+    for (const deepLink of unsafeLinks) {
+      expect(
+        AiSuggestionRecommendedAction.safeParse({
+          actionType: "NAVIGATE",
+          targetSection: "results",
+          label: "Open results",
+          deepLink,
+        }).success
+      ).toBe(false);
+    }
   });
 });
