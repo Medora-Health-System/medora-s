@@ -7,6 +7,7 @@ const ACUTE_CARE_SETTINGS = new Set([
   "HOSPITAL_INPATIENT_OBSERVATION",
   "CRITICAL_CARE",
 ]);
+const UNKNOWN_STRUCTURED_DOCUMENTED_AT = "1970-01-01T00:00:00.000Z";
 
 function parseIso(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -28,7 +29,10 @@ function reassessmentClinicalTime(entry: AiStructuredDocumentationEntry): number
     }
   }
 
-  if (entry.namespace.toLowerCase() === "ernursingreassessmentv1") {
+  if (
+    entry.namespace.toLowerCase() === "ernursingreassessmentv1" ||
+    entry.documentedAt === UNKNOWN_STRUCTURED_DOCUMENTED_AT
+  ) {
     return null;
   }
 
