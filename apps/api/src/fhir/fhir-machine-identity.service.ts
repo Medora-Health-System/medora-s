@@ -28,16 +28,6 @@ type ClientRow = {
   updatedAt: Date;
 };
 
-type CredentialRow = {
-  id: string;
-  clientId: string;
-  keyId: string;
-  secretHash: string;
-  expiresAt: Date | null;
-  revokedAt: Date | null;
-  lastUsedAt: Date | null;
-};
-
 type AuthRow = ClientRow & {
   integrationStatus: string;
   provisioningState: string;
@@ -59,19 +49,18 @@ export class FhirMachineIdentityService {
 
   async listClients(integrationId: string) {
     await this.requireIntegration(integrationId);
-    const rows = await this.prisma.$queryRaw<Array<ClientRow & { scopes: string[]; credentialCount: number; lastUsedAt: Date | null }>>(Prisma.sql`
+    return this.prisma.$queryRaw<Array<ClientRow & { scopes: string[]; credentialCount: number; lastUsedAt: Date | null }>>(Prisma.sql`
       SELECT c."id", c."integrationId", c."facilityId", c."displayName", c."sourceSystemIdentifier", c."active", c."revokedAt", c."createdAt", c."updatedAt",
         COALESCE(array_agg(DISTINCT s."capabilityCode") FILTER (WHERE s."capabilityCode" IS NOT NULL), ARRAY[]::text[]) AS "scopes",
         COUNT(DISTINCT cr."id")::int AS "credentialCount",
         MAX(cr."lastUsedAt") AS "lastUsedAt"
-      FROM "IntegrationClient" c
-      LEFT JOIN "IntegrationClientScope" s ON s."clientId" = c."id"
-      LEFT JOIN "IntegrationClientCredential" cr ON cr."clientId" = c."id" AND cr."revokedAt" IS NULL
+      FROM "interop"."IntegrationClient" c
+      LEFT JOIN "interop"."IntegrationClientScope" s ON s."clientId" = c."id"
+      LEFT JOIN "interop"."IntegrationClientCredential" cr ON cr."clientId" = c."id" AND cr."revokedAt" IS NULL
       WHERE c."integrationId" = ${integrationId}
       GROUP BY c."id"
       ORDER BY c."createdAt" ASC
     `);
-    return rows;
   }
 
   async provisionClient(adminUserId: string, integrationId: string, input: { facilityId: string; displayName?: string; sourceSystemIdentifier?: string; scopes?: string[]; credentialExpiresAt?: string }) {
@@ -98,23 +87,23 @@ export class FhirMachineIdentityService {
     try {
       await this.prisma.$transaction(async (tx) => {
         await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "IntegrationClient" ("id", "integrationId", "facilityId", "displayName", "sourceSystemIdentifier", "active", "createdById", "updatedById", "createdAt", "updatedAt")
+          INSERT INTO "interop"."IntegrationClient" ("id", "integrationId", "facilityId", "displayName", "sourceSystemIdentifier", "active", "createdById", "updatedById", "createdAt", "updatedAt")
           VALUES (${clientId}, ${integrationId}, ${input.facilityId}, ${displayName}, ${input.sourceSystemIdentifier ?? integration.sourceSystemIdentifier ?? null}, true, ${adminUserId}, ${adminUserId}, ${now}, ${now})
         `);
         for (const scope of requested) {
           await tx.$executeRaw(Prisma.sql`
-            INSERT INTO "IntegrationClientScope" ("id", "clientId", "capabilityCode", "createdAt")
+            INSERT INTO "interop"."IntegrationClientScope" ("id", "clientId", "capabilityCode", "createdAt")
             VALUES (${randomUUID()}, ${clientId}, ${scope}, ${now})
           `);
         }
         await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "IntegrationClientCredential" ("id", "clientId", "keyId", "secretHash", "createdById", "createdAt", "expiresAt")
+          INSERT INTO "interop"."IntegrationClientCredential" ("id", "clientId", "keyId", "secretHash", "createdById", "createdAt", "expiresAt")
           VALUES (${credentialId}, ${clientId}, ${keyId}, ${secretHash}, ${adminUserId}, ${now}, ${expiresAt})
         `);
         await tx.integration.update({ where: { id: integrationId }, data: { provisioningState: "PROVISIONED", status: integration.status === "DRAFT" ? "CONFIGURED" : integration.status, updatedById: adminUserId } });
       });
     } catch (error: any) {
-      if (String(error?.code ?? "") === "P2010" || String(error?.message ?? "").includes("IntegrationClient_integrationId_facilityId_key")) throw new ConflictException("A machine client already exists for this integration and facility");
+      if (String(error?.message ?? "").includes("IntegrationClient_integrationId_facilityId_key")) throw new ConflictException("A machine client already exists for this integration and facility");
       throw error;
     }
 
@@ -146,7 +135,7 @@ export class FhirMachineIdentityService {
     const secret = randomBytes(32).toString("base64url");
     const secretHash = await argon2.hash(secret, { type: argon2.argon2id });
     await this.prisma.$executeRaw(Prisma.sql`
-      INSERT INTO "IntegrationClientCredential" ("id", "clientId", "keyId", "secretHash", "createdById", "createdAt", "expiresAt")
+      INSERT INTO "interop"."IntegrationClientCredential" ("id", "clientId", "keyId", "secretHash", "createdById", "createdAt", "expiresAt")
       VALUES (${id}, ${clientId}, ${keyId}, ${secretHash}, ${adminUserId}, ${new Date()}, ${expiresAt})
     `);
     await this.audit.log(AuditAction.UPDATE, "FHIR_INTEGRATION_CLIENT", { userId: adminUserId, entityId: clientId, critical: true, metadata: { event: "FHIR_M2M_CREDENTIAL_ROTATED", integrationId, keyId } });
@@ -156,7 +145,7 @@ export class FhirMachineIdentityService {
   async revokeCredential(adminUserId: string, integrationId: string, clientId: string, keyId: string) {
     await this.requireClient(integrationId, clientId);
     const changed = await this.prisma.$executeRaw(Prisma.sql`
-      UPDATE "IntegrationClientCredential"
+      UPDATE "interop"."IntegrationClientCredential"
       SET "revokedAt" = COALESCE("revokedAt", ${new Date()}), "revokedById" = COALESCE("revokedById", ${adminUserId})
       WHERE "clientId" = ${clientId} AND "keyId" = ${keyId}
     `);
@@ -170,11 +159,11 @@ export class FhirMachineIdentityService {
     const now = new Date();
     await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw(Prisma.sql`
-        UPDATE "IntegrationClient" SET "active" = false, "revokedAt" = COALESCE("revokedAt", ${now}), "revokedById" = COALESCE("revokedById", ${adminUserId}), "updatedById" = ${adminUserId}, "updatedAt" = ${now}
+        UPDATE "interop"."IntegrationClient" SET "active" = false, "revokedAt" = COALESCE("revokedAt", ${now}), "revokedById" = COALESCE("revokedById", ${adminUserId}), "updatedById" = ${adminUserId}, "updatedAt" = ${now}
         WHERE "id" = ${clientId} AND "integrationId" = ${integrationId}
       `);
       await tx.$executeRaw(Prisma.sql`
-        UPDATE "IntegrationClientCredential" SET "revokedAt" = COALESCE("revokedAt", ${now}), "revokedById" = COALESCE("revokedById", ${adminUserId})
+        UPDATE "interop"."IntegrationClientCredential" SET "revokedAt" = COALESCE("revokedAt", ${now}), "revokedById" = COALESCE("revokedById", ${adminUserId})
         WHERE "clientId" = ${clientId}
       `);
     });
@@ -189,10 +178,10 @@ export class FhirMachineIdentityService {
         i."status"::text AS "integrationStatus", i."provisioningState"::text AS "provisioningState",
         fa."active" AS "authorizationActive", cr."id" AS "credentialId", cr."keyId" AS "credentialKeyId", cr."secretHash",
         cr."expiresAt" AS "credentialExpiresAt", cr."revokedAt" AS "credentialRevokedAt"
-      FROM "IntegrationClient" c
-      JOIN "Integration" i ON i."id" = c."integrationId"
-      JOIN "IntegrationFacilityAuthorization" fa ON fa."integrationId" = c."integrationId" AND fa."facilityId" = c."facilityId" AND fa."revokedAt" IS NULL
-      JOIN "IntegrationClientCredential" cr ON cr."clientId" = c."id"
+      FROM "interop"."IntegrationClient" c
+      JOIN "public"."Integration" i ON i."id" = c."integrationId"
+      JOIN "public"."IntegrationFacilityAuthorization" fa ON fa."integrationId" = c."integrationId" AND fa."facilityId" = c."facilityId" AND fa."revokedAt" IS NULL
+      JOIN "interop"."IntegrationClientCredential" cr ON cr."clientId" = c."id"
       WHERE c."id" = ${input.clientId} AND c."facilityId" = ${input.facilityId} AND cr."keyId" = ${input.keyId}
       LIMIT 1
     `);
@@ -206,7 +195,6 @@ export class FhirMachineIdentityService {
     const requested = input.scopes?.length ? [...new Set(input.scopes)] : allowed;
     if (!requested.length || requested.some((scope) => !allowed.includes(scope))) throw new ForbiddenException("Requested scope is not authorized");
 
-    const signingSecret = this.signingSecret();
     const expiresIn = this.tokenTtlSeconds();
     const issuer = process.env.FHIR_M2M_ISSUER?.trim() || "medora-s";
     const audience = process.env.FHIR_M2M_AUDIENCE?.trim() || "medora-fhir";
@@ -219,9 +207,9 @@ export class FhirMachineIdentityService {
       scopes: requested,
       kid: row.credentialKeyId,
       jti,
-    }, { secret: signingSecret, issuer, audience, subject: row.id, expiresIn });
+    }, { secret: this.signingSecret(), issuer, audience, subject: row.id, expiresIn });
 
-    await this.prisma.$executeRaw(Prisma.sql`UPDATE "IntegrationClientCredential" SET "lastUsedAt" = ${new Date()} WHERE "id" = ${row.credentialId}`);
+    await this.prisma.$executeRaw(Prisma.sql`UPDATE "interop"."IntegrationClientCredential" SET "lastUsedAt" = ${new Date()} WHERE "id" = ${row.credentialId}`);
     await this.audit.log(AuditAction.VIEW, "FHIR_INTEGRATION_CLIENT", { facilityId: row.facilityId, entityId: row.id, metadata: { event: "FHIR_M2M_TOKEN_ISSUED", integrationId: row.integrationId, keyId: row.credentialKeyId, scopeCount: requested.length, jti } });
     return { access_token: accessToken, token_type: "Bearer", expires_in: expiresIn, scope: requested.join(" ") };
   }
@@ -232,10 +220,10 @@ export class FhirMachineIdentityService {
       SELECT c."id" AS "clientId", c."integrationId", c."facilityId", c."active", c."revokedAt",
         i."status"::text AS "integrationStatus", i."provisioningState"::text AS "provisioningState",
         fa."active" AS "authorizationActive", cr."id" AS "credentialId", cr."revokedAt" AS "credentialRevokedAt", cr."expiresAt" AS "credentialExpiresAt"
-      FROM "IntegrationClient" c
-      JOIN "Integration" i ON i."id" = c."integrationId"
-      JOIN "IntegrationFacilityAuthorization" fa ON fa."integrationId" = c."integrationId" AND fa."facilityId" = c."facilityId" AND fa."revokedAt" IS NULL
-      JOIN "IntegrationClientCredential" cr ON cr."clientId" = c."id" AND cr."keyId" = ${payload.kid}
+      FROM "interop"."IntegrationClient" c
+      JOIN "public"."Integration" i ON i."id" = c."integrationId"
+      JOIN "public"."IntegrationFacilityAuthorization" fa ON fa."integrationId" = c."integrationId" AND fa."facilityId" = c."facilityId" AND fa."revokedAt" IS NULL
+      JOIN "interop"."IntegrationClientCredential" cr ON cr."clientId" = c."id" AND cr."keyId" = ${payload.kid}
       WHERE c."id" = ${payload.clientId} AND c."integrationId" = ${payload.integrationId} AND c."facilityId" = ${payload.facilityId}
       LIMIT 1
     `);
@@ -258,8 +246,8 @@ export class FhirMachineIdentityService {
   private async effectiveScopes(clientId: string, integrationId: string): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<Array<{ capabilityCode: string }>>(Prisma.sql`
       SELECT cs."capabilityCode"
-      FROM "IntegrationClientScope" cs
-      INNER JOIN "IntegrationPermission" p ON p."integrationId" = ${integrationId} AND p."capabilityCode" = cs."capabilityCode"
+      FROM "interop"."IntegrationClientScope" cs
+      INNER JOIN "public"."IntegrationPermission" p ON p."integrationId" = ${integrationId} AND p."capabilityCode" = cs."capabilityCode"
       WHERE cs."clientId" = ${clientId}
       ORDER BY cs."capabilityCode" ASC
     `);
@@ -269,10 +257,10 @@ export class FhirMachineIdentityService {
   private async consumeRateLimit(clientId: string, facilityId: string) {
     const limit = this.rateLimitPerMinute();
     const [bucket] = await this.prisma.$queryRaw<Array<{ requestCount: number }>>(Prisma.sql`
-      INSERT INTO "FhirIntegrationRateLimitBucket" ("id", "clientId", "facilityId", "windowStart", "requestCount", "updatedAt")
+      INSERT INTO "interop"."FhirIntegrationRateLimitBucket" AS bucket ("id", "clientId", "facilityId", "windowStart", "requestCount", "updatedAt")
       VALUES (${randomUUID()}, ${clientId}, ${facilityId}, date_trunc('minute', CURRENT_TIMESTAMP), 1, CURRENT_TIMESTAMP)
       ON CONFLICT ("clientId", "facilityId", "windowStart") DO UPDATE
-      SET "requestCount" = "FhirIntegrationRateLimitBucket"."requestCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
+      SET "requestCount" = bucket."requestCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
       RETURNING "requestCount"
     `);
     if ((bucket?.requestCount ?? limit + 1) > limit) throw new HttpException("FHIR machine rate limit exceeded", 429);
@@ -301,7 +289,7 @@ export class FhirMachineIdentityService {
   }
 
   private async requireClient(integrationId: string, clientId: string) {
-    const [row] = await this.prisma.$queryRaw<ClientRow[]>(Prisma.sql`SELECT * FROM "IntegrationClient" WHERE "id" = ${clientId} AND "integrationId" = ${integrationId} LIMIT 1`);
+    const [row] = await this.prisma.$queryRaw<ClientRow[]>(Prisma.sql`SELECT * FROM "interop"."IntegrationClient" WHERE "id" = ${clientId} AND "integrationId" = ${integrationId} LIMIT 1`);
     if (!row) throw new NotFoundException("Machine client not found");
     return row;
   }
