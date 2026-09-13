@@ -14,6 +14,29 @@ export const CARE_PLAN_ACTIVITY_STATUS = { NOT_STARTED: "not-started", IN_PROGRE
 export function carePlanActivityStatus(status: string) { const mapped = CARE_PLAN_ACTIVITY_STATUS[status as CarePlanComponentStatus]; if (!mapped) throw new Error("Unmapped CarePlan component status"); return mapped; }
 export function diagnosticReportStatus(row: { verifiedAt?: Date | null; orderItem: { status: OrderStatus } }) { if (!Object.values(OrderStatus).includes(row.orderItem.status)) throw new Error("Unmapped Result status evidence"); if (row.orderItem.status === OrderStatus.CANCELLED) return "cancelled"; return row.verifiedAt ? "final" : "preliminary"; }
 
+export function serviceRequestOrderStatuses(fhirStatus: string): OrderStatus[] {
+  const statuses = Object.values(OrderStatus).filter((status) => SERVICE_REQUEST_STATUS[status] === fhirStatus);
+  if (!statuses.length) throw new BadRequestException("Unsupported status");
+  return statuses;
+}
+
+export function conditionDiagnosisStatuses(clinicalStatus?: string, verificationStatus?: string): DiagnosisStatus[] | undefined {
+  let clinical: DiagnosisStatus[] | undefined;
+  if (clinicalStatus) {
+    clinical = clinicalStatus === "active" ? [DiagnosisStatus.ACTIVE] : clinicalStatus === "resolved" ? [DiagnosisStatus.RESOLVED] : undefined;
+    if (!clinical) throw new BadRequestException("Unsupported clinical-status");
+  }
+  let verification: DiagnosisStatus[] | undefined;
+  if (verificationStatus) {
+    verification = verificationStatus === "confirmed" ? [DiagnosisStatus.ACTIVE, DiagnosisStatus.RESOLVED] : verificationStatus === "entered-in-error" ? [DiagnosisStatus.REMOVED] : undefined;
+    if (!verification) throw new BadRequestException("Unsupported verification-status");
+  }
+  if (!clinical && !verification) return undefined;
+  if (!clinical) return verification;
+  if (!verification) return clinical;
+  return clinical.filter((status) => verification!.includes(status));
+}
+
 @Injectable()
 export class FhirClinicalService {
   constructor(private readonly prisma: PrismaService, private readonly search: FhirSearchService, private readonly refs: FhirReferenceResolver) {}
@@ -33,19 +56,17 @@ export class FhirClinicalService {
       : type === "ServiceRequest" ? ["_id", "patient", "subject", "encounter", "code", "status", "authored", "_count", "_cursor"]
       : type === "DiagnosticReport" ? ["_id", "patient", "subject", "encounter", "based-on", "status", "date", "_count", "_cursor"]
       : ["_id", "patient", "subject", "encounter", "status", "date", "_count", "_cursor"];
-    const parsed = this.search.parse(query, allowed); const v = parsed.values;
+    const parsed = this.search.parse(query, allowed, type); const v = parsed.values;
     const patient = this.reference(v.patient ?? v.subject, "Patient");
     const encounter = this.reference(v.encounter, "Encounter");
     const id = v._id ? parseLogicalId(v._id) : undefined;
     let rows: Array<Record<string, any>>;
     if (type === "Condition") {
-      if (v["verification-status"] && !["confirmed", "entered-in-error"].includes(v["verification-status"])) throw new BadRequestException("Unsupported verification-status");
-      const status = v["clinical-status"] ? ({ active: "ACTIVE", resolved: "RESOLVED" } as Record<string,string>)[v["clinical-status"]] : undefined;
-      if (v["clinical-status"] && !status) throw new BadRequestException("Unsupported clinical-status");
-      const verificationStatus = v["verification-status"] === "confirmed" ? { in: [DiagnosisStatus.ACTIVE, DiagnosisStatus.RESOLVED] } : v["verification-status"] === "entered-in-error" ? DiagnosisStatus.REMOVED : undefined;
-      rows = await this.prisma.diagnosis.findMany({ where: { facilityId, ...(id ? { id } : {}), ...(patient ? { patientId: patient } : {}), ...(encounter ? { encounterId: encounter } : {}), ...(v.code ? { code: this.token(v.code) } : {}), ...(status ? { status: status as any } : verificationStatus ? { status: verificationStatus } : {}), ...(v["recorded-date"] ? { createdAt: this.day(v["recorded-date"]) } : {}), ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {}) }, orderBy: { id: "asc" }, take: parsed.count + 1 });
+      const statuses = conditionDiagnosisStatuses(v["clinical-status"], v["verification-status"]);
+      if (statuses && statuses.length === 0) return searchBundle(this.search.baseUrl(), type, query, [], false);
+      rows = await this.prisma.diagnosis.findMany({ where: { facilityId, ...(id ? { id } : {}), ...(patient ? { patientId: patient } : {}), ...(encounter ? { encounterId: encounter } : {}), ...(v.code ? { code: this.token(v.code) } : {}), ...(statuses ? { status: { in: statuses } } : {}), ...(v["recorded-date"] ? { createdAt: this.day(v["recorded-date"]) } : {}), ...(parsed.cursor ? { id: { gt: parsed.cursor } } : {}) }, orderBy: { id: "asc" }, take: parsed.count + 1 });
     } else if (type === "ServiceRequest") {
-      rows = await this.prisma.orderItem.findMany({ where: { id: id ?? (parsed.cursor ? { gt: parsed.cursor } : undefined), catalogItemType: { in: TYPES }, order: { facilityId, ...(patient ? { patientId: patient } : {}), ...(encounter ? { encounterId: encounter } : {}), ...(v.authored ? { createdAt: this.day(v.authored) } : {}) }, ...(v.code ? { OR: [{ catalogItemId: this.token(v.code) }, { manualLabel: v.code }] } : {}), ...(v.status ? { status: this.orderStatus(v.status) as any } : {}) }, include: { order: true }, orderBy: { id: "asc" }, take: parsed.count + 1 });
+      rows = await this.prisma.orderItem.findMany({ where: { id: id ?? (parsed.cursor ? { gt: parsed.cursor } : undefined), catalogItemType: { in: TYPES }, order: { facilityId, ...(patient ? { patientId: patient } : {}), ...(encounter ? { encounterId: encounter } : {}), ...(v.authored ? { createdAt: this.day(v.authored) } : {}) }, ...(v.code ? { OR: [{ catalogItemId: this.token(v.code) }, { manualLabel: v.code }] } : {}), ...(v.status ? { status: { in: serviceRequestOrderStatuses(v.status) } } : {}) }, include: { order: true }, orderBy: { id: "asc" }, take: parsed.count + 1 });
     } else if (type === "DiagnosticReport") {
       const basedOn = this.reference(v["based-on"], "ServiceRequest");
       if (v.status && !["preliminary", "final", "cancelled"].includes(v.status)) throw new BadRequestException("Unsupported status");
@@ -71,7 +92,6 @@ export class FhirClinicalService {
   private reference(v: string|undefined, type: "Patient"|"Encounter"|"ServiceRequest") { return v ? parseFhirReference(v, type).id : undefined; }
   private token(v:string) { const p=v.split("|"); if(p.length>2 || !p.at(-1)) throw new BadRequestException("Malformed token"); return p.at(-1)!; }
   private day(v:string) { if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new BadRequestException("Malformed date"); const d=new Date(v+"T00:00:00.000Z"); if(d.toISOString().slice(0,10)!==v) throw new BadRequestException("Malformed date"); return { gte:d, lt:new Date(d.getTime()+86400000) }; }
-  private orderStatus(v:string) { const x=({ draft:"DRAFT", active:"IN_PROGRESS", completed:"COMPLETED", revoked:"CANCELLED" } as any)[v]; if(!x) throw new BadRequestException("Unsupported status"); return x; }
   private requestStatus(v:string) { const status = SERVICE_REQUEST_STATUS[v as OrderStatus]; if (!status) throw new Error("Unmapped Order status"); return status; }
   private reportStatus(r:any) { return diagnosticReportStatus(r); }
   private careStatus(v:string) { const x=({ draft:"DRAFT", active:"ACTIVE", "on-hold":"ON_HOLD", completed:"COMPLETED", revoked:"DISCONTINUED" } as any)[v]; if(!x) throw new BadRequestException("Unsupported status"); return x; }

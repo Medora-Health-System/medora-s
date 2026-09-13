@@ -20,7 +20,7 @@ export class FhirAdministrativeService {
 
   async find(type: string, facilityId: string, query: Record<string, unknown>) {
     const allowed = type === "Practitioner" ? ["_id", "identifier", "family", "given", "name", "_count", "_cursor"] : type === "PractitionerRole" ? ["_id", "practitioner", "organization", "_count", "_cursor"] : type === "Organization" ? ["_id", "identifier", "name", "_count", "_cursor"] : ["_id", "identifier", "name", "organization", "status", "_count", "_cursor"];
-    const parsed = this.search.parse(query, allowed);
+    const parsed = this.search.parse(query, allowed, type);
     const rows = await this.rows(type, facilityId, parsed.values, parsed.count + 1, parsed.cursor);
     return searchBundle(this.search.baseUrl(), type, query, rows.slice(0, parsed.count), rows.length > parsed.count);
   }
