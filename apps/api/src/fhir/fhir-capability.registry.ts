@@ -50,22 +50,36 @@ export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
 
 @Injectable()
 export class FhirCapabilityRegistry {
-  /** A disabled deployment exposes neither routes, metadata claims, nor grantable permissions. */
-  enabled(jurisdiction?: string): readonly FhirCapability[] {
-    if ((process.env.MEDORA_INTEROP_ENABLED ?? "false").trim().toLowerCase() !== "true") return [];
-    return FHIR_CAPABILITIES.filter((c) => c.deploymentEnabled && c.productionEnabled && c.evidenceTestIds.length > 0 && (c.jurisdictions.includes("*") || (!!jurisdiction && c.jurisdictions.includes(jurisdiction))));
+  /**
+   * Implemented/evidenced capabilities that a platform administrator may stage on an
+   * integration while it is still PENDING_PROVISIONING. This remains independent of
+   * runtime route exposure: selecting a scope does not make a FHIR route reachable.
+   */
+  grantable(jurisdiction?: string): readonly FhirCapability[] {
+    return FHIR_CAPABILITIES.filter((capability) =>
+      capability.deploymentEnabled &&
+      capability.productionEnabled &&
+      capability.evidenceTestIds.length > 0 &&
+      (capability.jurisdictions.includes("*") || (!!jurisdiction && capability.jurisdictions.includes(jurisdiction)))
+    );
   }
 
-  permissionOptions() {
+  /** Runtime route/metadata exposure remains fail-closed behind MEDORA_INTEROP_ENABLED. */
+  enabled(jurisdiction?: string): readonly FhirCapability[] {
     if ((process.env.MEDORA_INTEROP_ENABLED ?? "false").trim().toLowerCase() !== "true") return [];
+    return this.grantable(jurisdiction);
+  }
+
+  /** Admin onboarding can stage all evidenced read/search and approved proposal permissions. */
+  permissionOptions() {
     return [
-      ...this.enabled().map(({ resourceType, interaction, futureM2mScope }) => ({ code: futureM2mScope, resourceType, interaction })),
+      ...this.grantable().map(({ resourceType, interaction, futureM2mScope }) => ({ code: futureM2mScope, resourceType, interaction })),
       ...FHIR_PROPOSAL_PERMISSIONS.map(({ resourceType, code }) => ({ code, resourceType, interaction: "propose" as const })),
     ];
   }
 
   assertPermissionCodes(codes: readonly string[]): void {
-    const allowed = new Set(this.permissionOptions().map((p) => p.code));
+    const allowed = new Set(this.permissionOptions().map((permission) => permission.code));
     if (codes.some((code) => !allowed.has(code))) throw new Error("UNSUPPORTED_INTEGRATION_PERMISSION");
   }
 }
