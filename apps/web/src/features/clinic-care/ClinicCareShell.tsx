@@ -116,11 +116,7 @@ export function ClinicCareShell({
             </h1>
             {subtitle ? (
               <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>{subtitle}</p>
-            ) : (
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-                {t("clinicCareD4c2a.workspaceSubtitle")}
-              </p>
-            )}
+            ) : null}
           </div>
           {actions}
         </header>
