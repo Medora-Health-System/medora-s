@@ -74,6 +74,10 @@ jobs:
       - name: API typecheck
         run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
 
+      - name: Patient portal clinical records security tests
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs patient-records.service.spec.ts patient-documents.service.spec.ts patient-document-release.service.spec.ts --runInBand
+
       - name: Web typecheck
         run: pnpm --filter @medora/web exec tsc --noEmit
 
