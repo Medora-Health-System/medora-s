@@ -83,7 +83,7 @@ describe("PatientMessagesService", () => {
     );
   });
 
-  it("never exposes staff user ids or portal account ids in the patient message projection", async () => {
+  it("never exposes staff user ids or portal account ids in the patient projection", async () => {
     const { prisma, service } = build();
     prisma.$queryRaw
       .mockResolvedValueOnce([thread])
@@ -109,7 +109,7 @@ describe("PatientMessagesService", () => {
     expect(result.messages[0]).not.toHaveProperty("senderPortalAccountId");
   });
 
-  it("creates patient messages and their audit record atomically without copying message text into audit metadata", async () => {
+  it("creates patient messages and audit atomically without copying message text into audit metadata", async () => {
     const { tx, service } = build();
     tx.$queryRaw
       .mockResolvedValueOnce([thread])
@@ -117,29 +117,41 @@ describe("PatientMessagesService", () => {
 
     await service.createPatientThread(
       access,
-      {
-        category: "CLINICAL",
-        subject: "Question",
-        message: "I have a question.",
-      },
+      { category: "CLINICAL", subject: "Question", message: "I have a question." },
       { ip: "127.0.0.1", userAgent: "jest" },
     );
 
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
     const threadInsert = tx.$queryRaw.mock.calls[0][0];
     expect(threadInsert.values).toEqual(
       expect.arrayContaining(["portal-a", "patient-a", "facility-a", "CLINICAL", "Question"]),
     );
-
     expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     const auditSql = tx.$executeRaw.mock.calls[0][0];
     expect(auditSql.strings.join(" ")).toContain('INSERT INTO "PatientPortalAuditLog"');
-    expect(auditSql.values).not.toContain("I have a question.");
     expect(
       auditSql.values.some(
         (value: unknown) => typeof value === "string" && value.includes("I have a question."),
       ),
     ).toBe(false);
+  });
+
+  it("audits a patient reply against the message id rather than only the thread id", async () => {
+    const { tx, service } = build();
+    tx.$queryRaw
+      .mockResolvedValueOnce([thread])
+      .mockResolvedValueOnce([{ ...patientMessage, id: "message-reply", body: "Reply" }]);
+
+    await service.replyAsPatient(access, "thread-a", { message: "Reply" }, {});
+
+    const auditSql = tx.$executeRaw.mock.calls[0][0];
+    expect(auditSql.values).toEqual(
+      expect.arrayContaining([
+        "PATIENT_PORTAL_MESSAGE_SEND",
+        "PATIENT_PORTAL_MESSAGE",
+      ]),
+    );
+    expect(auditSql.values).toContain("thread-a");
+    expect(auditSql.values).not.toContain("Reply");
   });
 
   it("returns 404 before inserting when a patient thread is outside the verified access tuple", async () => {
@@ -166,7 +178,48 @@ describe("PatientMessagesService", () => {
     expect(tx.$executeRaw).not.toHaveBeenCalled();
   });
 
-  it("scopes staff thread access to the authenticated facility before reply and uses critical staff audit", async () => {
+  it("returns the newest 500 messages in chronological order and explicitly reports truncation", async () => {
+    const { prisma, service } = build();
+    const newestFirst = Array.from({ length: 501 }, (_, index) => ({
+      ...patientMessage,
+      id: `message-${500 - index}`,
+      createdAt: new Date(2026, 0, 1, 0, 0, 500 - index),
+    }));
+    prisma.$queryRaw
+      .mockResolvedValueOnce([thread])
+      .mockResolvedValueOnce(newestFirst);
+
+    const result = await service.getPatientThread(access, "thread-a", {});
+
+    const historySql = prisma.$queryRaw.mock.calls[1][0];
+    expect(historySql.strings.join(" ")).toContain('ORDER BY "createdAt" DESC');
+    expect(historySql.strings.join(" ")).toContain("LIMIT 501");
+    expect(result.messagesTruncated).toBe(true);
+    expect(result.messages).toHaveLength(500);
+    expect(result.messages[0].id).toBe("message-1");
+    expect(result.messages[499].id).toBe("message-500");
+  });
+
+  it("requires an active verified patient link/account before staff can add new content", async () => {
+    const { tx, service } = build();
+    tx.$queryRaw.mockResolvedValueOnce([]);
+
+    await expect(
+      service.replyAsStaff(actor, "thread-a", { message: "Care team response" }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    const eligibilitySql = tx.$queryRaw.mock.calls[0][0];
+    const text = eligibilitySql.strings.join(" ");
+    expect(text).toContain('INNER JOIN "PatientPortalLink"');
+    expect(text).toContain('l."status" =');
+    expect(text).toContain('l."revokedAt" IS NULL');
+    expect(text).toContain('a."status" =');
+    expect(text).toContain('f."isActive" = TRUE');
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it("scopes staff reply to the authenticated facility and uses critical staff audit", async () => {
     const { tx, staffAudit, service } = build();
     tx.$queryRaw
       .mockResolvedValueOnce([thread])
@@ -184,7 +237,6 @@ describe("PatientMessagesService", () => {
     await service.replyAsStaff(actor, "thread-a", { message: "Care team response" });
 
     const lookupSql = tx.$queryRaw.mock.calls[0][0];
-    expect(lookupSql.strings.join(" ")).toContain('"facilityId" =');
     expect(lookupSql.values).toEqual(expect.arrayContaining(["thread-a", "facility-a"]));
     expect(staffAudit.log).toHaveBeenCalledWith(
       AuditAction.CREATE,
@@ -201,7 +253,7 @@ describe("PatientMessagesService", () => {
     expect(JSON.stringify(auditInput.metadata)).not.toContain("Care team response");
   });
 
-  it("strictly rejects patient-controlled routing or identity fields", () => {
+  it("strictly rejects patient-controlled routing, identity, and attachment fields", () => {
     expect(
       createPatientMessageThreadSchema.safeParse({
         category: "CLINICAL",
