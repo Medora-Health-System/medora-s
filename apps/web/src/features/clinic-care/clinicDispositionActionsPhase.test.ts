@@ -1,0 +1,58 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = join(process.cwd(), "src/features/clinic-care");
+const workflow = readFileSync(join(root, "ClinicCareAmbulatoryDischargeWorkflow.tsx"), "utf8");
+const details = readFileSync(join(root, "ClinicCareCheckoutDetailsPanel.tsx"), "utf8");
+
+describe("Clinic disposition actions", () => {
+  it("provides an explicit confirmation action for every clinic checkout state", () => {
+    for (const state of [
+      "HOME",
+      "CLINIC_FOLLOW_UP",
+      "REFERRAL",
+      "TRANSFER_ED",
+      "AMA",
+      "OTHER",
+    ]) {
+      expect(workflow).toContain(`case \"${state}\"`);
+    }
+    expect(workflow).toContain("clinic-checkout-confirm-${checkoutState.toLowerCase()}");
+  });
+
+  it("persists a canonical confirmation and advances the open encounter to DISCHARGE_READY", () => {
+    expect(workflow).toContain("clinicAmbulatoryCheckoutConfirmation");
+    expect(workflow).toContain('state: checkoutState');
+    expect(workflow).toContain('workflowState: \"DISCHARGE_READY\"');
+    expect(workflow).toContain("confirmedAt: nowIso");
+    expect(workflow).toContain("confirmedByDisplayName: actor");
+  });
+
+  it("requires meaningful detail for referral, transfer, AMA, and Other", () => {
+    expect(details).toContain('state === \"REFERRAL\"');
+    expect(details).toContain('details.referral.destination.trim()');
+    expect(details).toContain('details.referral.reason.trim()');
+    expect(details).toContain('state === \"TRANSFER_ED\"');
+    expect(details).toContain('details.transferEd.destination.trim()');
+    expect(details).toContain('details.transferEd.reason.trim()');
+    expect(details).toContain('state === \"AMA\"');
+    expect(details).toContain('details.ama.risksDiscussed');
+    expect(details).toContain('details.ama.alternativesDiscussed');
+    expect(details).toContain('state === \"OTHER\"');
+    expect(details).toContain('details.other.explanation.trim()');
+  });
+
+  it("uses shared discharge validation for normal ambulatory completion paths", () => {
+    expect(workflow).toContain("validateProviderDischargeDocumentation");
+    expect(workflow).toContain("requireFinalDiagnosis: true");
+    expect(workflow).toContain("requireInstructionsCommunicated: true");
+    expect(workflow).toContain('state === \"HOME\"');
+    expect(workflow).toContain('state === \"CLINIC_FOLLOW_UP\"');
+  });
+
+  it("does not falsely claim that confirming Transfer to ED created an ED encounter", () => {
+    expect(workflow).toContain("creating an ED encounter remains a separate action");
+    expect(details).toContain("does not create an ED encounter");
+  });
+});
