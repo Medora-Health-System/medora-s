@@ -11,10 +11,20 @@ import { rule7TransitionReassessment } from "./rules/rule-7-transition-reassessm
 import { rule8TransitionDiagnosticContext } from "./rules/rule-8-transition-diagnostic-context.rule.js";
 import { rule9PossibleDuplicateMedication } from "./rules/rule-9-possible-duplicate-medication.rule.js";
 
-/** Deterministic, read-only clinical review engine. */
+/**
+ * Deterministic clinical review engine.
+ *
+ * Runs a fixed set of rules against an EncounterAiSnapshot and returns a
+ * structured AiClinicalReviewOutput. Each rule is isolated: a rule failure
+ * is logged and does not crash the overall review.
+ *
+ * The engine performs no LLM calls, no database writes, no chart mutation,
+ * and no reimbursement/coding logic.
+ */
 @Injectable()
 export class DeterministicReviewEngine {
   private readonly logger = new Logger(DeterministicReviewEngine.name);
+
   private readonly rules: DeterministicRule[] = [
     rule1UnacknowledgedCriticalResult,
     rule2PendingDiagnosticAtDischarge,
@@ -29,14 +39,27 @@ export class DeterministicReviewEngine {
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
     const generatedAt = new Date().toISOString();
-    const ctx = { generatedAt, snapshotVersion: snapshot.snapshotVersion };
+    const ctx = {
+      generatedAt,
+      snapshotVersion: snapshot.snapshotVersion,
+    };
+
     const suggestions: AiSuggestion[] = [];
+
     for (const rule of this.rules) {
-      try { suggestions.push(...rule(snapshot, ctx)); }
-      catch (err) {
-        this.logger.error({ message: "Deterministic review rule failed", rule: rule.name, error: err instanceof Error ? err.message : String(err) });
+      try {
+        suggestions.push(...rule(snapshot, ctx));
+      } catch (err) {
+        this.logger.error({
+          message: "Deterministic review rule failed",
+          rule: rule.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
-    return { suggestions };
+
+    return {
+      suggestions,
+    };
   }
 }
