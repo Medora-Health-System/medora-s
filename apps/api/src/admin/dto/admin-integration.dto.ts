@@ -12,6 +12,10 @@ function containsCredentialKey(value: unknown): boolean {
 const optionalText = (max: number) => z.preprocess((value) => typeof value === "string" && !value.trim() ? undefined : value, z.string().trim().max(max).optional());
 const requiredText = (label: string, max: number) => z.string({ required_error: `${label} is required` }).trim().min(1, `${label} is required`).max(max);
 const email = (label: string) => z.string({ required_error: `${label} is required` }).trim().email(`${label} must be a valid email address`).max(254);
+const optionalEmail = (label: string) => z.preprocess((value) => typeof value === "string" && !value.trim() ? undefined : value, z.string().trim().email(`${label} must be a valid email address`).max(254).optional());
+const optionalUrl = (label: string) => z.preprocess((value) => typeof value === "string" && !value.trim() ? undefined : value, z.string().url(`${label} must be a valid URL`).max(2048).optional());
+const countryCode = z.string().trim().length(2, "Country must be a two-letter code").regex(/^[A-Za-z]{2}$/, "Country must be a two-letter code").transform((v) => v.toUpperCase());
+const optionalCountryCode = z.preprocess((value) => typeof value === "string" && !value.trim() ? undefined : value, countryCode.optional());
 const phonePattern = /^[+0-9][0-9().\-\s]{5,62}[0-9]$/;
 const phone = (label: string, optional = false) => (optional ? optionalText(64) : requiredText(label, 64)).refine((v) => !v || phonePattern.test(v), `${label} must be a valid international telephone number`);
 
@@ -25,10 +29,10 @@ const integrationBaseSchema = z.object({
   partnerName: requiredText("Legal organization name", 200),
   organizationType: enumValues(["LABORATORY","HOSPITAL","CLINIC","PHARMACY","IMAGING_RADIOLOGY","GOVERNMENT","RCM_BILLING","HIE","OTHER"]),
   jurisdiction: requiredText("Jurisdiction", 32),
-  organizationRegistrationId: optionalText(160), website: z.preprocess((v) => typeof v === "string" && !v.trim() ? undefined : v, z.string().url("Website must be a valid URL").max(2048).optional()),
-  addressLine1: requiredText("Address line 1", 200), addressLine2: optionalText(200), city: requiredText("City", 120), stateProvinceRegion: optionalText(120), postalCode: optionalText(32), country: requiredText("Country", 2).regex(/^[A-Za-z]{2}$/, "Country must be a two-letter code").transform((v) => v.toUpperCase()),
+  organizationRegistrationId: optionalText(160), website: optionalUrl("Website"),
+  addressLine1: requiredText("Address line 1", 200), addressLine2: optionalText(200), city: requiredText("City", 120), stateProvinceRegion: optionalText(120), postalCode: optionalText(32), country: countryCode,
   primaryContactFirstName: requiredText("Primary contact first name", 100), primaryContactLastName: requiredText("Primary contact last name", 100), primaryContactJobTitle: requiredText("Primary contact job title", 160), primaryContactDepartment: optionalText(160), primaryContactEmail: email("Primary contact email"), primaryContactPhone: phone("Primary contact phone"), primaryContactExtension: optionalText(20), primaryContactMobile: phone("Primary contact mobile", true),
-  technicalContactSameAsPrimary: z.boolean().default(false), technicalContactName: optionalText(160), technicalContactJobTitle: optionalText(160), technicalContactEmail: z.preprocess((v) => typeof v === "string" && !v.trim() ? undefined : v, z.string().email("Technical contact email must be valid").max(254).optional()), technicalContactPhone: phone("Technical contact phone", true), technicalContactExtension: optionalText(20),
+  technicalContactSameAsPrimary: z.boolean().default(false), technicalContactName: optionalText(160), technicalContactJobTitle: optionalText(160), technicalContactEmail: optionalEmail("Technical contact email"), technicalContactPhone: phone("Technical contact phone", true), technicalContactExtension: optionalText(20),
   protocol: enumValues(["FHIR_R4","HL7_V2"]), direction: enumValues(["INBOUND","OUTBOUND","BIDIRECTIONAL"]), environment: enumValues(["SANDBOX","PRODUCTION"]),
   sourceSystemIdentifier: optionalText(160), facilityIds: z.array(z.string().uuid()).min(1, "Select at least one authorized facility").max(100), permissionCodes: z.array(z.string().max(100)).max(50), endpointConfig: integrationEndpointConfigSchema.optional(),
 }).strict().superRefine((v, ctx) => {
@@ -40,9 +44,38 @@ const integrationBaseSchema = z.object({
 });
 
 export const integrationInputSchema = integrationBaseSchema;
-// Updates remain backward-compatible with P0.3A rows; service validation applies
-// authorization and capability checks whenever grants change.
+
 export const integrationPatchSchema = z.object({
-  displayName: optionalText(160), partnerName: optionalText(200), organizationType: enumValues(["LABORATORY","HOSPITAL","CLINIC","PHARMACY","IMAGING_RADIOLOGY","GOVERNMENT","RCM_BILLING","HIE","OTHER"]).optional(), jurisdiction: optionalText(32), environment: enumValues(["SANDBOX","PRODUCTION"]).optional(), direction: enumValues(["INBOUND","OUTBOUND","BIDIRECTIONAL"]).optional(),
-  organizationRegistrationId: optionalText(160), website: optionalText(2048), addressLine1: optionalText(200), addressLine2: optionalText(200), city: optionalText(120), stateProvinceRegion: optionalText(120), postalCode: optionalText(32), country: optionalText(2), primaryContactFirstName: optionalText(100), primaryContactLastName: optionalText(100), primaryContactJobTitle: optionalText(160), primaryContactDepartment: optionalText(160), primaryContactEmail: optionalText(254), primaryContactPhone: optionalText(64), primaryContactExtension: optionalText(20), primaryContactMobile: optionalText(64), technicalContactSameAsPrimary: z.boolean().optional(), technicalContactName: optionalText(160), technicalContactJobTitle: optionalText(160), technicalContactEmail: optionalText(254), technicalContactPhone: optionalText(64), technicalContactExtension: optionalText(20), sourceSystemIdentifier: optionalText(160), facilityIds: z.array(z.string().uuid()).min(1).max(100).optional(), permissionCodes: z.array(z.string().max(100)).min(1).max(50).optional(), endpointConfig: integrationEndpointConfigSchema.optional(),
+  displayName: optionalText(160),
+  partnerName: optionalText(200),
+  organizationType: enumValues(["LABORATORY","HOSPITAL","CLINIC","PHARMACY","IMAGING_RADIOLOGY","GOVERNMENT","RCM_BILLING","HIE","OTHER"]).optional(),
+  jurisdiction: optionalText(32),
+  environment: enumValues(["SANDBOX","PRODUCTION"]).optional(),
+  direction: enumValues(["INBOUND","OUTBOUND","BIDIRECTIONAL"]).optional(),
+  organizationRegistrationId: optionalText(160),
+  website: optionalUrl("Website"),
+  addressLine1: optionalText(200),
+  addressLine2: optionalText(200),
+  city: optionalText(120),
+  stateProvinceRegion: optionalText(120),
+  postalCode: optionalText(32),
+  country: optionalCountryCode,
+  primaryContactFirstName: optionalText(100),
+  primaryContactLastName: optionalText(100),
+  primaryContactJobTitle: optionalText(160),
+  primaryContactDepartment: optionalText(160),
+  primaryContactEmail: optionalEmail("Primary contact email"),
+  primaryContactPhone: phone("Primary contact phone", true),
+  primaryContactExtension: optionalText(20),
+  primaryContactMobile: phone("Primary contact mobile", true),
+  technicalContactSameAsPrimary: z.boolean().optional(),
+  technicalContactName: optionalText(160),
+  technicalContactJobTitle: optionalText(160),
+  technicalContactEmail: optionalEmail("Technical contact email"),
+  technicalContactPhone: phone("Technical contact phone", true),
+  technicalContactExtension: optionalText(20),
+  sourceSystemIdentifier: optionalText(160),
+  facilityIds: z.array(z.string().uuid()).min(1).max(100).optional(),
+  permissionCodes: z.array(z.string().max(100)).min(1).max(50).optional(),
+  endpointConfig: integrationEndpointConfigSchema.optional(),
 }).strict();
