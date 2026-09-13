@@ -38,7 +38,7 @@ function snapshot(
 }
 
 describe("rule11AdministrationTimestampIntegrity", () => {
-  it("flags an administered MAR entry without an administration timestamp", () => {
+  it("flags an administered MAR entry without a timestamp in Treatment", () => {
     const findings = rule11AdministrationTimestampIntegrity(
       snapshot([
         {
@@ -52,7 +52,7 @@ describe("rule11AdministrationTimestampIntegrity", () => {
     );
 
     expect(findings).toHaveLength(1);
-    expect(findings[0].category).toBe("DOCUMENTATION_GAP");
+    expect(findings[0].category).toBe("MEDICATION_CONSIDERATION");
     expect(findings[0].priority).toBe("MEDIUM");
     expect(findings[0].recommendedActions).toEqual([
       { actionType: "REVIEW", label: "Review medication administration record" },
