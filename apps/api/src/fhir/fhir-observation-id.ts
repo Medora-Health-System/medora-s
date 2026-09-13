@@ -3,6 +3,7 @@ import { VITAL_LOINC_CODES } from "../fhir-mapper/fhir-systems";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ParsedObservationOpaqueId =
+  | { kind: "reading"; readingId: string }
   | { kind: "encounter"; encounterId: string }
   | { kind: "patientLatest"; patientId: string };
 
@@ -22,9 +23,9 @@ export function parseFhirObservationOpaqueId(id: string): ParsedObservationOpaqu
     if (latestMatch && UUID_RE.test(latestMatch[1])) {
       return { kind: "patientLatest", patientId: latestMatch[1] };
     }
-    if (UUID_RE.test(base)) {
-      return { kind: "encounter", encounterId: base };
-    }
+    const readingMatch = /^reading-([0-9a-f-]{36})$/i.exec(base);
+    if (readingMatch && UUID_RE.test(readingMatch[1])) return { kind: "reading", readingId: readingMatch[1] };
+    if (UUID_RE.test(base)) { return { kind: "encounter", encounterId: base }; }
   }
   return null;
 }

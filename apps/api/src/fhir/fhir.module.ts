@@ -17,10 +17,12 @@ import { FhirLocationController, FhirOrganizationController, FhirPractitionerCon
 import { FhirAdministrativeService } from "./fhir-administrative.service";
 import { FhirReferenceResolver } from "./fhir-reference.resolver";
 import { FhirSearchService } from "./fhir-search";
+import { FhirClinicalService } from "./fhir-clinical.service";
+import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportController, FhirServiceRequestController } from "./fhir-clinical.controller";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule],
-  controllers: [FhirController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
+  controllers: [FhirController, FhirConditionController, FhirServiceRequestController, FhirDiagnosticReportController, FhirCarePlanController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
     AuditService,
@@ -39,6 +41,7 @@ import { FhirSearchService } from "./fhir-search";
     FhirAdministrativeService,
     FhirReferenceResolver,
     FhirSearchService,
+    FhirClinicalService,
   ],
   exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry],
 })

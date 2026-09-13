@@ -669,3 +669,15 @@ controllers, centralizes strict typed relative-reference parsing, and adds real 
 reference, routing, error, pagination, and no-write E2E evidence. Local verification passed 18 suites
 and 182 tests plus API/Web builds and Prisma validation/deployment. Status remains **CI PENDING**;
 this audit does not declare the PR merged or independently approved.
+
+## P0.3C core clinical read/search addendum (2026-09-09)
+
+P0.3C adds tenant-scoped projections for canonical historical vital readings, diagnoses, diagnostic order items, results, and encounter care plans. The detailed canonical mapping, unsupported-field record, least-privilege matrix, and C-SEC-01..40 verification status are preserved in `MEDORA_RD_P0_3C_FHIR_CLINICAL_RESOURCE_EVIDENCE.md`. AllergyIntolerance remains blocked and unadvertised because stable/versioned allergy entry semantics were not evidenced. This addendum does not replace or revise earlier audit findings and makes no national implementation-guide conformance claim.
+
+### P0.3C final PostgreSQL verification addendum (2026-09-09)
+
+A real native PostgreSQL 16, AppModule, PrismaService, JWT, and two-facility correction suite now verifies tenant-neutral 404 behavior, search isolation, reference isolation, stable historical Observation identity/time, bounded pagination, role policy, no-write/no-store, sanitized OperationOutcome responses, capability drift, and blocked AllergyIntolerance behavior. The suite found and corrected missing inherited Nest dependency metadata in the compact clinical controllers and corrected Observation searchset links/keyset continuation. Exact commands, counts, C-SEC results, and the independently failing P0.2 time-sensitive fixtures and Medication Validation gate are preserved in the P0.3C evidence document. Historical findings remain unchanged.
+
+### P0.3C final closure verification (2026-09-09)
+
+All C-SEC-01 through C-SEC-40 controls are now **PASS — VERIFIED BY TEST**. Exhaustive canonical enum tests close voided-vital and Condition, ServiceRequest, DiagnosticReport-evidence, and CarePlan status gaps. Corrected P0.2 tests use a deterministic Jest clock only; production expiration enforcement is unchanged. Untouched-main and branch Medication Validation results are identical, so its hard-acceptance failure is classified **PRE-EXISTING BASELINE FAILURE / NO P0.3C REGRESSION**. The combined local gate passed 11 suites / 144 tests; hosted CI and independent review remain required. AllergyIntolerance remains blocked and unadvertised.

@@ -18,13 +18,20 @@ export const fhirObservationInstanceIdParamSchema = z
 /** FHIR R4 search params for Observation (read-only subset). */
 export const fhirObservationSearchQuerySchema = z
   .object({
+    _id: z.string().optional(),
     subject: z.string().optional(),
+    patient: z.string().optional(),
     encounter: z.string().optional(),
+    code: z.string().optional(),
+    category: z.string().optional(),
+    status: z.string().optional(),
+    date: z.string().optional(),
     _count: z.coerce.number().int().min(1).max(50).optional(),
+    _cursor: z.string().optional(),
   })
   .strict()
   .superRefine((q, ctx) => {
-    const hasSubject = typeof q.subject === "string" && q.subject.trim().length > 0;
+    const hasSubject = [q.subject, q.patient, q._id].some((v) => typeof v === "string" && v.trim().length > 0);
     const hasEncounter = typeof q.encounter === "string" && q.encounter.trim().length > 0;
     if (!hasSubject && !hasEncounter) {
       ctx.addIssue({
@@ -39,13 +46,15 @@ export type FhirObservationSearchQuery = z.infer<typeof fhirObservationSearchQue
 export type ParsedFhirObservationSearch = {
   patientId?: string;
   encounterId?: string;
+  id?: string; code?: string; category?: string; status?: string; date?: string; count?: number; cursor?: string;
 };
 
 /** Parses FHIR reference query values after Zod structural validation. */
 export function parseFhirObservationSearchRefs(q: FhirObservationSearchQuery): ParsedFhirObservationSearch {
-  const out: ParsedFhirObservationSearch = {};
-  if (q.subject != null && q.subject.trim()) {
-    const m = /^Patient\/([^/]+)$/.exec(q.subject.trim());
+  const out: ParsedFhirObservationSearch = { id: q._id, code: q.code, category: q.category, status: q.status, date: q.date, count: q._count, cursor: q._cursor };
+  const subject = q.subject ?? q.patient;
+  if (subject != null && subject.trim()) {
+    const m = /^Patient\/([^/]+)$/.exec(subject.trim());
     if (!m) {
       throw new BadRequestException("subject must be Patient/{uuid}");
     }
