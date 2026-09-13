@@ -16,17 +16,9 @@ import { rule12DischargedSummaryCompleteness } from "./rules/rule-12-discharged-
 import { rule13MdmCompleteness } from "./rules/rule-13-mdm-completeness.rule.js";
 import { rule14EdMissingVitals } from "./rules/rule-14-ed-missing-vitals.rule.js";
 import { rule15ResultsNotReconciledInMdm } from "./rules/rule-15-results-not-reconciled-in-mdm.rule.js";
+import { rule16DuplicateDiagnosticOrders } from "./rules/rule-16-duplicate-diagnostic-orders.rule.js";
+import { rule17CompletedDiagnosticMissingResult } from "./rules/rule-17-completed-diagnostic-missing-result.rule.js";
 
-/**
- * Deterministic clinical review engine.
- *
- * Runs a fixed set of rules against an EncounterAiSnapshot and returns a
- * structured AiClinicalReviewOutput. Each rule is isolated: a rule failure
- * is logged and does not crash the overall review.
- *
- * The engine performs no LLM calls, no database writes, no chart mutation,
- * and no reimbursement/coding logic.
- */
 @Injectable()
 export class DeterministicReviewEngine {
   private readonly logger = new Logger(DeterministicReviewEngine.name);
@@ -47,15 +39,13 @@ export class DeterministicReviewEngine {
     rule13MdmCompleteness,
     rule14EdMissingVitals,
     rule15ResultsNotReconciledInMdm,
+    rule16DuplicateDiagnosticOrders,
+    rule17CompletedDiagnosticMissingResult,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
     const generatedAt = new Date().toISOString();
-    const ctx = {
-      generatedAt,
-      snapshotVersion: snapshot.snapshotVersion,
-    };
-
+    const ctx = { generatedAt, snapshotVersion: snapshot.snapshotVersion };
     const suggestions: AiSuggestion[] = [];
 
     for (const rule of this.rules) {
@@ -70,8 +60,6 @@ export class DeterministicReviewEngine {
       }
     }
 
-    return {
-      suggestions,
-    };
+    return { suggestions };
   }
 }
