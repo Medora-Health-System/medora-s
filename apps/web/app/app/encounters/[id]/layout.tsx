@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY,
@@ -17,6 +17,8 @@ type EncounterIdentity = {
   type?: string | null;
 };
 
+const AI_CHART_REVIEW_ROLES = new Set(["PROVIDER", "ADMIN", "MEDORA_SUPER_ADMIN"]);
+
 export default function EncounterLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const router = useRouter();
@@ -25,9 +27,13 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
   const { facilityId, roles, ready } = useFacilityAndRoles();
   const { language } = useI18n();
   const [encounterType, setEncounterType] = useState<string | null>(null);
+  const canUseAi = useMemo(
+    () => roles.some((role) => AI_CHART_REVIEW_ROLES.has(String(role).toUpperCase())),
+    [roles]
+  );
 
   useEffect(() => {
-    if (!encounterId || !facilityId || !ready || !roles.includes("PROVIDER")) return;
+    if (!encounterId || !facilityId || !ready || !canUseAi) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -41,7 +47,7 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, ready, roles]);
+  }, [encounterId, facilityId, ready, canUseAi]);
 
   const navigate = useCallback(
     (section: ClinicCareAmbulatoryWorkspaceSection) => {
@@ -53,14 +59,14 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
     [encounterId, router, searchParams]
   );
 
-  const providerCanSeeAi =
+  const shouldShowAi =
     ready &&
     Boolean(facilityId) &&
-    roles.includes("PROVIDER") &&
+    canUseAi &&
     (searchParams?.get("workspace") === CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY ||
       isClinicCareAmbulatoryEncounterType(encounterType));
 
-  if (!providerCanSeeAi || !facilityId) return <>{children}</>;
+  if (!shouldShowAi || !facilityId) return <>{children}</>;
 
   return (
     <div
@@ -74,7 +80,21 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
       }}
     >
       <div style={{ flex: "1 1 760px", minWidth: 0 }}>{children}</div>
-      <div style={{ flex: "0 1 320px", width: 320, maxWidth: "100%", padding: "20px 16px 40px 0", boxSizing: "border-box" }}>
+      <div
+        data-testid="ai-chart-review-sticky-rail"
+        style={{
+          flex: "0 1 320px",
+          width: 320,
+          maxWidth: "100%",
+          padding: "20px 16px 40px 0",
+          boxSizing: "border-box",
+          position: "sticky",
+          top: 12,
+          alignSelf: "flex-start",
+          maxHeight: "calc(100vh - 24px)",
+          overflowY: "auto",
+        }}
+      >
         <AiChartReviewPanel
           encounterId={encounterId}
           facilityId={facilityId}
