@@ -19,6 +19,7 @@ import {
   type DischargeInstructionCareSettingContext,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
+import { createFollowUp, fetchPatientFollowUps } from "@/lib/followUpsApi";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
@@ -55,6 +56,12 @@ function readCheckoutState(raw: unknown): ClinicAmbulatoryCheckoutState {
     return v as ClinicAmbulatoryCheckoutState;
   }
   return "HOME";
+}
+
+function readPersistedClinicFollowUpId(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = (raw as Record<string, unknown>).clinicAmbulatoryFollowUpId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function narrativeBlobFromForm(form: ProviderDischargeDocumentationForm): string {
@@ -114,18 +121,30 @@ export function clinicCheckoutActionLabel(
 
 function checkoutReadyMessage(language: string, state: ClinicAmbulatoryCheckoutState): string {
   if (language === "es") {
-    return state === "TRANSFER_ED"
-      ? "Plan de traslado documentado. La visita está lista para completarse; la creación de un encuentro de urgencias sigue siendo una acción separada."
-      : "Resultado del egreso confirmado. La visita está lista para completarse.";
+    if (state === "TRANSFER_ED") {
+      return "Plan de traslado documentado. La visita está lista para completarse; la creación de un encuentro de urgencias sigue siendo una acción separada.";
+    }
+    if (state === "CLINIC_FOLLOW_UP") {
+      return "Seguimiento de clínica creado y resultado confirmado. La visita está lista para completarse.";
+    }
+    return "Resultado del egreso confirmado. La visita está lista para completarse.";
   }
   if (language === "fr") {
-    return state === "TRANSFER_ED"
-      ? "Plan de transfert documenté. La consultation est prête à être clôturée; la création d’une visite aux urgences reste une action distincte."
-      : "Issue de consultation confirmée. La consultation est prête à être clôturée.";
+    if (state === "TRANSFER_ED") {
+      return "Plan de transfert documenté. La consultation est prête à être clôturée; la création d’une visite aux urgences reste une action distincte.";
+    }
+    if (state === "CLINIC_FOLLOW_UP") {
+      return "Suivi en clinique créé et issue confirmée. La consultation est prête à être clôturée.";
+    }
+    return "Issue de consultation confirmée. La consultation est prête à être clôturée.";
   }
-  return state === "TRANSFER_ED"
-    ? "Transfer plan documented. The visit is ready for completion; creating an ED encounter remains a separate action."
-    : "Checkout outcome confirmed. The visit is ready for completion.";
+  if (state === "TRANSFER_ED") {
+    return "Transfer plan documented. The visit is ready for completion; creating an ED encounter remains a separate action.";
+  }
+  if (state === "CLINIC_FOLLOW_UP") {
+    return "Clinic follow-up created and outcome confirmed. The visit is ready for completion.";
+  }
+  return "Checkout outcome confirmed. The visit is ready for completion.";
 }
 
 function checkoutValidationMessage(language: string): string {
@@ -134,6 +153,79 @@ function checkoutValidationMessage(language: string): string {
     : language === "fr"
       ? "Complétez la documentation de sortie obligatoire avant de confirmer cette issue."
       : "Complete the required discharge documentation before confirming this outcome.";
+}
+
+function clinicFollowUpRequiredMessage(language: string): string {
+  return language === "es"
+    ? "Establezca una fecha de seguimiento de clínica antes de confirmar este resultado."
+    : language === "fr"
+      ? "Définissez une date de suivi en clinique avant de confirmer cette issue."
+      : "Set a clinic follow-up date before confirming this outcome.";
+}
+
+function clinicFollowUpPatientRequiredMessage(language: string): string {
+  return language === "es"
+    ? "No se puede crear el seguimiento porque falta el paciente del encuentro."
+    : language === "fr"
+      ? "Le suivi ne peut pas être créé car le patient de la consultation est absent."
+      : "The follow-up cannot be created because the encounter patient is missing.";
+}
+
+function clinicFollowUpReason(
+  form: ProviderDischargeDocumentationForm,
+  language: string
+): string {
+  const row = form.followUps.find((item) =>
+    Boolean(
+      item.specialty?.trim() ||
+      item.providerOrFacility?.trim() ||
+      item.comments?.trim()
+    )
+  );
+  const detail = row
+    ? [row.specialty?.trim(), row.providerOrFacility?.trim(), row.comments?.trim()]
+        .filter((value): value is string => Boolean(value))
+        .join(" — ")
+    : "";
+  if (detail) return detail.slice(0, 2000);
+  if (language === "es") return "Seguimiento de clínica posterior al alta";
+  if (language === "fr") return "Suivi en clinique après la sortie";
+  return "Clinic follow-up after discharge";
+}
+
+async function ensureEnterpriseClinicFollowUp(input: {
+  facilityId: string;
+  encounterId: string;
+  patientId: string;
+  form: ProviderDischargeDocumentationForm;
+  language: string;
+  dischargeSummaryJson: unknown;
+}): Promise<string> {
+  const persistedId = readPersistedClinicFollowUpId(input.dischargeSummaryJson);
+  if (persistedId) return persistedId;
+
+  const existing = await fetchPatientFollowUps(input.facilityId, input.patientId, { limit: 100 });
+  const linked = existing.items.find(
+    (item) => item.encounterId === input.encounterId && item.status !== "CANCELLED"
+  );
+  if (linked) return linked.id;
+
+  const encounter = await apiFetch(`/encounters/${input.encounterId}`, {
+    facilityId: input.facilityId,
+  }) as Record<string, unknown>;
+  const dueDate = typeof encounter.followUpDate === "string" ? encounter.followUpDate : "";
+  if (!dueDate || Number.isNaN(Date.parse(dueDate))) {
+    throw new Error(clinicFollowUpRequiredMessage(input.language));
+  }
+
+  const created = await createFollowUp(input.facilityId, {
+    patientId: input.patientId,
+    encounterId: input.encounterId,
+    dueDate,
+    reason: clinicFollowUpReason(input.form, input.language),
+    notes: input.form.returnPrecautions?.trim() || null,
+  });
+  return created.id;
 }
 
 function requiresStrictDischargeDocumentation(state: ClinicAmbulatoryCheckoutState): boolean {
@@ -282,6 +374,22 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
     try {
       const nowIso = new Date().toISOString();
       const actor = documentedByDisplayName?.trim() || "Provider";
+      let enterpriseFollowUpId: string | null = null;
+
+      if (confirmCheckoutAction && checkoutState === "CLINIC_FOLLOW_UP") {
+        if (!patientId) {
+          throw new Error(clinicFollowUpPatientRequiredMessage(language));
+        }
+        enterpriseFollowUpId = await ensureEnterpriseClinicFollowUp({
+          facilityId,
+          encounterId,
+          patientId,
+          form: localizedForm,
+          language,
+          dischargeSummaryJson,
+        });
+      }
+
       const detailsForSave =
         confirmCheckoutAction
           ? markClinicCheckoutActionConfirmed(checkoutState, checkoutDetails, actor, nowIso)
@@ -296,6 +404,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         clinicAmbulatoryCheckoutDetails: detailsForSave,
         clinicAmbulatoryCheckoutUpdatedAt: nowIso,
         clinicAmbulatoryCheckoutUpdatedByDisplayName: actor,
+        ...(enterpriseFollowUpId ? { clinicAmbulatoryFollowUpId: enterpriseFollowUpId } : {}),
         ...(confirmCheckoutAction
           ? {
               clinicAmbulatoryCheckoutConfirmation: {
@@ -328,10 +437,12 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       });
       await onSaved();
     } catch (e) {
+      const directMessage = e instanceof Error ? e.message : null;
       setMessage({
         error: true,
         text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          directMessage ||
+          normalizeUserFacingError(directMessage, language) ||
           t("clinicCareD4c7.discharge.saveFailed"),
       });
     } finally {
@@ -348,6 +459,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
     facilityId,
     language,
     onSaved,
+    patientId,
     providerForm,
     t,
   ]);
