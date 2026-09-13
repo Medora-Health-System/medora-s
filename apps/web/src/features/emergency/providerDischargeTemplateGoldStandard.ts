@@ -17,11 +17,17 @@ export const ED_DISCHARGE_MEDICATION_SAFETY_EN =
 export const ED_DISCHARGE_MEDICATION_SAFETY_FR =
   "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.";
 
+export const ED_DISCHARGE_MEDICATION_SAFETY_ES =
+  "Use únicamente los medicamentos recetados o recomendados específicamente durante esta visita. No inicie medicamentos nuevos sin orientación de un profesional clínico.";
+
 export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN =
   "Return to the emergency department immediately if symptoms worsen, new concerning symptoms develop, or you feel unsafe at home.";
 
 export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR =
   "Retournez aux urgences immédiatement si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.";
+
+export const ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_ES =
+  "Regrese de inmediato al servicio de urgencias si los síntomas empeoran, aparecen nuevos síntomas preocupantes o no se siente seguro/a en casa.";
 
 /** Resolve universal return suffix for the active care setting (typed context — not string-replace). */
 export function resolveUniversalReturnSuffixForCareSetting(
@@ -29,7 +35,9 @@ export function resolveUniversalReturnSuffixForCareSetting(
   careSettingContext?: DischargeInstructionCareSettingContext | null
 ): string {
   if (!careSettingContext || careSettingContext.careSetting === "ED") {
-    return locale === "fr" ? ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR : ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN;
+    if (locale === "fr") return ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_FR;
+    if (locale === "es") return ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_ES;
+    return ED_DISCHARGE_UNIVERSAL_RETURN_SUFFIX_EN;
   }
   return resolveDischargeVisitFramingPhrases({
     ...careSettingContext,
@@ -41,6 +49,9 @@ export const ED_DISCHARGE_PCP_FOLLOW_UP_PHRASE_EN =
 
 export const ED_DISCHARGE_PCP_FOLLOW_UP_PHRASE_FR =
   "Suivez avec votre médecin de soins primaires ou le spécialiste recommandé dans un délai de 1 à 2 jours.";
+
+export const ED_DISCHARGE_PCP_FOLLOW_UP_PHRASE_ES =
+  "Realice seguimiento con su profesional de atención primaria o con el especialista recomendado dentro de 1–2 días.";
 
 /** Marker substrings used by governance tests — must appear in EN template bodies. */
 export const ED_DISCHARGE_GOLD_STANDARD_MARKERS_EN = {
@@ -55,18 +66,24 @@ export function bodyIncludesGoldStandardMedicationSafety(text: string): boolean 
     blob.includes("do not start, stop, or change medications without clinician guidance") ||
     blob.includes("do not start new medications without clinician guidance") ||
     blob.includes("only as prescribed or directed") ||
-    blob.includes("only as prescribed or specifically recommended")
+    blob.includes("only as prescribed or specifically recommended") ||
+    blob.includes("no inicie medicamentos nuevos sin orientación de un profesional clínico") ||
+    blob.includes("únicamente según lo recetado o indicado") ||
+    blob.includes("únicamente según lo recetado")
   );
 }
 
 export const GENERIC_ED_DISCHARGE_DIAGNOSIS_PLACEHOLDER = "[diagnosis]";
 
-const GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL: Record<"en" | "fr", string> = {
+const GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL: Record<"en" | "fr" | "es", string> = {
   en: "your condition",
   fr: "votre état",
+  es: "su condición",
 };
 
 export function genericDischargeEmptyDiagnosisLabel(locale: ProviderDischargeTemplateLocale): string {
+  const normalized = locale.trim().toLowerCase().split(/[-_]/)[0];
+  if (normalized === "es") return GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL.es;
   return GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL[bilingualStorageLocaleOrEn(locale)];
 }
 
@@ -97,7 +114,8 @@ export function bodyIncludesGoldStandardReturnSuffix(text: string): boolean {
   return (
     blob.includes("return to the emergency department immediately if symptoms worsen") ||
     blob.includes("return immediately") ||
-    blob.includes("retournez aux urgences immédiatement")
+    blob.includes("retournez aux urgences immédiatement") ||
+    blob.includes("regrese de inmediato al servicio de urgencias")
   );
 }
 
@@ -122,6 +140,13 @@ function includesUniversalReturnSuffix(text: string, locale: string): boolean {
       blob.includes("retournez immédiatement")
     );
   }
+  if (locale === "es") {
+    return (
+      blob.includes("regrese de inmediato al servicio de urgencias") ||
+      blob.includes("busque atención urgente o de emergencia de inmediato") ||
+      blob.includes("acuda de inmediato")
+    );
+  }
   return (
     blob.includes("return to the emergency department immediately if symptoms worsen") ||
     blob.includes("return immediately")
@@ -143,7 +168,7 @@ export function ensureGoldStandardReturnPrecautions(
     // Clinic / UC: treat either ED or facility-aware return language as already present.
     if (includesUniversalReturnSuffix(trimmed, locale)) return trimmed;
     const facility = careSettingContext.facilityDisplayName.trim().toLowerCase();
-    if (facility && trimmed.toLowerCase().includes(facility) && /immédiatement|immediately/i.test(trimmed)) {
+    if (facility && trimmed.toLowerCase().includes(facility) && /immédiatement|immediately|de inmediato/i.test(trimmed)) {
       return trimmed;
     }
   }
@@ -153,7 +178,10 @@ export function ensureGoldStandardReturnPrecautions(
 /** Normalize medication/treatment instructions to gold-standard safety wording when close but not exact. */
 export function ensureGoldStandardMedicationTreatment(text: string, locale: string): string {
   const trimmed = text.trim();
-  const safety = locale === "fr" ? ED_DISCHARGE_MEDICATION_SAFETY_FR : ED_DISCHARGE_MEDICATION_SAFETY_EN;
+  const safety =
+    locale === "fr" ? ED_DISCHARGE_MEDICATION_SAFETY_FR
+    : locale === "es" ? ED_DISCHARGE_MEDICATION_SAFETY_ES
+    : ED_DISCHARGE_MEDICATION_SAFETY_EN;
   if (!trimmed) return safety;
   if (bodyIncludesGoldStandardMedicationSafety(trimmed)) return trimmed;
   return `${trimmed} ${safety}`;
