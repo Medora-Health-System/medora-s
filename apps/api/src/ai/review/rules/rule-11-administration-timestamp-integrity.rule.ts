@@ -7,12 +7,12 @@ function isAdministeredAction(action?: string | null): boolean {
 }
 
 /**
- * Phase 2E — medication administration documentation integrity.
+ * Medication administration documentation integrity.
  *
  * Uses only structured MAR facts already present in the authorized snapshot.
  * A row explicitly marked administered without an administration timestamp is
- * surfaced as a documentation inconsistency. It does not infer whether the
- * medication was or was not actually given.
+ * surfaced in Treatment as a medication-record concern. It does not infer
+ * whether the medication was or was not actually given.
  */
 export function rule11AdministrationTimestampIntegrity(
   snapshot: EncounterAiSnapshot,
@@ -27,11 +27,11 @@ export function rule11AdministrationTimestampIntegrity(
 
   return [
     buildAiSuggestion(ctx, {
-      category: "DOCUMENTATION_GAP",
+      category: "MEDICATION_CONSIDERATION",
       priority: "MEDIUM",
       title: "Medication administration timestamp missing",
       summary:
-        "One or more MAR entries are marked as administered but do not contain an administration timestamp. Review the medication administration record for documentation completeness.",
+        "One or more MAR entries are marked as administered but do not contain an administration timestamp. Confirm and complete the medication administration record when appropriate.",
       reasoningSummary:
         "This finding compares only the structured MAR action and timestamp fields. It does not determine whether the medication was actually given.",
       evidence: affected.map((administration) => ({
