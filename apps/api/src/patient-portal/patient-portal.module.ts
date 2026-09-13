@@ -36,6 +36,9 @@ import { PatientMedicationsController } from "./records/patient-medications.cont
 import { PatientMedicationsService } from "./records/patient-medications.service";
 import { PatientRecordsController } from "./records/patient-records.controller";
 import { PatientRecordsService } from "./records/patient-records.service";
+import { PatientServiceRequestsController } from "./requests/patient-service-requests.controller";
+import { PatientServiceRequestsStaffController } from "./requests/patient-service-requests-staff.controller";
+import { PatientServiceRequestsService } from "./requests/patient-service-requests.service";
 
 @Module({
   imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({})],
@@ -54,6 +57,8 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientProfileController,
     PatientMessagesController,
     PatientMessagesStaffController,
+    PatientServiceRequestsController,
+    PatientServiceRequestsStaffController,
   ],
   providers: [
     PatientPortalRepository,
@@ -74,6 +79,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientAppointmentsService,
     PatientProfileService,
     PatientMessagesService,
+    PatientServiceRequestsService,
     AuditService,
   ],
   exports: [
