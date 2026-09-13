@@ -13,6 +13,9 @@ import { PatientDashboardController } from "./dashboard/patient-dashboard.contro
 import { PatientDashboardService } from "./dashboard/patient-dashboard.service";
 import { PatientPortalAuthGuard } from "./guards/patient-portal-auth.guard";
 import { PatientPortalFacilityGuard } from "./guards/patient-portal-facility.guard";
+import { PatientMessagesController } from "./messages/patient-messages.controller";
+import { PatientMessagesStaffController } from "./messages/patient-messages-staff.controller";
+import { PatientMessagesService } from "./messages/patient-messages.service";
 import { PatientOrganizationsController } from "./organizations/patient-organizations.controller";
 import { PatientOrganizationsService } from "./organizations/patient-organizations.service";
 import { PatientPortalActivationController } from "./organizations/patient-portal-activation.controller";
@@ -49,6 +52,8 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientMedicationsController,
     PatientAppointmentsController,
     PatientProfileController,
+    PatientMessagesController,
+    PatientMessagesStaffController,
   ],
   providers: [
     PatientPortalRepository,
@@ -68,6 +73,7 @@ import { PatientRecordsService } from "./records/patient-records.service";
     PatientMedicationsService,
     PatientAppointmentsService,
     PatientProfileService,
+    PatientMessagesService,
     AuditService,
   ],
   exports: [
