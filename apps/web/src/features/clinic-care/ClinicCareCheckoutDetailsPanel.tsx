@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { ClinicAmbulatoryCheckoutState } from "@medora/shared";
+import { searchIcd10Catalog } from "@/lib/chartApi";
 import type { ProviderDischargeDocumentationForm } from "@/features/emergency/providerDischargeDocumentationModel";
 
 export type ClinicAmbulatoryCheckoutDetails = {
@@ -27,6 +28,7 @@ export type ClinicAmbulatoryCheckoutDetails = {
 };
 
 export type ClinicCheckoutDiagnosisSuggestions = {
+  primaryDiagnosisCode: string;
   referralDestinations: string[];
   referralReason: string;
   referralNotes: string;
@@ -95,6 +97,9 @@ function normalizedLocale(language: string): "en" | "fr" | "es" {
 function uniq(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))];
 }
+function normalizedIcdCode(value: string): string {
+  return value.trim().toUpperCase().replace(/\./g, "");
+}
 
 export function buildClinicCheckoutDiagnosisSuggestions(
   form: ProviderDischargeDocumentationForm,
@@ -104,7 +109,13 @@ export function buildClinicCheckoutDiagnosisSuggestions(
   const docs = [...form.diagnosisDocs].sort((a, b) => Number(b.isPrimaryDiagnosis) - Number(a.isPrimaryDiagnosis) || a.displayOrder - b.displayOrder);
   const primary = docs[0];
   const followUps = [...form.followUps, ...docs.flatMap((d) => d.followUps ?? [])];
-  const diagnosisLabel = primary?.displayName?.trim() || primary?.code?.trim() || "";
+  const primaryDiagnosisCode = primary?.code?.trim() || "";
+  // Stored discharge-card displayName may be the English source label from an older locale.
+  // Never inject that English label into a non-English disposition. The component resolves
+  // the authoritative locale-specific ICD display label from the same catalog used by Dx UI.
+  const diagnosisLabel = locale === "en"
+    ? primary?.displayName?.trim() || primaryDiagnosisCode
+    : primaryDiagnosisCode || primary?.displayName?.trim() || "";
   const diagnosisInstructions = primary?.diagnosisInstructions?.trim() || primary?.description?.trim() || "";
   const precautions = primary?.returnPrecautions?.trim() || form.returnPrecautions?.trim() || "";
   const referralDestinations = uniq([
@@ -131,6 +142,7 @@ export function buildClinicCheckoutDiagnosisSuggestions(
   };
 
   return {
+    primaryDiagnosisCode,
     referralDestinations,
     referralReason: diagnosisLabel,
     referralNotes: diagnosisInstructions,
@@ -220,6 +232,38 @@ export function ClinicCareCheckoutDetailsPanel({ state, details, language, disab
   onChange: (next: ClinicAmbulatoryCheckoutDetails) => void;
 }) {
   const c = COPY[normalizedLocale(language)];
+  const [localizedDiagnosisLabel, setLocalizedDiagnosisLabel] = React.useState("");
+
+  React.useEffect(() => {
+    const code = suggestions?.primaryDiagnosisCode?.trim() || "";
+    if (!code) {
+      setLocalizedDiagnosisLabel("");
+      return;
+    }
+    let cancelled = false;
+    setLocalizedDiagnosisLabel("");
+    void searchIcd10Catalog(code, 10, normalizedLocale(language))
+      .then(({ items }) => {
+        if (cancelled) return;
+        const wanted = normalizedIcdCode(code);
+        const exact = items.find((item) => normalizedIcdCode(item.code) === wanted);
+        const label = exact?.displayLabel?.trim() || "";
+        setLocalizedDiagnosisLabel(label && normalizedIcdCode(label) !== wanted ? label : "");
+      })
+      .catch(() => {
+        if (!cancelled) setLocalizedDiagnosisLabel("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [language, suggestions?.primaryDiagnosisCode]);
+
+  const effectiveSuggestions = suggestions ? {
+    ...suggestions,
+    referralReason: localizedDiagnosisLabel || suggestions.referralReason,
+    transferReason: localizedDiagnosisLabel || suggestions.transferReason,
+  } : undefined;
+
   const panelStyle: React.CSSProperties = { marginTop: 12, border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", background: "#f8fafc", display: "flex", flexDirection: "column", gap: 10 };
   const editableHint = <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{c.editableHint}</p>;
 
@@ -228,15 +272,15 @@ export function ClinicCareCheckoutDetailsPanel({ state, details, language, disab
 
   if (state === "REFERRAL") {
     const apply = () => onChange({ ...details, referral: {
-      destination: details.referral.destination.trim() || suggestions?.referralDestinations[0] || "",
-      reason: suggestions?.referralReason || details.referral.reason,
-      notes: suggestions?.referralNotes || details.referral.notes,
+      destination: details.referral.destination.trim() || effectiveSuggestions?.referralDestinations[0] || "",
+      reason: effectiveSuggestions?.referralReason || details.referral.reason,
+      notes: effectiveSuggestions?.referralNotes || details.referral.notes,
     }});
     return <div style={panelStyle} data-testid="clinic-checkout-referral-details">
       <strong style={{ fontSize: 13 }}>{c.referralTitle}</strong>
-      {suggestions?.referralReason ? <SuggestionButton disabled={disabled} label={c.applyDiagnosisSuggestion} onClick={apply} /> : null}
+      {effectiveSuggestions?.referralReason ? <SuggestionButton disabled={disabled} label={c.applyDiagnosisSuggestion} onClick={apply} /> : null}
       {editableHint}
-      <EditableSuggestionField label={c.referralDestination} value={details.referral.destination} disabled={disabled} required options={suggestions?.referralDestinations} onChange={(destination) => onChange({ ...details, referral: { ...details.referral, destination } })} />
+      <EditableSuggestionField label={c.referralDestination} value={details.referral.destination} disabled={disabled} required options={effectiveSuggestions?.referralDestinations} onChange={(destination) => onChange({ ...details, referral: { ...details.referral, destination } })} />
       <TextAreaField label={c.referralReason} value={details.referral.reason} disabled={disabled} required onChange={(reason) => onChange({ ...details, referral: { ...details.referral, reason } })} />
       <TextAreaField label={c.notes} value={details.referral.notes} disabled={disabled} onChange={(notes) => onChange({ ...details, referral: { ...details.referral, notes } })} />
     </div>;
@@ -245,19 +289,19 @@ export function ClinicCareCheckoutDetailsPanel({ state, details, language, disab
   if (state === "TRANSFER_ED") {
     const apply = () => onChange({ ...details, transferEd: {
       ...details.transferEd,
-      destination: details.transferEd.destination.trim() || suggestions?.transferDestinations[0] || "",
-      reason: suggestions?.transferReason || details.transferEd.reason,
-      notes: suggestions?.transferNotes || details.transferEd.notes,
+      destination: details.transferEd.destination.trim() || effectiveSuggestions?.transferDestinations[0] || "",
+      reason: effectiveSuggestions?.transferReason || details.transferEd.reason,
+      notes: effectiveSuggestions?.transferNotes || details.transferEd.notes,
     }});
     return <div style={panelStyle} data-testid="clinic-checkout-transfer-ed-details">
       <strong style={{ fontSize: 13 }}>{c.transferTitle}</strong>
       <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{c.transferHint}</p>
-      {suggestions?.transferReason ? <SuggestionButton disabled={disabled} label={c.applyDiagnosisSuggestion} onClick={apply} /> : null}
+      {effectiveSuggestions?.transferReason ? <SuggestionButton disabled={disabled} label={c.applyDiagnosisSuggestion} onClick={apply} /> : null}
       {editableHint}
-      <EditableSuggestionField label={c.transferDestination} value={details.transferEd.destination} disabled={disabled} required options={suggestions?.transferDestinations} onChange={(destination) => onChange({ ...details, transferEd: { ...details.transferEd, destination } })} />
+      <EditableSuggestionField label={c.transferDestination} value={details.transferEd.destination} disabled={disabled} required options={effectiveSuggestions?.transferDestinations} onChange={(destination) => onChange({ ...details, transferEd: { ...details.transferEd, destination } })} />
       <TextAreaField label={c.transferReason} value={details.transferEd.reason} disabled={disabled} required onChange={(reason) => onChange({ ...details, transferEd: { ...details.transferEd, reason } })} />
-      <EditableSuggestionField label={c.transferMethod} value={details.transferEd.transferMethod} disabled={disabled} options={suggestions?.transferMethods} onChange={(transferMethod) => onChange({ ...details, transferEd: { ...details.transferEd, transferMethod } })} />
-      <EditableSuggestionField label={c.receivingContact} value={details.transferEd.receivingContact} disabled={disabled} options={suggestions?.receivingContacts} onChange={(receivingContact) => onChange({ ...details, transferEd: { ...details.transferEd, receivingContact } })} />
+      <EditableSuggestionField label={c.transferMethod} value={details.transferEd.transferMethod} disabled={disabled} options={effectiveSuggestions?.transferMethods} onChange={(transferMethod) => onChange({ ...details, transferEd: { ...details.transferEd, transferMethod } })} />
+      <EditableSuggestionField label={c.receivingContact} value={details.transferEd.receivingContact} disabled={disabled} options={effectiveSuggestions?.receivingContacts} onChange={(receivingContact) => onChange({ ...details, transferEd: { ...details.transferEd, receivingContact } })} />
       <TextAreaField label={c.notes} value={details.transferEd.notes} disabled={disabled} onChange={(notes) => onChange({ ...details, transferEd: { ...details.transferEd, notes } })} />
     </div>;
   }
@@ -265,7 +309,7 @@ export function ClinicCareCheckoutDetailsPanel({ state, details, language, disab
   if (state === "AMA") return <div style={panelStyle} data-testid="clinic-checkout-ama-details">
     <strong style={{ fontSize: 13 }}>{c.amaTitle}</strong>
     {editableHint}
-    <EditableSuggestionField label={c.amaReason} value={details.ama.reason} disabled={disabled} required options={suggestions?.amaReasons} onChange={(reason) => onChange({ ...details, ama: { ...details.ama, reason } })} />
+    <EditableSuggestionField label={c.amaReason} value={details.ama.reason} disabled={disabled} required options={effectiveSuggestions?.amaReasons} onChange={(reason) => onChange({ ...details, ama: { ...details.ama, reason } })} />
     <label style={{ display: "flex", gap: 8, fontSize: 12, alignItems: "center" }}><input type="checkbox" checked={details.ama.risksDiscussed} disabled={disabled} onChange={(e) => onChange({ ...details, ama: { ...details.ama, risksDiscussed: e.target.checked } })} />{c.risksDiscussed}</label>
     <label style={{ display: "flex", gap: 8, fontSize: 12, alignItems: "center" }}><input type="checkbox" checked={details.ama.alternativesDiscussed} disabled={disabled} onChange={(e) => onChange({ ...details, ama: { ...details.ama, alternativesDiscussed: e.target.checked } })} />{c.alternativesDiscussed}</label>
     <TextAreaField label={c.notes} value={details.ama.notes} disabled={disabled} onChange={(notes) => onChange({ ...details, ama: { ...details.ama, notes } })} />
@@ -274,6 +318,6 @@ export function ClinicCareCheckoutDetailsPanel({ state, details, language, disab
   return <div style={panelStyle} data-testid="clinic-checkout-other-details">
     <strong style={{ fontSize: 13 }}>{c.otherTitle}</strong>
     {editableHint}
-    <EditableSuggestionField label={c.otherExplanation} value={details.other.explanation} disabled={disabled} required options={suggestions?.otherExplanations} onChange={(explanation) => onChange({ ...details, other: { explanation } })} />
+    <EditableSuggestionField label={c.otherExplanation} value={details.other.explanation} disabled={disabled} required options={effectiveSuggestions?.otherExplanations} onChange={(explanation) => onChange({ ...details, other: { explanation } })} />
   </div>;
 }
