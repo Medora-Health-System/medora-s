@@ -44,6 +44,8 @@ type MessageRow = {
   createdAt: Date;
 };
 
+type SqlClient = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">;
+
 @Injectable()
 export class PatientMessagesService {
   constructor(
@@ -102,21 +104,22 @@ export class PatientMessagesService {
     tx: Prisma.TransactionClient,
     access: PatientPortalAccessContext,
     action: string,
+    entityType: string,
     entityId: string,
     context: RequestContext,
     metadata: Record<string, string | number | boolean | null>,
   ): Promise<void> {
-    // Secure-message writes are always audit-atomic. If this insert fails, the surrounding
-    // transaction rolls back the message write instead of creating unaudited PHI.
+    // Secure-message mutations and their forensic audit are atomic. The audit stores only
+    // opaque identifiers and lengths/categories, never message subject/body text.
     await tx.$executeRaw(Prisma.sql`
       INSERT INTO "PatientPortalAuditLog" (
         "id", "portalAccountId", "sessionId", "facilityId", "patientId",
         "action", "entityType", "entityId", "ip", "userAgent", "metadata"
       ) VALUES (
         ${randomUUID()}, ${access.portalAccountId}, ${access.sessionId},
-        ${access.facilityId}, ${access.patientId}, ${action},
-        'PATIENT_PORTAL_MESSAGE_THREAD', ${entityId}, ${context.ip ?? null},
-        ${context.userAgent ?? null}, ${JSON.stringify(metadata)}::jsonb
+        ${access.facilityId}, ${access.patientId}, ${action}, ${entityType},
+        ${entityId}, ${context.ip ?? null}, ${context.userAgent ?? null},
+        ${JSON.stringify(metadata)}::jsonb
       )
     `);
   }
@@ -124,7 +127,7 @@ export class PatientMessagesService {
   private async findPatientThread(
     access: PatientPortalAccessContext,
     threadId: string,
-    client: PrismaService | Prisma.TransactionClient = this.prisma,
+    client: SqlClient = this.prisma,
   ): Promise<ThreadRow | null> {
     const rows = await client.$queryRaw<ThreadRow[]>(Prisma.sql`
       SELECT
@@ -144,7 +147,7 @@ export class PatientMessagesService {
   private async findStaffThread(
     actor: PatientPortalStaffMessagingActor,
     threadId: string,
-    client: PrismaService | Prisma.TransactionClient = this.prisma,
+    client: SqlClient = this.prisma,
   ): Promise<ThreadRow | null> {
     const rows = await client.$queryRaw<ThreadRow[]>(Prisma.sql`
       SELECT
@@ -159,19 +162,56 @@ export class PatientMessagesService {
     return rows[0] ?? null;
   }
 
+  private async findStaffReplyableThread(
+    actor: PatientPortalStaffMessagingActor,
+    threadId: string,
+    client: SqlClient,
+  ): Promise<ThreadRow | null> {
+    const rows = await client.$queryRaw<ThreadRow[]>(Prisma.sql`
+      SELECT
+        t."id", t."portalAccountId", t."patientId", t."facilityId",
+        t."category"::text AS "category", t."subject", t."status"::text AS "status",
+        t."lastMessageAt", t."closedAt", t."createdAt", t."updatedAt"
+      FROM "PatientPortalMessageThread" t
+      INNER JOIN "PatientPortalLink" l
+        ON l."portalAccountId" = t."portalAccountId"
+       AND l."patientId" = t."patientId"
+       AND l."facilityId" = t."facilityId"
+      INNER JOIN "PatientPortalAccount" a ON a."id" = t."portalAccountId"
+      INNER JOIN "Patient" p ON p."id" = t."patientId"
+      INNER JOIN "Facility" f ON f."id" = t."facilityId"
+      WHERE t."id" = ${threadId}
+        AND t."facilityId" = ${actor.facilityId}
+        AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
+        AND l."revokedAt" IS NULL
+        AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
+        AND p."facilityId" = t."facilityId"
+        AND f."isActive" = TRUE
+      LIMIT 1
+    `);
+    return rows[0] ?? null;
+  }
+
   private async listThreadMessages(
     threadId: string,
-    client: PrismaService | Prisma.TransactionClient = this.prisma,
-  ): Promise<MessageRow[]> {
-    return client.$queryRaw<MessageRow[]>(Prisma.sql`
+    client: SqlClient = this.prisma,
+  ): Promise<{ messages: MessageRow[]; truncated: boolean }> {
+    // Read the newest window, then restore chronological display order. Fetching one extra
+    // row makes truncation explicit instead of silently dropping the newest conversation.
+    const rows = await client.$queryRaw<MessageRow[]>(Prisma.sql`
       SELECT
         "id", "threadId", "senderType"::text AS "senderType",
         "senderPortalAccountId", "senderUserId", "body", "createdAt"
       FROM "PatientPortalMessage"
       WHERE "threadId" = ${threadId}
-      ORDER BY "createdAt" ASC, "id" ASC
-      LIMIT 500
+      ORDER BY "createdAt" DESC, "id" DESC
+      LIMIT 501
     `);
+    const truncated = rows.length > 500;
+    return {
+      messages: rows.slice(0, 500).reverse(),
+      truncated,
+    };
   }
 
   async listPatientThreads(access: PatientPortalAccessContext, context: RequestContext) {
@@ -188,15 +228,19 @@ export class PatientMessagesService {
       LIMIT 100
     `);
 
-    await this.patientAudit.record("PATIENT_PORTAL_MESSAGE_THREAD_LIST_VIEW", "PATIENT_PORTAL_MESSAGE_THREAD_LIST", {
-      portalAccountId: access.portalAccountId,
-      sessionId: access.sessionId,
-      facilityId: access.facilityId,
-      patientId: access.patientId,
-      ip: context.ip ?? null,
-      userAgent: context.userAgent ?? null,
-      metadata: { count: rows.length },
-    });
+    await this.patientAudit.record(
+      "PATIENT_PORTAL_MESSAGE_THREAD_LIST_VIEW",
+      "PATIENT_PORTAL_MESSAGE_THREAD_LIST",
+      {
+        portalAccountId: access.portalAccountId,
+        sessionId: access.sessionId,
+        facilityId: access.facilityId,
+        patientId: access.patientId,
+        ip: context.ip ?? null,
+        userAgent: context.userAgent ?? null,
+        metadata: { count: rows.length },
+      },
+    );
 
     return rows.map((thread) => this.patientThreadView(thread));
   }
@@ -209,22 +253,30 @@ export class PatientMessagesService {
     const thread = await this.findPatientThread(access, threadId);
     if (!thread) throw new NotFoundException("Message thread not found");
 
-    const messages = await this.listThreadMessages(thread.id);
+    const history = await this.listThreadMessages(thread.id);
 
-    await this.patientAudit.record("PATIENT_PORTAL_MESSAGE_THREAD_VIEW", "PATIENT_PORTAL_MESSAGE_THREAD", {
-      portalAccountId: access.portalAccountId,
-      sessionId: access.sessionId,
-      facilityId: access.facilityId,
-      patientId: access.patientId,
-      entityId: thread.id,
-      ip: context.ip ?? null,
-      userAgent: context.userAgent ?? null,
-      metadata: { messageCount: messages.length },
-    });
+    await this.patientAudit.record(
+      "PATIENT_PORTAL_MESSAGE_THREAD_VIEW",
+      "PATIENT_PORTAL_MESSAGE_THREAD",
+      {
+        portalAccountId: access.portalAccountId,
+        sessionId: access.sessionId,
+        facilityId: access.facilityId,
+        patientId: access.patientId,
+        entityId: thread.id,
+        ip: context.ip ?? null,
+        userAgent: context.userAgent ?? null,
+        metadata: {
+          messageCount: history.messages.length,
+          messagesTruncated: history.truncated,
+        },
+      },
+    );
 
     return {
       ...this.patientThreadView(thread),
-      messages: messages.map((message) => this.patientMessageView(message)),
+      messages: history.messages.map((message) => this.patientMessageView(message)),
+      messagesTruncated: history.truncated,
     };
   }
 
@@ -266,6 +318,7 @@ export class PatientMessagesService {
         tx,
         access,
         "PATIENT_PORTAL_MESSAGE_THREAD_CREATE",
+        "PATIENT_PORTAL_MESSAGE_THREAD",
         threadId,
         context,
         {
@@ -275,11 +328,10 @@ export class PatientMessagesService {
         },
       );
 
-      const thread = threadRows[0]!;
-      const message = messageRows[0]!;
       return {
-        ...this.patientThreadView(thread),
-        messages: [this.patientMessageView(message)],
+        ...this.patientThreadView(threadRows[0]!),
+        messages: [this.patientMessageView(messageRows[0]!)],
+        messagesTruncated: false,
       };
     });
   }
@@ -314,9 +366,10 @@ export class PatientMessagesService {
         tx,
         access,
         "PATIENT_PORTAL_MESSAGE_SEND",
-        thread.id,
+        "PATIENT_PORTAL_MESSAGE",
+        messageId,
         context,
-        { messageLength: input.message.length },
+        { threadId: thread.id, messageLength: input.message.length },
       );
 
       return this.patientMessageView(rows[0]!);
@@ -349,7 +402,7 @@ export class PatientMessagesService {
   async getStaffThread(actor: PatientPortalStaffMessagingActor, threadId: string) {
     const thread = await this.findStaffThread(actor, threadId);
     if (!thread) throw new NotFoundException("Message thread not found");
-    const messages = await this.listThreadMessages(thread.id);
+    const history = await this.listThreadMessages(thread.id);
 
     await this.staffAudit.log(AuditAction.VIEW, "PATIENT_PORTAL_MESSAGE_THREAD", {
       userId: actor.userId,
@@ -358,12 +411,16 @@ export class PatientMessagesService {
       entityId: thread.id,
       ip: actor.ip ?? undefined,
       userAgent: actor.userAgent ?? undefined,
-      metadata: { messageCount: messages.length },
+      metadata: {
+        messageCount: history.messages.length,
+        messagesTruncated: history.truncated,
+      },
     });
 
     return {
       ...this.staffThreadView(thread),
-      messages: messages.map((message) => this.staffMessageView(message)),
+      messages: history.messages.map((message) => this.staffMessageView(message)),
+      messagesTruncated: history.truncated,
     };
   }
 
@@ -373,7 +430,9 @@ export class PatientMessagesService {
     input: PatientMessageReplyInput,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      const thread = await this.findStaffThread(actor, threadId, tx);
+      // Historical thread viewing remains facility-scoped, but new staff content is permitted
+      // only while the patient's verified link/account/facility scope remains active.
+      const thread = await this.findStaffReplyableThread(actor, threadId, tx);
       if (!thread) throw new NotFoundException("Message thread not found");
       if (thread.status !== "OPEN") {
         throw new ConflictException("Message thread is closed");
@@ -414,23 +473,27 @@ export class PatientMessagesService {
 
   async closeAsStaff(actor: PatientPortalStaffMessagingActor, threadId: string) {
     return this.prisma.$transaction(async (tx) => {
+      // Closing a historical thread remains allowed after link revocation so facilities can
+      // retire old conversations without adding new content to an unreachable patient inbox.
       const thread = await this.findStaffThread(actor, threadId, tx);
       if (!thread) throw new NotFoundException("Message thread not found");
       if (thread.status === "CLOSED") {
         return { threadId: thread.id, status: "CLOSED", closedAt: thread.closedAt };
       }
 
-      const rows = await tx.$queryRaw<Array<{ id: string; patientId: string; closedAt: Date }>>(Prisma.sql`
-        UPDATE "PatientPortalMessageThread"
-        SET "status" = 'CLOSED'::"PatientPortalMessageThreadStatus",
-            "closedAt" = CURRENT_TIMESTAMP,
-            "closedByUserId" = ${actor.userId},
-            "updatedAt" = CURRENT_TIMESTAMP
-        WHERE "id" = ${thread.id}
-          AND "facilityId" = ${actor.facilityId}
-          AND "status" = 'OPEN'::"PatientPortalMessageThreadStatus"
-        RETURNING "id", "patientId", "closedAt"
-      `);
+      const rows = await tx.$queryRaw<Array<{ id: string; patientId: string; closedAt: Date }>>(
+        Prisma.sql`
+          UPDATE "PatientPortalMessageThread"
+          SET "status" = 'CLOSED'::"PatientPortalMessageThreadStatus",
+              "closedAt" = CURRENT_TIMESTAMP,
+              "closedByUserId" = ${actor.userId},
+              "updatedAt" = CURRENT_TIMESTAMP
+          WHERE "id" = ${thread.id}
+            AND "facilityId" = ${actor.facilityId}
+            AND "status" = 'OPEN'::"PatientPortalMessageThreadStatus"
+          RETURNING "id", "patientId", "closedAt"
+        `,
+      );
 
       const closed = rows[0];
       if (!closed) throw new ConflictException("Message thread could not be closed");
