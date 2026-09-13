@@ -7,7 +7,7 @@ export type IntegrationFacilityOption = {
   billingCity?: string | null;
   billingStateProvince?: string | null;
 };
-export type IntegrationRow = { id: string; displayName: string; partnerName: string; status: string; protocol: string; direction: string; environment: string; jurisdiction: string; provisioningState: string; facilities: { facilityId: string }[]; permissions: { capabilityCode: string }[] };
+export type IntegrationRow = { id: string; displayName: string; partnerName: string; status: string; protocol: string; direction: string; environment: string; jurisdiction: string; provisioningState: string; facilities: { facilityId: string; active?: boolean }[]; permissions: { capabilityCode: string }[] };
 export type IntegrationConnectionProfile = {
   fhirBaseUrl: string;
   tokenUrl: string;
@@ -52,6 +52,7 @@ async function call(path: string, init?: RequestInit) {
   return body;
 }
 export const fetchIntegrations = () => call("") as Promise<IntegrationRow[]>;
+export const fetchIntegration = (id: string) => call(`/${id}`) as Promise<IntegrationRow>;
 export const fetchIntegrationPermissions = () => call("/permission-options") as Promise<IntegrationPermissionOption[]>;
 export const fetchIntegrationFacilities = () => call("/facility-options") as Promise<IntegrationFacilityOption[]>;
 export const fetchIntegrationConnectionProfile = () => call("/connection-profile") as Promise<IntegrationConnectionProfile>;
