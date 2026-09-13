@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
 import { AiClinicalReviewOutput, type AiSuggestion } from "@medora/shared";
 import { AiFeatureFlagsService } from "../core/ai-feature-flags.service.js";
 import type { AiModelProvider } from "../providers/ai-model-provider.interface.js";
@@ -12,6 +11,7 @@ import {
   externalClinicalReviewSchema,
 } from "./external-clinical-review.contract.js";
 import { buildExternalClinicalInput } from "./external-clinical-input.js";
+import { buildStableSuggestionId } from "./review.utils.js";
 
 const EXTERNAL_CLINICAL_REVIEW_SYSTEM_INSTRUCTION = `You are Medora's clinical chart-review assistant. Review only the supplied encounter facts.
 Return only the requested structured suggestions. Do not diagnose autonomously, place or imply orders, modify documentation, fabricate facts, infer unsupported payer/coding rules, or recommend services for reimbursement. Do not provide CPT/E&M/payer/reimbursement advice. Every suggestion is advisory and requires clinician review. Evidence must come only from the supplied payload. Recommended actions may only ask the clinician to review or navigate to an existing chart section.`;
@@ -59,9 +59,6 @@ export class ClinicalReviewOrchestratorService {
         return deterministic;
       }
 
-      // Rebuild after the external call. If the chart changed while the model was
-      // running, discard the model output and return deterministic findings for
-      // the newest authorized snapshot instead of surfacing stale advice.
       const currentSnapshot = await this.snapshotBuilder.build(input);
       if (currentSnapshot.snapshotVersion !== initialSnapshot.snapshotVersion) {
         this.logger.warn("Encounter changed during external clinical AI review; stale result discarded");
@@ -70,7 +67,12 @@ export class ClinicalReviewOrchestratorService {
 
       const generatedAt = new Date().toISOString();
       const externalSuggestions: AiSuggestion[] = parsedExternal.data.suggestions.map((suggestion) => ({
-        id: randomUUID(),
+        id: buildStableSuggestionId({
+          snapshotVersion: initialSnapshot.snapshotVersion,
+          source: this.modelProvider.providerName,
+          category: suggestion.category,
+          title: suggestion.title,
+        }),
         category: suggestion.category,
         priority: suggestion.priority,
         title: suggestion.title,
@@ -93,7 +95,6 @@ export class ClinicalReviewOrchestratorService {
       }
       return validated.data;
     } catch {
-      // External AI must never block care or hide deterministic safety findings.
       this.logger.warn("External clinical AI unavailable; returning deterministic review");
       return deterministic;
     }
