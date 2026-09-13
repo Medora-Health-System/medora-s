@@ -3,103 +3,48 @@ import type { SuggestionContext } from "../review.types.js";
 import { buildAiSuggestion } from "../review.utils.js";
 
 /**
- * Rule 6 — Order/MAR mismatch supported by structured snapshot data.
+ * Medication order/MAR linkage integrity.
  *
- * Detects mismatches using only medication order IDs, orderItemId references,
- * order status/lifecycleState, and administration action. Does not invent or
- * compare dose timing, scheduled administrations, or infusion schedules.
+ * Only surfaces a structured linkage problem: a MAR row references an order
+ * item that is absent from the medication-order snapshot. A held, refused,
+ * omitted, stopped, or other non-administered MAR action is not treated as a
+ * contradiction with an active order because those can be legitimate clinical
+ * workflow states. No dose, indication, timing, or appropriateness is inferred.
  */
 export function rule6OrderMarMismatch(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
-  const suggestions = [];
   const medicationOrders = snapshot.treatments.medicationOrders ?? [];
   const administrations = snapshot.treatments.medicationAdministrations ?? [];
+  const orderIds = new Set(medicationOrders.map((order) => order.id));
 
-  const orderMap = new Map(medicationOrders.map((order) => [order.id, order]));
+  const orphaned = administrations.filter(
+    (administration) =>
+      Boolean(administration.orderItemId) &&
+      !orderIds.has(administration.orderItemId as string)
+  );
 
-  // Orphan MAR rows: administration references an order item id that is not
-  // present in the snapshot medication orders.
-  for (const admin of administrations) {
-    if (!admin.orderItemId) {
-      continue;
-    }
-    if (!orderMap.has(admin.orderItemId)) {
-      suggestions.push(
-        buildAiSuggestion(ctx, {
-          category: "CONTRADICTION",
-          priority: "MEDIUM",
-          title: "Medication administration references unknown order",
-          summary: `Administration ${admin.id} references order item ${admin.orderItemId} not present in medication orders.`,
-          reasoningSummary:
-            "The snapshot medicationAdministrations contains an orderItemId that does not match any medicationOrders.id.",
-          evidence: [
-            {
-              sourceType: "MEDICATION",
-              sourceId: admin.id,
-              label: "Administration action",
-              value: admin.action ?? null,
-            },
-            {
-              sourceType: "MEDICATION",
-              sourceId: admin.orderItemId,
-              label: "Referenced order item",
-              value: admin.orderItemId,
-            },
-          ],
-        })
-      );
-    }
-  }
+  if (orphaned.length === 0) return [];
 
-  // Active order with a non-administered action. We treat CANCELLED as the
-  // only terminal state we can rely on from the snapshot without timing data.
-  for (const order of medicationOrders) {
-    const isCancelled =
-      order.status === "CANCELLED" || order.lifecycleState === "CANCELLED";
-    if (isCancelled) {
-      continue;
-    }
-
-    const relatedAdmins = administrations.filter(
-      (admin) => admin.orderItemId === order.id
-    );
-    for (const admin of relatedAdmins) {
-      if (admin.action && admin.action !== "administered") {
-        suggestions.push(
-          buildAiSuggestion(ctx, {
-            category: "CONTRADICTION",
-            priority: "MEDIUM",
-            title: "Medication administration action does not match active order",
-            summary: `Order ${order.id} is active but administration ${admin.id} records action ${admin.action}.`,
-            reasoningSummary:
-              "The medication order status/lifecycleState is not CANCELLED and the MAR action is not administered.",
-            evidence: [
-              {
-                sourceType: "MEDICATION",
-                sourceId: order.id,
-                label: "Order status",
-                value: order.status ?? null,
-              },
-              {
-                sourceType: "MEDICATION",
-                sourceId: order.id,
-                label: "Order lifecycle state",
-                value: order.lifecycleState ?? null,
-              },
-              {
-                sourceType: "MEDICATION",
-                sourceId: admin.id,
-                label: "Administration action",
-                value: admin.action,
-              },
-            ],
-          })
-        );
-      }
-    }
-  }
-
-  return suggestions;
+  return [
+    buildAiSuggestion(ctx, {
+      category: "MEDICATION_CONSIDERATION",
+      priority: "MEDIUM",
+      title: "Medication administration is not linked to a medication order",
+      summary:
+        "One or more MAR entries reference an order item that is not present in the medication-order snapshot. Confirm the medication record linkage when appropriate.",
+      reasoningSummary:
+        "This finding compares only structured MAR orderItemId values with medication-order IDs. It does not infer whether a medication was appropriate, administered correctly, or clinically indicated.",
+      evidence: orphaned.map((administration) => ({
+        sourceType: "MEDICATION" as const,
+        sourceId: administration.id,
+        label: "MAR entry with unmatched order reference",
+        value: administration.orderItemId ?? null,
+      })),
+      recommendedActions: [
+        { actionType: "REVIEW", label: "Review medication administration record" },
+      ],
+    }),
+  ];
 }
