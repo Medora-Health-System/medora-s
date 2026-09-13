@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -27,6 +28,8 @@ const AI_CHART_REVIEW_ROLES = [
   RoleCode.MEDORA_SUPER_ADMIN,
 ] as const;
 
+type AiReviewLocale = "en" | "fr" | "es";
+
 @Controller("ai/chart-review")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AiChartReviewController {
@@ -39,12 +42,17 @@ export class AiChartReviewController {
   @Get(":encounterId")
   @RequireRoles(...AI_CHART_REVIEW_ROLES)
   @AllowPlatformPrincipalWithFacilityContext()
-  async getChartReview(@Param("encounterId") encounterId: string, @Req() req: any) {
+  async getChartReview(
+    @Param("encounterId") encounterId: string,
+    @Query("locale") localeValue: string | undefined,
+    @Req() req: any
+  ) {
     const { facilityId, actorUserId } = this.resolveActor(req);
+    const locale = this.resolveLocale(localeValue);
 
     await this.safeAudit("AI_REVIEW_REQUESTED", { facilityId, encounterId }, actorUserId);
     try {
-      const output = await this.reviewOrchestrator.run({ facilityId, encounterId, actorUserId });
+      const output = await this.reviewOrchestrator.run({ facilityId, encounterId, actorUserId }, locale);
       await this.safeAudit(
         "AI_REVIEW_COMPLETED",
         { facilityId, encounterId, snapshotVersion: output.suggestions[0]?.snapshotVersion },
@@ -74,9 +82,6 @@ export class AiChartReviewController {
       throw new ConflictException("AI suggestion is stale; refresh chart review before submitting feedback");
     }
 
-    // Feedback itself is an audit-backed record. Unlike review telemetry, do
-    // not report success if persistence fails; the UI should tell the reviewer
-    // that the feedback was not recorded.
     await this.aiAudit.log(
       parsed.data.rating === "HELPFUL" ? "AI_SUGGESTION_HELPFUL" : "AI_SUGGESTION_NOT_HELPFUL",
       {
@@ -90,6 +95,13 @@ export class AiChartReviewController {
     );
 
     return { accepted: true };
+  }
+
+  private resolveLocale(value: string | undefined): AiReviewLocale {
+    const normalized = value?.trim().toLowerCase();
+    if (normalized?.startsWith("fr")) return "fr";
+    if (normalized?.startsWith("es")) return "es";
+    return "en";
   }
 
   private resolveActor(req: any): { facilityId: string; actorUserId: string } {
@@ -108,8 +120,7 @@ export class AiChartReviewController {
     try {
       await this.aiAudit.log(action, metadata, actorUserId);
     } catch {
-      // Review audit telemetry must never block the read-only clinical support
-      // response. Do not emit chart data or provider errors to logs here.
+      // Review audit telemetry must never block the read-only clinical support response.
     }
   }
 }
