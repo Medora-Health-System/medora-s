@@ -49,6 +49,7 @@ describe("AI clinical review read-only architecture", () => {
 
     expect(snapshotBuilder).toContain("providerDocumentationSignedAt: true");
     expect(snapshotBuilder).toContain("providerDocumentationSignedByUserId: true");
-    expect(snapshotBuilder).not.toMatch(/providerDocumentationSignedAt\s*:/gim);
+    expect(snapshotBuilder).not.toMatch(/providerDocumentationSignedAt\s*=/);
+    expect(snapshotBuilder).not.toMatch(/providerDocumentationSignedByUserId\s*=/);
   });
 });
