@@ -1,0 +1,1 @@
+Patient request workflows are bounded portal requests only. They do not directly mutate Appointment, Order, or OrderItem authority. See PATIENT_PORTAL_REQUEST_WORKFLOW_PHASE.md for the security and workflow invariants.

@@ -150,7 +150,11 @@ describe("PatientMessagesService", () => {
         "PATIENT_PORTAL_MESSAGE",
       ]),
     );
-    expect(auditSql.values).toContain("thread-a");
+    const metadataJson = auditSql.values.find(
+      (value: unknown) =>
+        typeof value === "string" && value.includes('"threadId":"thread-a"'),
+    );
+    expect(metadataJson).toBeDefined();
     expect(auditSql.values).not.toContain("Reply");
   });
 

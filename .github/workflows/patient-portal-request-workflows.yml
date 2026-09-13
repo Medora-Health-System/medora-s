@@ -1,0 +1,31 @@
+name: Patient Portal Request Workflows
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/src/patient-portal/requests/**"
+      - "apps/api/prisma/migrations/20261006120000_patient_portal_service_requests/**"
+      - "apps/api/src/patient-portal/patient-portal.module.ts"
+      - ".github/workflows/patient-portal-request-workflows.yml"
+
+jobs:
+  request-workflow-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+      - name: Request workflow security tests
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs patient-service-requests.service.spec.ts --runInBand
