@@ -194,7 +194,6 @@ function FollowUpSection({
         <h3 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
           {t("clinicCareD4c5b2.followUp.checkoutTitle")}
         </h3>
-        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c5b.followUp.completeHint")}</p>
 
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
           {t("clinicCareD4c5b.followUp.followUpSet")}
