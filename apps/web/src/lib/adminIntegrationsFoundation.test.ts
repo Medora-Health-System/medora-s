@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 
 describe("Administration integrations foundation", () => {
   const source = readFileSync(resolve(process.cwd(), "app/app/admin/integrations/page.tsx"), "utf8");
+  const detailSource = readFileSync(resolve(process.cwd(), "app/app/admin/integrations/[id]/page.tsx"), "utf8");
   const proxySource = readFileSync(resolve(process.cwd(), "src/lib/server/nestApiProxy.ts"), "utf8");
 
   test("wizard exposes six reviewed configuration steps and no credential input", () => {
@@ -48,6 +49,23 @@ describe("Administration integrations foundation", () => {
     expect(source).toContain("Reload facility options");
     expect(source).toContain("Reload FHIR permissions");
     expect(source).toContain("Select all available");
+  });
+
+  test("connected systems navigate to a dedicated provisioning screen", () => {
+    expect(source).toContain("Manage FHIR connection & credentials");
+    expect(source).toContain("/app/admin/integrations/${row.id}");
+    expect(detailSource).toContain("FHIR Connection");
+    expect(detailSource).toContain("Provision Machine Credentials");
+  });
+
+  test("provisioning shows one-time credentials and a real token/metadata connection test", () => {
+    expect(detailSource).toContain("Copy These Credentials Now");
+    expect(detailSource).toContain("Client Secret is shown once");
+    expect(detailSource).toContain('/api/fhir/auth/token');
+    expect(detailSource).toContain('/api/fhir/metadata');
+    expect(detailSource).toContain("CapabilityStatement");
+    expect(detailSource).toContain("Rotate / Generate New Secret");
+    expect(detailSource).toContain("Revoke Client");
   });
 
   test("regression: platform integration endpoints do not require a selected clinical facility", () => {
