@@ -31,6 +31,7 @@ import {
 import {
   emptyProviderDischargeDocumentationForm,
   hydrateProviderDischargeDocumentationForm,
+  validateProviderDischargeDocumentation,
   type ProviderDischargeDocumentationForm,
 } from "@/features/emergency/providerDischargeDocumentationModel";
 import {
@@ -77,23 +78,66 @@ function clinicFacilityFallback(language: string): string {
   return "this facility";
 }
 
-function checkoutActionLabel(language: string, state: ClinicAmbulatoryCheckoutState): string | null {
-  if (state === "TRANSFER_ED") {
-    return language === "es" ? "Documentar traslado a urgencias"
-      : language === "fr" ? "Documenter le transfert vers les urgences"
-      : "Document transfer to ED";
+export function clinicCheckoutActionLabel(
+  language: string,
+  state: ClinicAmbulatoryCheckoutState
+): string {
+  const es = language === "es";
+  const fr = language === "fr";
+  switch (state) {
+    case "HOME":
+      return es ? "Confirmar alta a domicilio"
+        : fr ? "Confirmer le retour à domicile"
+        : "Confirm discharge home";
+    case "CLINIC_FOLLOW_UP":
+      return es ? "Confirmar seguimiento de clínica"
+        : fr ? "Confirmer le suivi en clinique"
+        : "Confirm clinic follow-up";
+    case "REFERRAL":
+      return es ? "Confirmar plan de referencia"
+        : fr ? "Confirmer le plan d’orientation"
+        : "Confirm referral plan";
+    case "TRANSFER_ED":
+      return es ? "Confirmar traslado a urgencias"
+        : fr ? "Confirmer le transfert vers les urgences"
+        : "Confirm transfer to ED";
+    case "AMA":
+      return es ? "Confirmar salida contra consejo médico"
+        : fr ? "Confirmer le départ contre avis médical"
+        : "Confirm AMA departure";
+    case "OTHER":
+      return es ? "Confirmar otro resultado"
+        : fr ? "Confirmer l’autre issue"
+        : "Confirm other outcome";
   }
-  if (state === "AMA") {
-    return language === "es" ? "Confirmar documentación contra consejo médico"
-      : language === "fr" ? "Confirmer la documentation contre avis médical"
-      : "Confirm AMA documentation";
+}
+
+function checkoutReadyMessage(language: string, state: ClinicAmbulatoryCheckoutState): string {
+  if (language === "es") {
+    return state === "TRANSFER_ED"
+      ? "Plan de traslado documentado. La visita está lista para completarse; la creación de un encuentro de urgencias sigue siendo una acción separada."
+      : "Resultado del egreso confirmado. La visita está lista para completarse.";
   }
-  if (state === "REFERRAL") {
-    return language === "es" ? "Guardar plan de referencia"
-      : language === "fr" ? "Enregistrer le plan d’orientation"
-      : "Save referral plan";
+  if (language === "fr") {
+    return state === "TRANSFER_ED"
+      ? "Plan de transfert documenté. La consultation est prête à être clôturée; la création d’une visite aux urgences reste une action distincte."
+      : "Issue de consultation confirmée. La consultation est prête à être clôturée.";
   }
-  return null;
+  return state === "TRANSFER_ED"
+    ? "Transfer plan documented. The visit is ready for completion; creating an ED encounter remains a separate action."
+    : "Checkout outcome confirmed. The visit is ready for completion.";
+}
+
+function checkoutValidationMessage(language: string): string {
+  return language === "es"
+    ? "Complete la documentación de alta obligatoria antes de confirmar este resultado."
+    : language === "fr"
+      ? "Complétez la documentation de sortie obligatoire avant de confirmer cette issue."
+      : "Complete the required discharge documentation before confirming this outcome.";
+}
+
+function requiresStrictDischargeDocumentation(state: ClinicAmbulatoryCheckoutState): boolean {
+  return state === "HOME" || state === "CLINIC_FOLLOW_UP" || state === "REFERRAL" || state === "OTHER";
 }
 
 export function ClinicCareAmbulatoryDischargeWorkflow({
@@ -195,10 +239,43 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
     if (!canEditMedical) return;
     setMessage(null);
 
-    const validationError = validateClinicAmbulatoryCheckoutDetails(checkoutState, checkoutDetails, language);
-    if (validationError) {
-      setMessage({ error: true, text: validationError });
+    const checkoutError = validateClinicAmbulatoryCheckoutDetails(checkoutState, checkoutDetails, language);
+    if (checkoutError) {
+      setMessage({ error: true, text: checkoutError });
       return;
+    }
+
+    const localizedForm = localizeClinicDischargeFormForPresentation(
+      providerForm,
+      language,
+      careSettingContext.facilityDisplayName
+    );
+
+    if (confirmCheckoutAction && requiresStrictDischargeDocumentation(checkoutState)) {
+      const validationErrors = validateProviderDischargeDocumentation(
+        localizedForm,
+        {
+          requiredDescription: t("providerDischargeDocumentation19Y.validation.requiredDescription"),
+          requiredInstructions: t("providerDischargeDocumentation19Y.validation.requiredInstructions"),
+          requiredMedication: t("providerDischargeDocumentation19Y.validation.requiredMedication"),
+          requiredReturnPrecautions: t("providerDischargeDocumentation19Y.validation.requiredReturnPrecautions"),
+          requiredFollowUp: t("providerDischargeDocumentation19Y.validation.requiredFollowUp"),
+        },
+        {
+          requireFinalDiagnosis: true,
+          requireInstructionsCommunicated: true,
+          messages: {
+            requiredFinalDiagnosis: t("emergencyDisposition.homeValidation.requiredFinalDiagnosis"),
+            requiredInstructionsCommunicated: t(
+              "emergencyDisposition.homeValidation.requiredInstructionsCommunicated"
+            ),
+          },
+        }
+      );
+      if (validationErrors) {
+        setMessage({ error: true, text: checkoutValidationMessage(language) });
+        return;
+      }
     }
 
     setSaving(true);
@@ -206,15 +283,10 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       const nowIso = new Date().toISOString();
       const actor = documentedByDisplayName?.trim() || "Provider";
       const detailsForSave =
-        confirmCheckoutAction ?
-          markClinicCheckoutActionConfirmed(checkoutState, checkoutDetails, actor, nowIso)
-        : checkoutDetails;
+        confirmCheckoutAction
+          ? markClinicCheckoutActionConfirmed(checkoutState, checkoutDetails, actor, nowIso)
+          : checkoutDetails;
 
-      const localizedForm = localizeClinicDischargeFormForPresentation(
-        providerForm,
-        language,
-        careSettingContext.facilityDisplayName
-      );
       const merged = {
         ...buildProviderDischargeJsonForSave(dischargeSummaryJson, localizedForm, {
           documentedAt: nowIso,
@@ -224,17 +296,36 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         clinicAmbulatoryCheckoutDetails: detailsForSave,
         clinicAmbulatoryCheckoutUpdatedAt: nowIso,
         clinicAmbulatoryCheckoutUpdatedByDisplayName: actor,
+        ...(confirmCheckoutAction
+          ? {
+              clinicAmbulatoryCheckoutConfirmation: {
+                state: checkoutState,
+                confirmedAt: nowIso,
+                confirmedByDisplayName: actor,
+              },
+            }
+          : {}),
         careSetting: "CLINIC",
         facilityDisplayName: careSettingContext.facilityDisplayName,
       };
+
       await apiFetch(`/encounters/${encounterId}`, {
         method: "PATCH",
         facilityId,
-        body: JSON.stringify({ dischargeSummaryJson: merged }),
+        body: JSON.stringify({
+          dischargeSummaryJson: merged,
+          ...(confirmCheckoutAction ? { workflowState: "DISCHARGE_READY" } : {}),
+        }),
       });
+
       setCheckoutDetails(detailsForSave);
       setProviderForm(localizedForm);
-      setMessage({ error: false, text: t("clinicCareD4c7.discharge.saved") });
+      setMessage({
+        error: false,
+        text: confirmCheckoutAction
+          ? checkoutReadyMessage(language, checkoutState)
+          : t("clinicCareD4c7.discharge.saved"),
+      });
       await onSaved();
     } catch (e) {
       setMessage({
@@ -342,18 +433,36 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
     encounterId,
     patientId,
   });
-  const contextualActionLabel = checkoutActionLabel(language, checkoutState);
+  const contextualActionLabel = clinicCheckoutActionLabel(language, checkoutState);
 
   return (
-    <div data-testid="clinic-care-d4c7-discharge-workflow" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      data-testid="clinic-care-d4c7-discharge-workflow"
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
       <div style={sectionShell}>
         <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
           {t("clinicCareD4c7.checkout.title")}
         </h3>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.checkout.subtitle")}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }} role="radiogroup" aria-label={t("clinicCareD4c7.checkout.title")}>
+        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+          {t("clinicCareD4c7.checkout.subtitle")}
+        </p>
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: 6 }}
+          role="radiogroup"
+          aria-label={t("clinicCareD4c7.checkout.title")}
+        >
           {CLINIC_AMBULATORY_CHECKOUT_STATES.map((state) => (
-            <label key={state} style={{ display: "flex", gap: 8, fontSize: 13, color: "#0f172a", cursor: formDisabled ? "not-allowed" : "pointer" }}>
+            <label
+              key={state}
+              style={{
+                display: "flex",
+                gap: 8,
+                fontSize: 13,
+                color: "#0f172a",
+                cursor: formDisabled ? "not-allowed" : "pointer",
+              }}
+            >
               <input
                 type="radio"
                 name="clinic-ambulatory-checkout"
@@ -416,7 +525,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
               {saving ? t("common.saving") : t("clinicCareD4c7.discharge.saveProvider")}
             </button>
           ) : null}
-          {canEditMedical && contextualActionLabel ? (
+          {canEditMedical ? (
             <button
               type="button"
               data-testid={`clinic-checkout-confirm-${checkoutState.toLowerCase()}`}
@@ -453,7 +562,9 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
             {t("clinicCareD4c7.discharge.print")}
           </button>
           {message ? (
-            <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>{message.text}</span>
+            <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>
+              {message.text}
+            </span>
           ) : null}
           {printError ? <span style={{ fontSize: 12, color: "#b91c1c" }}>{printError}</span> : null}
         </div>
@@ -463,7 +574,9 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         <h3 style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
           {t("clinicCareD4c7.publicHealth.title")}
         </h3>
-        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.publicHealth.hint")}</p>
+        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+          {t("clinicCareD4c7.publicHealth.hint")}
+        </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 13 }}>
           <Link href={vaccinationsHref} style={{ color: "#0d9488", fontWeight: 600 }}>
             {t("clinicCareD4c7.publicHealth.vaccinations")}
