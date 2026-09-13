@@ -5,14 +5,84 @@ function boundedText(value: { text: string; truncated: boolean; originalLength?:
   return { text: value.text, truncated: value.truncated };
 }
 
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+const PROVIDER_DOCUMENTATION_NAMESPACE = "erprovidermsev1";
+const PROVIDER_DOCUMENTATION_TEXT_FIELDS = [
+  "reasonForVisit",
+  "chiefComplaint",
+  "hpi",
+  "rosFocusedImpression",
+  "rosImportantPositives",
+  "rosImportantNegatives",
+  "rosRedFlags",
+  "mdmWorkingAssessment",
+  "mdmDifferentialSynthesis",
+  "differentialAssessmentText",
+  "mdmDataReviewed",
+  "mdmRiskLevel",
+  "mdmRiskStratification",
+  "mdmClinicalRationale",
+  "mdmPlanSummary",
+  "mdmImmediateActionsRationale",
+  "mdmConsultsDiscussed",
+  "mdmAdmitObserveDischarge",
+  "clinicalImpression",
+  "treatmentPlan",
+  "followUpDisposition",
+  "examReassessmentExtra",
+] as const;
+
+function sanitizeProviderDocumentationPayload(payload: unknown): Record<string, unknown> | null {
+  const source = asObject(payload);
+  if (!source) return null;
+
+  const result: Record<string, unknown> = {};
+  for (const key of PROVIDER_DOCUMENTATION_TEXT_FIELDS) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) {
+      result[key] = value.slice(0, 10_000);
+    }
+  }
+
+  const exam = asObject(source.physicalExam);
+  if (exam) {
+    const sanitizedExam: Record<string, string> = {};
+    for (const [section, value] of Object.entries(exam)) {
+      if (typeof value === "string" && value.trim()) sanitizedExam[section] = value.slice(0, 5_000);
+    }
+    if (Object.keys(sanitizedExam).length) result.physicalExam = sanitizedExam;
+  }
+
+  return Object.keys(result).length ? result : null;
+}
+
+function structuredEntryForExternalReview(entry: NonNullable<EncounterAiSnapshot["clinicalDocumentation"]["structuredEntries"]>[number]) {
+  const normalizedNamespace = entry.namespace.trim().toLowerCase();
+  return {
+    namespace: entry.namespace,
+    documentedAt: entry.documentedAt,
+    version: entry.version,
+    clinicalContent:
+      normalizedNamespace === PROVIDER_DOCUMENTATION_NAMESPACE
+        ? sanitizeProviderDocumentationPayload(entry.payloadSummary)
+        : null,
+  };
+}
+
 /**
  * Builds the minimum provider payload needed for clinical chart review.
  *
  * Intentionally excludes facility/encounter/patient IDs, exact DOB, internal
- * record IDs, opaque structured payloads, billing classification, diagnosis /
- * procedure coding fields, signatures/credentials, and unrelated patient data.
- * Snapshot provenance is retained server-side and is not serialized into the
- * external provider request body.
+ * record IDs, billing classification, diagnosis/procedure coding fields,
+ * signatures/credentials, and unrelated patient data. For the provider
+ * documentation namespace only, a strict allow-list exposes bounded clinical
+ * section content (HPI/ROS/exam/MDM/plan) so Medora Assist can perform real
+ * section-aware review without sending the opaque source payload.
  */
 export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
   return {
@@ -33,15 +103,15 @@ export function buildExternalClinicalInput(snapshot: EncounterAiSnapshot) {
       providerDocumentationStatus: snapshot.clinicalDocumentation.providerDocumentationStatus ?? null,
       providerNote: boundedText(snapshot.clinicalDocumentation.providerNote),
       treatmentPlan: boundedText(snapshot.clinicalDocumentation.treatmentPlan),
-      structuredEntries: (snapshot.clinicalDocumentation.structuredEntries ?? []).map((entry) => ({
-        namespace: entry.namespace,
-        documentedAt: entry.documentedAt,
-        version: entry.version,
-      })),
+      structuredEntries: (snapshot.clinicalDocumentation.structuredEntries ?? []).map(structuredEntryForExternalReview),
       reassessments: (snapshot.clinicalDocumentation.reassessments ?? []).map((entry) => ({
         namespace: entry.namespace,
         documentedAt: entry.documentedAt,
         version: entry.version,
+        clinicalContent:
+          entry.namespace.trim().toLowerCase() === PROVIDER_DOCUMENTATION_NAMESPACE
+            ? sanitizeProviderDocumentationPayload(entry.payloadSummary)
+            : null,
       })),
     },
     diagnostics: {
