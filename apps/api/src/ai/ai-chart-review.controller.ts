@@ -1,7 +1,11 @@
 import { BadRequestException, Controller, Get, Param, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard.js";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard.js";
 import { ClinicalReviewOrchestratorService } from "./review/clinical-review-orchestrator.service.js";
 
 @Controller("ai/chart-review")
@@ -10,7 +14,8 @@ export class AiChartReviewController {
   constructor(private readonly reviewOrchestrator: ClinicalReviewOrchestratorService) {}
 
   @Get(":encounterId")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async getChartReview(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     const actorUserId = req.user?.userId;
