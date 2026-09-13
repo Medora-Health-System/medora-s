@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
 import { AuditService } from "../common/services/audit.service";
 import { FhirMapperModule } from "../fhir-mapper/fhir-mapper.module";
 import { PatientsModule } from "../patients/patients.module";
@@ -20,9 +21,11 @@ import { FhirReferenceResolver } from "./fhir-reference.resolver";
 import { FhirSearchService } from "./fhir-search";
 import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
 import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
+import { FhirMachineStrategy } from "./fhir-machine.strategy";
+import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
 
 @Module({
-  imports: [PatientsModule, FhirMapperModule, JwtModule.register({})],
+  imports: [PatientsModule, FhirMapperModule, PassportModule, JwtModule.register({})],
   controllers: [FhirController, FhirMachineAuthController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
@@ -33,6 +36,8 @@ import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
     FhirDeploymentGuard,
     FhirMediaInterceptor,
     FhirMachineIdentityService,
+    FhirMachineStrategy,
+    FhirMachineAuditInterceptor,
     { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
     {
       provide: JurisdictionProfileRegistry,
