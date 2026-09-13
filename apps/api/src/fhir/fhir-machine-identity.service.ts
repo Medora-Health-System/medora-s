@@ -1,10 +1,20 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { AuditAction, Prisma } from "@prisma/client";
 import * as argon2 from "argon2";
 import { randomBytes, randomUUID } from "node:crypto";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaService } from "../prisma/prisma.service";
+
+export type FhirMachinePrincipal = {
+  principalType: "fhir-client";
+  clientId: string;
+  integrationId: string;
+  facilityId: string;
+  credentialId: string;
+  keyId: string;
+  scopes: string[];
+};
 
 type ClientRow = {
   id: string;
@@ -38,12 +48,17 @@ export class FhirMachineIdentityService {
   ) {}
 
   connectionProfile() {
-    const publicApiBase = (process.env.PUBLIC_API_BASE_URL || process.env.API_PUBLIC_BASE_URL || "https://api.medoras.com").replace(/\/$/, "");
+    const configuredFhirBase = process.env.FHIR_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
+    const apiBase = (process.env.PUBLIC_API_BASE_URL || process.env.API_PUBLIC_BASE_URL || "https://api.medoras.com").trim().replace(/\/$/, "");
+    const fhirBaseUrl = configuredFhirBase || `${apiBase}/fhir`;
+    const signingSecretConfigured = (process.env.FHIR_M2M_ACCESS_SECRET?.trim().length ?? 0) >= 32;
     return {
-      fhirBaseUrl: `${publicApiBase}/fhir`,
-      tokenUrl: `${publicApiBase}/fhir/auth/token`,
-      metadataUrl: `${publicApiBase}/fhir/metadata`,
+      fhirBaseUrl,
+      tokenUrl: `${fhirBaseUrl}/auth/token`,
+      metadataUrl: `${fhirBaseUrl}/metadata`,
       runtimeEnabled: (process.env.MEDORA_INTEROP_ENABLED ?? "false").trim().toLowerCase() === "true",
+      signingSecretConfigured,
+      runtimeReady: (process.env.MEDORA_INTEROP_ENABLED ?? "false").trim().toLowerCase() === "true" && signingSecretConfigured,
       authMethod: "client_credentials",
       credentialPolicy: "Client secrets are displayed once and stored by Medora only as Argon2id hashes.",
     };
@@ -148,6 +163,18 @@ export class FhirMachineIdentityService {
     return { clientId, keyId, clientSecret: secret, expiresAt, ...this.connectionProfile(), overlapPolicy: "Existing unrevoked credentials remain valid until explicitly revoked or expired." };
   }
 
+  async revokeCredential(adminUserId: string, integrationId: string, clientId: string, keyId: string) {
+    await this.requireClient(integrationId, clientId);
+    const changed = await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE "interop"."IntegrationClientCredential"
+      SET "revokedAt" = COALESCE("revokedAt", ${new Date()}), "revokedById" = COALESCE("revokedById", ${adminUserId})
+      WHERE "clientId" = ${clientId} AND "keyId" = ${keyId}
+    `);
+    if (!changed) throw new NotFoundException("Credential not found");
+    await this.audit.log(AuditAction.UPDATE, "FHIR_INTEGRATION_CLIENT", { userId: adminUserId, entityId: clientId, critical: true, metadata: { event: "FHIR_M2M_CREDENTIAL_REVOKED", integrationId, keyId } });
+    return { revoked: true, clientId, keyId };
+  }
+
   async revokeClient(adminUserId: string, integrationId: string, clientId: string) {
     const client = await this.requireClient(integrationId, clientId);
     const now = new Date();
@@ -192,10 +219,49 @@ export class FhirMachineIdentityService {
     const expiresIn = this.tokenTtlSeconds();
     const issuer = process.env.FHIR_M2M_ISSUER?.trim() || "medora-s";
     const audience = process.env.FHIR_M2M_AUDIENCE?.trim() || "medora-fhir";
-    const accessToken = await this.jwt.signAsync({ tokenType: "fhir-m2m", clientId: row.id, integrationId: row.integrationId, facilityId: row.facilityId, scopes: requested, kid: row.credentialKeyId, jti: randomUUID() }, { secret: this.signingSecret(), issuer, audience, subject: row.id, expiresIn });
+    const jti = randomUUID();
+    const accessToken = await this.jwt.signAsync({
+      tokenType: "fhir-m2m",
+      clientId: row.id,
+      integrationId: row.integrationId,
+      facilityId: row.facilityId,
+      scopes: requested,
+      kid: row.credentialKeyId,
+      jti,
+    }, { secret: this.signingSecret(), issuer, audience, subject: row.id, expiresIn });
 
     await this.prisma.$executeRaw(Prisma.sql`UPDATE "interop"."IntegrationClientCredential" SET "lastUsedAt" = ${new Date()} WHERE "id" = ${row.credentialId}`);
+    await this.audit.log(AuditAction.VIEW, "FHIR_INTEGRATION_CLIENT", { facilityId: row.facilityId, entityId: row.id, metadata: { event: "FHIR_M2M_TOKEN_ISSUED", integrationId: row.integrationId, keyId: row.credentialKeyId, scopeCount: requested.length, jti } });
     return { access_token: accessToken, token_type: "Bearer", expires_in: expiresIn, scope: requested.join(" ") };
+  }
+
+  async resolveMachinePrincipal(payload: any): Promise<FhirMachinePrincipal> {
+    if (!payload || payload.tokenType !== "fhir-m2m" || typeof payload.clientId !== "string" || typeof payload.integrationId !== "string" || typeof payload.facilityId !== "string" || typeof payload.kid !== "string" || !Array.isArray(payload.scopes)) throw new UnauthorizedException("Invalid machine token");
+    const [row] = await this.prisma.$queryRaw<Array<{ clientId: string; integrationId: string; facilityId: string; active: boolean; revokedAt: Date | null; integrationStatus: string; provisioningState: string; authorizationActive: boolean; credentialId: string; credentialRevokedAt: Date | null; credentialExpiresAt: Date | null }>>(Prisma.sql`
+      SELECT c."id" AS "clientId", c."integrationId", c."facilityId", c."active", c."revokedAt",
+        i."status"::text AS "integrationStatus", i."provisioningState"::text AS "provisioningState",
+        fa."active" AS "authorizationActive", cr."id" AS "credentialId", cr."revokedAt" AS "credentialRevokedAt", cr."expiresAt" AS "credentialExpiresAt"
+      FROM "interop"."IntegrationClient" c
+      JOIN "public"."Integration" i ON i."id" = c."integrationId"
+      JOIN "public"."IntegrationFacilityAuthorization" fa ON fa."integrationId" = c."integrationId" AND fa."facilityId" = c."facilityId" AND fa."revokedAt" IS NULL
+      JOIN "interop"."IntegrationClientCredential" cr ON cr."clientId" = c."id" AND cr."keyId" = ${payload.kid}
+      WHERE c."id" = ${payload.clientId} AND c."integrationId" = ${payload.integrationId} AND c."facilityId" = ${payload.facilityId}
+      LIMIT 1
+    `);
+    if (!row || !row.active || row.revokedAt || !row.authorizationActive || row.integrationStatus === "DISABLED" || row.provisioningState !== "PROVISIONED" || row.credentialRevokedAt || (row.credentialExpiresAt && row.credentialExpiresAt <= new Date())) throw new UnauthorizedException("Machine client revoked or inactive");
+    const current = await this.effectiveScopes(row.clientId, row.integrationId);
+    const scopes = payload.scopes.filter((scope: unknown): scope is string => typeof scope === "string" && current.includes(scope));
+    if (!scopes.length) throw new ForbiddenException("Machine client has no active FHIR scopes");
+    await this.consumeRateLimit(row.clientId, row.facilityId);
+    return { principalType: "fhir-client", clientId: row.clientId, integrationId: row.integrationId, facilityId: row.facilityId, credentialId: row.credentialId, keyId: payload.kid, scopes };
+  }
+
+  async auditAccess(principal: FhirMachinePrincipal, resourceType: string, interaction: string, requestId?: string) {
+    await this.audit.log(AuditAction.VIEW, "FHIR_INTEGRATION_ACCESS", {
+      facilityId: principal.facilityId,
+      entityId: principal.clientId,
+      metadata: { integrationId: principal.integrationId, keyId: principal.keyId, resourceType, interaction, requestId: requestId || undefined },
+    });
   }
 
   private async effectiveScopes(clientId: string, integrationId: string): Promise<string[]> {
@@ -207,6 +273,23 @@ export class FhirMachineIdentityService {
       ORDER BY cs."capabilityCode" ASC
     `);
     return rows.map((row) => row.capabilityCode);
+  }
+
+  private async consumeRateLimit(clientId: string, facilityId: string) {
+    const limit = this.rateLimitPerMinute();
+    const [bucket] = await this.prisma.$queryRaw<Array<{ requestCount: number }>>(Prisma.sql`
+      INSERT INTO "interop"."FhirIntegrationRateLimitBucket" AS bucket ("id", "clientId", "facilityId", "windowStart", "requestCount", "updatedAt")
+      VALUES (${randomUUID()}, ${clientId}, ${facilityId}, date_trunc('minute', CURRENT_TIMESTAMP), 1, CURRENT_TIMESTAMP)
+      ON CONFLICT ("clientId", "facilityId", "windowStart") DO UPDATE
+      SET "requestCount" = bucket."requestCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
+      RETURNING "requestCount"
+    `);
+    if ((bucket?.requestCount ?? limit + 1) > limit) throw new HttpException("FHIR machine rate limit exceeded", 429);
+  }
+
+  private rateLimitPerMinute() {
+    const parsed = Number(process.env.FHIR_M2M_RATE_LIMIT_PER_MINUTE ?? 120);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5000 ? parsed : 120;
   }
 
   private tokenTtlSeconds() {
