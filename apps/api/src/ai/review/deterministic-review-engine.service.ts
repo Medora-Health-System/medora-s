@@ -14,6 +14,8 @@ import { rule10PrimaryDiagnosisConsistency } from "./rules/rule-10-primary-diagn
 import { rule11AdministrationTimestampIntegrity } from "./rules/rule-11-administration-timestamp-integrity.rule.js";
 import { rule12DischargedSummaryCompleteness } from "./rules/rule-12-discharged-summary-completeness.rule.js";
 import { rule13MdmCompleteness } from "./rules/rule-13-mdm-completeness.rule.js";
+import { rule14EdMissingVitals } from "./rules/rule-14-ed-missing-vitals.rule.js";
+import { rule15ResultsNotReconciledInMdm } from "./rules/rule-15-results-not-reconciled-in-mdm.rule.js";
 
 /**
  * Deterministic clinical review engine.
@@ -43,6 +45,8 @@ export class DeterministicReviewEngine {
     rule11AdministrationTimestampIntegrity,
     rule12DischargedSummaryCompleteness,
     rule13MdmCompleteness,
+    rule14EdMissingVitals,
+    rule15ResultsNotReconciledInMdm,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
