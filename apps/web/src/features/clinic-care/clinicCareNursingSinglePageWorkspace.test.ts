@@ -16,12 +16,36 @@ describe("Clinic nursing single-page documentation", () => {
     expect(source).toContain("display: none !important");
   });
 
-  it("prevents Clinic nursing links from navigating away and converts documentation links to inline tools", () => {
-    expect(source).toContain("event.preventDefault()");
-    expect(source).toContain("event.stopPropagation()");
+  it("recognizes the actual triage/history query links and keeps documentation inline", () => {
+    expect(source).toContain('url.searchParams.get("tab")');
+    expect(source).toContain('tab === "triage" || tab === "history"');
     expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-medrec-link"');
-    expect(source).toContain('href.includes("section=intake")');
+    expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-open-intake-chart"');
     expect(source).toContain('openInlineTool("notes"');
+    expect(source).not.toContain('href.startsWith("/app/")');
+  });
+
+  it("keeps Start Intake on the Nursing board", () => {
+    expect(source).toContain('button?.dataset.testid === "clinic-care-nursing-start-intake"');
+    expect(source).toContain('patchEncounterWorkflowState(facilityId, encounterId, "TRIAGE")');
+    expect(source).toContain('openInlineTool(\n        "intake"');
+  });
+
+  it("discards stale encounter fetch results when drawers are closed or switched", () => {
+    expect(source).toContain("requestSequenceRef");
+    expect(source).toContain("requestSequenceRef.current !== requestSequence");
+    expect(source).toContain("requestSequenceRef.current += 1");
+  });
+
+  it("refreshes the operational board after drawer documentation saves", () => {
+    expect(source).toContain("const [boardRevision, setBoardRevision]");
+    expect(source).toContain("onSaved={handleDrawerSaved}");
+    expect(source).toContain("<ClinicCareNursingWorkspaceView key={boardRevision} />");
+  });
+
+  it("normalizes nullable API patient ids for the shared triage contract", () => {
+    expect(source).toContain("type EncounterApiShape");
+    expect(source).toContain("id: value.patient.id ?? undefined");
   });
 
   it("reuses the enterprise intake and note engines so saved work remains part of the encounter summary source", () => {
