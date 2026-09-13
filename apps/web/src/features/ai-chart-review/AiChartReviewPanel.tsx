@@ -40,71 +40,71 @@ type Copy = {
 
 const COPY: Record<Locale, Copy> = {
   en: {
-    title: "AI Chart Review",
+    title: "Chart Review with Medora",
     subtitle: "Live clinical chart review",
     live: "Auto-refreshes while this chart is active",
     refresh: "Refresh review",
     loading: "Reviewing the current chart snapshot…",
     empty: "No findings in this section.",
-    unavailable: "AI chart review is unavailable right now. Clinical care can continue normally.",
+    unavailable: "Chart Review with Medora is unavailable right now. Clinical care can continue normally.",
     retry: "Retry",
     evidence: "Evidence",
     why: "Why this was flagged",
     reviewSection: "Review chart section",
-    readOnly: "Read-only clinical decision support. Review every finding before acting. Medora AI does not modify the chart or place orders.",
+    readOnly: "Read-only clinical decision support. Review every finding before acting. Medora does not modify the chart or place orders.",
     snapshot: "Snapshot",
     generated: "Generated",
     helpful: "Helpful",
     notHelpful: "Not helpful",
     feedbackThanks: "Feedback recorded",
     feedbackFailed: "Feedback could not be recorded. Refresh and try again.",
-    codingInactive: "Coding & Medical Necessity intelligence is not active in Phase 1D. No coding, payer, E/M, or reimbursement recommendations are being generated.",
+    codingInactive: "Coding & Medical Necessity intelligence is not active yet. No coding, payer, E/M, or reimbursement recommendations are being generated.",
     tabs: { safety: "Clinical Safety", diagnostics: "Diagnostics", treatment: "Treatment & Orders", documentation: "Documentation / MDM", discharge: "Discharge", coding: "Coding & Medical Necessity" },
     priorities: { CRITICAL: "Critical", HIGH: "High", MEDIUM: "Medium", LOW: "Low" },
   },
   fr: {
-    title: "Révision IA du dossier",
+    title: "Révision du dossier avec Medora",
     subtitle: "Révision clinique en direct",
     live: "S’actualise automatiquement lorsque ce dossier est actif",
     refresh: "Actualiser la révision",
     loading: "Analyse de l’instantané actuel du dossier…",
     empty: "Aucun élément signalé dans cette section.",
-    unavailable: "La révision IA du dossier est indisponible pour le moment. Les soins cliniques peuvent continuer normalement.",
+    unavailable: "La révision du dossier avec Medora est indisponible pour le moment. Les soins cliniques peuvent continuer normalement.",
     retry: "Réessayer",
     evidence: "Éléments probants",
     why: "Pourquoi cet élément a été signalé",
     reviewSection: "Consulter la section du dossier",
-    readOnly: "Aide à la décision clinique en lecture seule. Vérifiez chaque élément avant d’agir. Medora AI ne modifie pas le dossier et ne passe aucune ordonnance.",
+    readOnly: "Aide à la décision clinique en lecture seule. Vérifiez chaque élément avant d’agir. Medora ne modifie pas le dossier et ne passe aucune ordonnance.",
     snapshot: "Instantané",
     generated: "Généré",
     helpful: "Utile",
     notHelpful: "Pas utile",
     feedbackThanks: "Avis enregistré",
     feedbackFailed: "L’avis n’a pas pu être enregistré. Actualisez puis réessayez.",
-    codingInactive: "L’intelligence de codage et de nécessité médicale n’est pas active en phase 1D. Aucune recommandation de codage, payeur, E/M ou remboursement n’est générée.",
+    codingInactive: "L’intelligence de codage et de nécessité médicale n’est pas encore active. Aucune recommandation de codage, payeur, E/M ou remboursement n’est générée.",
     tabs: { safety: "Sécurité clinique", diagnostics: "Diagnostics", treatment: "Traitement et ordres", documentation: "Documentation / MDM", discharge: "Sortie", coding: "Codage et nécessité médicale" },
     priorities: { CRITICAL: "Critique", HIGH: "Élevée", MEDIUM: "Moyenne", LOW: "Faible" },
   },
   es: {
-    title: "Revisión de historia con IA",
+    title: "Revisión de historia con Medora",
     subtitle: "Revisión clínica en vivo",
     live: "Se actualiza automáticamente mientras esta historia está activa",
     refresh: "Actualizar revisión",
     loading: "Revisando la instantánea actual de la historia…",
     empty: "No hay hallazgos en esta sección.",
-    unavailable: "La revisión de historia con IA no está disponible en este momento. La atención clínica puede continuar normalmente.",
+    unavailable: "La revisión de historia con Medora no está disponible en este momento. La atención clínica puede continuar normalmente.",
     retry: "Reintentar",
     evidence: "Evidencia",
     why: "Por qué se marcó",
     reviewSection: "Revisar sección de la historia",
-    readOnly: "Soporte de decisión clínica de solo lectura. Revise cada hallazgo antes de actuar. Medora AI no modifica la historia ni coloca órdenes.",
+    readOnly: "Soporte de decisión clínica de solo lectura. Revise cada hallazgo antes de actuar. Medora no modifica la historia ni coloca órdenes.",
     snapshot: "Instantánea",
     generated: "Generado",
     helpful: "Útil",
     notHelpful: "No útil",
     feedbackThanks: "Comentario registrado",
     feedbackFailed: "No se pudo registrar el comentario. Actualice e inténtelo de nuevo.",
-    codingInactive: "La inteligencia de codificación y necesidad médica no está activa en la fase 1D. No se generan recomendaciones de codificación, pagador, E/M ni reembolso.",
+    codingInactive: "La inteligencia de codificación y necesidad médica aún no está activa. No se generan recomendaciones de codificación, pagador, E/M ni reembolso.",
     tabs: { safety: "Seguridad clínica", diagnostics: "Diagnósticos", treatment: "Tratamiento y órdenes", documentation: "Documentación / MDM", discharge: "Alta", coding: "Codificación y necesidad médica" },
     priorities: { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" },
   },
@@ -271,40 +271,46 @@ export function AiChartReviewPanel({ encounterId, facilityId, language, onNaviga
           <button type="button" onClick={() => void load(false)} style={{ marginTop: 8 }}>{copy.retry}</button>
         </div>
       ) : null}
+
       {!loading && !error && activeTab === "coding" ? (
-        <div style={{ padding: 11, borderRadius: 8, border: "1px dashed #cbd5e1", background: "#f8fafc", fontSize: 12, color: "#475569" }}>{copy.codingInactive}</div>
+        <div style={{ padding: 10, border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", color: "#475569", fontSize: 12 }}>{copy.codingInactive}</div>
       ) : null}
-      {!loading && !error && activeTab !== "coding" && current.length === 0 ? <p style={{ fontSize: 12.5, color: "#64748b" }}>{copy.empty}</p> : null}
+
+      {!loading && !error && activeTab !== "coding" && current.length === 0 ? (
+        <p style={{ fontSize: 12.5, color: "#64748b" }}>{copy.empty}</p>
+      ) : null}
 
       {!loading && !error && activeTab !== "coding" ? current.map((suggestion) => {
-        const section = SECTION_BY_CATEGORY[suggestion.category];
-        const selectedFeedback = feedback[suggestion.id];
-        const pending = feedbackPending[suggestion.id] === true;
+        const section = suggestion.recommendedActions.find((action) => action.targetSection)?.targetSection ?? SECTION_BY_CATEGORY[suggestion.category];
+        const ambulatorySection = typeof section === "string" ? (section as ClinicCareAmbulatoryWorkspaceSection) : undefined;
         return (
-          <article key={suggestion.id} style={{ borderTop: "1px solid #e2e8f0", padding: "12px 0" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-              <span style={{ ...priorityStyle(suggestion.priority), border: "1px solid", borderRadius: 999, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{copy.priorities[suggestion.priority]}</span>
-              <span style={{ fontSize: 10, color: "#64748b" }}>{suggestion.category.replaceAll("_", " ")}</span>
+          <article key={suggestion.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, marginBottom: 9, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+              <div>
+                <span style={{ ...priorityStyle(suggestion.priority), display: "inline-block", border: "1px solid", borderRadius: 999, padding: "2px 6px", fontSize: 9.5, fontWeight: 700 }}>{copy.priorities[suggestion.priority]}</span>
+                <h3 style={{ margin: "5px 0 2px", fontSize: 13.5, color: "#0f172a" }}>{suggestion.title}</h3>
+              </div>
             </div>
-            <h3 style={{ margin: "7px 0 4px", fontSize: 13.5, color: "#0f172a" }}>{suggestion.title}</h3>
-            <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>{suggestion.summary}</p>
-
-            {suggestion.reasoningSummary ? <details style={{ marginTop: 8 }}><summary style={{ fontSize: 11.5, color: "#475569", fontWeight: 600 }}>{copy.why}</summary><p style={{ fontSize: 11.5, color: "#64748b" }}>{suggestion.reasoningSummary}</p></details> : null}
-            {suggestion.evidence.length ? <details style={{ marginTop: 8 }}><summary style={{ fontSize: 11.5, color: "#475569", fontWeight: 600 }}>{copy.evidence} ({suggestion.evidence.length})</summary><ul style={{ paddingLeft: 18, fontSize: 11.5, color: "#64748b" }}>{suggestion.evidence.map((item, index) => <li key={`${item.sourceType}-${item.sourceId ?? index}-${index}`}>{item.label}{item.value !== undefined ? `: ${item.value === null ? "—" : String(item.value)}` : ""}</li>)}</ul></details> : null}
-
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 9 }}>
-              {section ? <button type="button" onClick={() => onNavigate(section)}>{copy.reviewSection}</button> : null}
-              <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>{copy.helpful}</button>
-              <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>{copy.notHelpful}</button>
-              {selectedFeedback ? <span role="status" style={{ fontSize: 10.5, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
-              {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10.5, color: "#991b1b" }}>{copy.feedbackFailed}</span> : null}
+            <p style={{ margin: "3px 0 8px", fontSize: 12, lineHeight: 1.45, color: "#334155" }}>{suggestion.summary}</p>
+            {suggestion.evidence.length ? (
+              <details style={{ marginBottom: 6 }}><summary style={{ cursor: "pointer", fontSize: 11.5, color: "#0f766e" }}>{copy.evidence}</summary>
+                <ul style={{ margin: "5px 0 0", paddingLeft: 18, fontSize: 11.5, color: "#475569" }}>{suggestion.evidence.map((item, index) => <li key={`${item.label}-${index}`}>{item.label}{item.value !== undefined && item.value !== null ? `: ${String(item.value)}` : ""}</li>)}</ul>
+              </details>
+            ) : null}
+            <details style={{ marginBottom: 8 }}><summary style={{ cursor: "pointer", fontSize: 11.5, color: "#0f766e" }}>{copy.why}</summary><p style={{ fontSize: 11.5, lineHeight: 1.45, color: "#475569" }}>{suggestion.reasoningSummary}</p></details>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {ambulatorySection ? <button type="button" onClick={() => onNavigate(ambulatorySection)} style={{ border: "1px solid #99f6e4", background: "#f0fdfa", color: "#115e59", borderRadius: 7, padding: "5px 8px", fontSize: 10.5 }}>{copy.reviewSection}</button> : null}
+              <button type="button" disabled={feedbackPending[suggestion.id]} onClick={() => void submitFeedback(suggestion, "HELPFUL")} style={{ border: "1px solid #e2e8f0", background: feedback[suggestion.id] === "HELPFUL" ? "#f0fdf4" : "#fff", borderRadius: 7, padding: "5px 8px", fontSize: 10.5 }}>{copy.helpful}</button>
+              <button type="button" disabled={feedbackPending[suggestion.id]} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")} style={{ border: "1px solid #e2e8f0", background: feedback[suggestion.id] === "NOT_HELPFUL" ? "#fff7ed" : "#fff", borderRadius: 7, padding: "5px 8px", fontSize: 10.5 }}>{copy.notHelpful}</button>
             </div>
+            {feedback[suggestion.id] ? <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "#64748b" }}>{copy.feedbackThanks}</p> : null}
+            {feedbackError[suggestion.id] ? <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "#b91c1c" }}>{copy.feedbackFailed}</p> : null}
           </article>
         );
       }) : null}
 
-      {!loading && !error && firstSuggestion ? (
-        <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 8, paddingTop: 8, fontSize: 9.5, color: "#94a3b8", wordBreak: "break-all" }}>
+      {firstSuggestion ? (
+        <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, marginTop: 8, fontSize: 9.5, color: "#94a3b8" }}>
           <div>{copy.generated}: {new Date(firstSuggestion.generatedAt).toLocaleString()}</div>
           <div>{copy.snapshot}: {firstSuggestion.snapshotVersion}</div>
         </div>
