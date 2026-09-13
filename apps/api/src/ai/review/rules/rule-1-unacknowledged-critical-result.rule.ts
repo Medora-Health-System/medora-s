@@ -8,6 +8,9 @@ import { buildAiSuggestion } from "../review.utils.js";
  * Flags any result in the snapshot whose criticalValue is true and whose
  * acknowledgedByProviderAt timestamp is absent. Uses only structured result
  * facts; never infers clinical meaning from free-text result text.
+ *
+ * The action is navigation-only. Medora Assist never acknowledges a clinical
+ * result on behalf of the clinician.
  */
 export function rule1UnacknowledgedCriticalResult(
   snapshot: EncounterAiSnapshot,
@@ -50,7 +53,11 @@ export function rule1UnacknowledgedCriticalResult(
           },
         ],
         recommendedActions: [
-          { actionType: "ACKNOWLEDGE", label: "Acknowledge critical result" },
+          {
+            actionType: "NAVIGATE",
+            targetSection: "results",
+            label: "Review critical result",
+          },
         ],
       })
     );
