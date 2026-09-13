@@ -25,10 +25,12 @@ import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
 import { FhirMachineStrategy } from "./fhir-machine.strategy";
 import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
 import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
+import { FhirInboundProposalController } from "./fhir-inbound-proposal.controller";
+import { FhirInboundProposalService } from "./fhir-inbound-proposal.service";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule, PassportModule, JwtModule.register({})],
-  controllers: [FhirController, FhirMachineAuthController, FhirConditionController, FhirServiceRequestController, FhirDiagnosticReportController, FhirCarePlanController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
+  controllers: [FhirController, FhirMachineAuthController, FhirInboundProposalController, FhirConditionController, FhirServiceRequestController, FhirDiagnosticReportController, FhirCarePlanController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
     AuditService,
@@ -40,6 +42,7 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirMachineIdentityService,
     FhirMachineStrategy,
     FhirMachineAuditInterceptor,
+    FhirInboundProposalService,
     { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
     {
       provide: JurisdictionProfileRegistry,
