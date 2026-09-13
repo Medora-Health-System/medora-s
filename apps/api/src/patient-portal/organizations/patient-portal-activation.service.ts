@@ -60,6 +60,74 @@ export class PatientPortalActivationService {
     };
   }
 
+  async getAccessForStaff(input: { patientId: string; facilityId: string }) {
+    if (!(await this.activations.assertPatientBelongsToFacility(input.patientId, input.facilityId))) {
+      throw new NotFoundException("Patient not found at this facility");
+    }
+
+    const row = await this.activations.getStaffAccess(input.patientId, input.facilityId);
+    const activationState = !row.latestActivationId
+      ? "NONE"
+      : row.activationRevokedAt
+        ? "REVOKED"
+        : row.activationUsedAt
+          ? "USED"
+          : row.activationExpiresAt && row.activationExpiresAt.getTime() <= Date.now()
+            ? "EXPIRED"
+            : "PENDING";
+
+    return {
+      patientId: input.patientId,
+      facilityId: input.facilityId,
+      accessStatus: row.linkStatus ?? "NOT_LINKED",
+      accountStatus: row.accountStatus,
+      verifiedAt: row.verifiedAt?.toISOString() ?? null,
+      revokedAt: row.revokedAt?.toISOString() ?? null,
+      latestActivation: row.latestActivationId
+        ? {
+            state: activationState,
+            createdAt: row.activationCreatedAt?.toISOString() ?? null,
+            expiresAt: row.activationExpiresAt?.toISOString() ?? null,
+          }
+        : null,
+    };
+  }
+
+  async revokeForStaff(input: {
+    patientId: string;
+    facilityId: string;
+    revokedByUserId: string;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    if (!(await this.activations.assertPatientBelongsToFacility(input.patientId, input.facilityId))) {
+      throw new NotFoundException("Patient not found at this facility");
+    }
+
+    const result = await this.activations.revokePatientFacilityAccess(input.patientId, input.facilityId);
+
+    await this.audit.record("PATIENT_PORTAL_ACCESS_REVOKED", "PATIENT_PORTAL_LINK", {
+      facilityId: input.facilityId,
+      patientId: input.patientId,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      metadata: {
+        revokedByUserId: input.revokedByUserId,
+        revokedLinks: result.revokedLinks,
+        revokedActivations: result.revokedActivations,
+      },
+      critical: true,
+    });
+
+    return {
+      revoked: true,
+      patientId: input.patientId,
+      facilityId: input.facilityId,
+      revokedLinks: result.revokedLinks,
+      revokedActivations: result.revokedActivations,
+    };
+  }
+
   async activate(input: {
     accountId: string;
     password: string;
