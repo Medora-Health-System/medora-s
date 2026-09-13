@@ -9,6 +9,7 @@ import { rule5OpenFollowUp } from "./rules/rule-5-open-follow-up.rule.js";
 import { rule6OrderMarMismatch } from "./rules/rule-6-order-mar-mismatch.rule.js";
 import { rule7TransitionReassessment } from "./rules/rule-7-transition-reassessment.rule.js";
 import { rule8TransitionDiagnosticContext } from "./rules/rule-8-transition-diagnostic-context.rule.js";
+import { rule9PossibleDuplicateMedication } from "./rules/rule-9-possible-duplicate-medication.rule.js";
 
 /**
  * Deterministic clinical review engine.
@@ -33,6 +34,7 @@ export class DeterministicReviewEngine {
     rule6OrderMarMismatch,
     rule7TransitionReassessment,
     rule8TransitionDiagnosticContext,
+    rule9PossibleDuplicateMedication,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
