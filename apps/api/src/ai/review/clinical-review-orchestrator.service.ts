@@ -15,11 +15,7 @@ import { buildStableSuggestionId } from "./review.utils.js";
 
 type AiReviewLocale = "en" | "fr" | "es";
 
-const LANGUAGE_NAME: Record<AiReviewLocale, string> = {
-  en: "English",
-  fr: "French",
-  es: "Spanish",
-};
+const LANGUAGE_NAME: Record<AiReviewLocale, string> = { en: "English", fr: "French", es: "Spanish" };
 
 const DETERMINISTIC_COPY: Record<Exclude<AiReviewLocale, "en">, Record<string, { title: string; summary: string; why: string; action: string }>> = {
   es: {
@@ -57,18 +53,8 @@ const DETERMINISTIC_COPY: Record<Exclude<AiReviewLocale, "en">, Record<string, {
 };
 
 const MDM_DOMAIN_LABELS = {
-  es: {
-    "working assessment": "evaluación clínica de trabajo",
-    "data reviewed": "datos revisados",
-    "risk/management reasoning": "razonamiento de riesgo y manejo",
-    "plan/disposition reasoning": "razonamiento del plan y la disposición",
-  },
-  fr: {
-    "working assessment": "évaluation clinique de travail",
-    "data reviewed": "données examinées",
-    "risk/management reasoning": "raisonnement sur le risque et la prise en charge",
-    "plan/disposition reasoning": "raisonnement du plan et de la disposition",
-  },
+  es: { "working assessment": "evaluación clínica de trabajo", "data reviewed": "datos revisados", "risk/management reasoning": "razonamiento de riesgo y manejo", "plan/disposition reasoning": "razonamiento del plan y la disposición" },
+  fr: { "working assessment": "évaluation clinique de travail", "data reviewed": "données examinées", "risk/management reasoning": "raisonnement sur le risque et la prise en charge", "plan/disposition reasoning": "raisonnement du plan et de la disposition" },
 } as const;
 
 function localizedMdmSummary(summary: string, locale: Exclude<AiReviewLocale, "en">): string | null {
@@ -77,20 +63,13 @@ function localizedMdmSummary(summary: string, locale: Exclude<AiReviewLocale, "e
       ? "La documentación del profesional está presente, pero el MDM no contiene razonamiento clínico documentado."
       : "La documentation du clinicien est présente, mais le MDM ne contient pas de raisonnement clinique documenté.";
   }
-
   const prefix = "The structured MDM is missing documented ";
   if (!summary.startsWith(prefix)) return null;
   const raw = summary.slice(prefix.length).replace(/\.$/, "");
-  const translated = raw
-    .split(", ")
-    .map((item) => MDM_DOMAIN_LABELS[locale][item as keyof typeof MDM_DOMAIN_LABELS[typeof locale]] ?? item);
+  const translated = raw.split(", ").map((item) => MDM_DOMAIN_LABELS[locale][item as keyof typeof MDM_DOMAIN_LABELS[typeof locale]] ?? item);
   if (!translated.length) return null;
-  const joined = translated.length === 1
-    ? translated[0]
-    : `${translated.slice(0, -1).join(", ")} ${locale === "es" ? "y" : "et"} ${translated.at(-1)}`;
-  return locale === "es"
-    ? `Falta documentar ${joined} en la toma de decisiones médicas.`
-    : `Il manque la documentation de ${joined} dans la prise de décision médicale.`;
+  const joined = translated.length === 1 ? translated[0] : `${translated.slice(0, -1).join(", ")} ${locale === "es" ? "y" : "et"} ${translated.at(-1)}`;
+  return locale === "es" ? `Falta documentar ${joined} en la toma de decisiones médicas.` : `Il manque la documentation de ${joined} dans la prise de décision médicale.`;
 }
 
 const EXTERNAL_CLINICAL_REVIEW_SYSTEM_INSTRUCTION = `You are Medora Assist, a strong structured clinical chart-review assistant. Review only the supplied encounter facts and evaluate the current encounter section by section. Never use facts from another patient, encounter, facility, or care setting.
@@ -125,21 +104,13 @@ export class ClinicalReviewOrchestratorService {
   async run(input: EncounterAiSnapshotBuildInput, locale: AiReviewLocale = "en"): Promise<AiClinicalReviewOutput> {
     const initialSnapshot = await this.snapshotBuilder.build(input);
     const deterministicRaw = this.deterministicReview.run(initialSnapshot);
-    const deterministic = {
-      suggestions: deterministicRaw.suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)),
-    };
+    const deterministic = { suggestions: deterministicRaw.suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)) };
 
-    if (!this.featureFlags.isFacilityEnabled(input.facilityId)) {
-      return deterministic;
-    }
+    if (!this.featureFlags.isFacilityEnabled(input.facilityId)) return deterministic;
 
     try {
       const providerResponse = await this.modelProvider.generateStructured({
-        snapshotContext: {
-          snapshotVersion: initialSnapshot.snapshotVersion,
-          facilityId: input.facilityId,
-          encounterId: input.encounterId,
-        },
+        snapshotContext: { snapshotVersion: initialSnapshot.snapshotVersion, facilityId: input.facilityId, encounterId: input.encounterId },
         clinicalInput: buildExternalClinicalInput(initialSnapshot),
         systemInstruction: `${EXTERNAL_CLINICAL_REVIEW_SYSTEM_INSTRUCTION}\n\nCURRENT CARE SETTING: ${initialSnapshot.encounterContext.careSetting}. Treat this value as a hard clinical-context boundary.\nLANGUAGE REQUIREMENT: The clinician interface language is ${LANGUAGE_NAME[locale]}. Write every user-visible suggestion field in ${LANGUAGE_NAME[locale]}: title, summary, reasoningSummary, evidence labels/details, recommended-action labels, and clinicalDisclaimer. Do not mix English with ${LANGUAGE_NAME[locale]} except unavoidable clinical abbreviations, medication names, laboratory names, or source chart text quoted as evidence.`,
         responseSchemaName: "medora_clinical_chart_review",
@@ -160,21 +131,12 @@ export class ClinicalReviewOrchestratorService {
       const currentSnapshot = await this.snapshotBuilder.build(input);
       if (currentSnapshot.snapshotVersion !== initialSnapshot.snapshotVersion) {
         this.logger.warn("Encounter changed during external clinical AI review; stale result discarded");
-        return {
-          suggestions: this.deterministicReview
-            .run(currentSnapshot)
-            .suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)),
-        };
+        return { suggestions: this.deterministicReview.run(currentSnapshot).suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)) };
       }
 
       const generatedAt = new Date().toISOString();
       const externalSuggestions: AiSuggestion[] = parsedExternal.data.suggestions.map((suggestion) => ({
-        id: buildStableSuggestionId({
-          snapshotVersion: initialSnapshot.snapshotVersion,
-          source: this.modelProvider.providerName,
-          category: suggestion.category,
-          title: suggestion.title,
-        }),
+        id: buildStableSuggestionId({ snapshotVersion: initialSnapshot.snapshotVersion, source: this.modelProvider.providerName, category: suggestion.category, title: suggestion.title }),
         category: suggestion.category,
         priority: suggestion.priority,
         title: suggestion.title,
@@ -207,7 +169,10 @@ export class ClinicalReviewOrchestratorService {
     const copy = DETERMINISTIC_COPY[locale][suggestion.category];
     if (!copy) return suggestion;
 
+    let title = copy.title;
     let summary = copy.summary;
+    let reasoningSummary = copy.why;
+
     if (suggestion.category === "MDM_GAP") {
       summary = localizedMdmSummary(suggestion.summary, locale) ?? summary;
     } else if (
@@ -217,28 +182,40 @@ export class ClinicalReviewOrchestratorService {
       summary = locale === "es"
         ? "La documentación del profesional clínico está en BORRADOR y todavía no está firmada o finalizada."
         : "La documentation du clinicien est encore en BROUILLON et n'est pas encore signée ou finalisée.";
+    } else if (suggestion.title === "No vital signs are documented for this emergency encounter") {
+      title = locale === "es" ? "No hay signos vitales documentados en este encuentro de urgencias" : "Aucun signe vital n'est documenté pour cette consultation d'urgence";
+      summary = locale === "es"
+        ? "La documentación del profesional ya comenzó, pero la historia no contiene ningún conjunto de signos vitales registrado. Confirme si se obtuvieron y documente los valores actuales si están disponibles."
+        : "La documentation du clinicien a commencé, mais le dossier ne contient aucun ensemble de signes vitaux enregistré. Confirmez s'ils ont été obtenus et documentez les valeurs actuelles si elles sont disponibles.";
+      reasoningSummary = locale === "es"
+        ? "Este hallazgo identifica la ausencia de signos vitales estructurados después de iniciar la documentación clínica; no supone que no se hayan medido al lado del paciente."
+        : "Ce constat signale l'absence de signes vitaux structurés après le début de la documentation clinique; il ne suppose pas qu'ils n'ont pas été mesurés au chevet.";
+    } else if (suggestion.title === "Available diagnostic results are not reconciled in the MDM") {
+      title = locale === "es" ? "Los resultados disponibles no están reconciliados en el MDM" : "Les résultats disponibles ne sont pas rapprochés dans le MDM";
+      summary = locale === "es"
+        ? "Hay resultados diagnósticos disponibles en la historia, pero el MDM no documenta los datos revisados. Documente cómo se revisaron y cómo influyeron en la evaluación y el plan cuando corresponda."
+        : "Des résultats diagnostiques sont disponibles dans le dossier, mais le MDM ne documente pas les données examinées. Documentez comment ils ont été revus et intégrés à l'évaluation et au plan lorsque cela s'applique.";
+      reasoningSummary = locale === "es"
+        ? "Este hallazgo revisa si los datos diagnósticos disponibles están explícitamente integrados en la toma de decisiones médicas; no determina si la interpretación clínica es correcta."
+        : "Ce constat vérifie si les données diagnostiques disponibles sont explicitement intégrées à la prise de décision médicale; il ne détermine pas si l'interprétation clinique est correcte.";
     }
 
     return {
       ...suggestion,
-      title: copy.title,
+      title,
       summary,
-      reasoningSummary: copy.why,
-      // Deterministic findings must be understandable without decoding raw counters.
-      // Keep evidence in the internal rule result, but do not expose opaque translated labels.
+      reasoningSummary,
       evidence: [],
       recommendedActions: suggestion.recommendedActions.map((action) => ({ ...action, label: copy.action })),
-      clinicalDisclaimer:
-        locale === "es"
-          ? "Requiere revisión del profesional clínico; Medora Asistente no diagnostica ni ejecuta acciones clínicas de forma autónoma."
-          : "Nécessite une revue par le clinicien; Medora Assistance ne pose pas de diagnostic et n'exécute aucune action clinique de manière autonome.",
+      clinicalDisclaimer: locale === "es"
+        ? "Requiere revisión del profesional clínico; Medora Asistente no diagnostica ni ejecuta acciones clínicas de forma autónoma."
+        : "Nécessite une revue par le clinicien; Medora Assistance ne pose pas de diagnostic et n'exécute aucune action clinique de manière autonome.",
     };
   }
 
   private mergeSuggestions(deterministic: AiSuggestion[], external: AiSuggestion[]): AiSuggestion[] {
     const seen = new Set<string>();
     const merged: AiSuggestion[] = [];
-
     for (const suggestion of [...deterministic, ...external]) {
       const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}`;
       if (seen.has(key)) continue;
@@ -246,7 +223,6 @@ export class ClinicalReviewOrchestratorService {
       merged.push(suggestion);
       if (merged.length >= 200) break;
     }
-
     return merged;
   }
 }
