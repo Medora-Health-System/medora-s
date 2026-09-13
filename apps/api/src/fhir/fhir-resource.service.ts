@@ -8,8 +8,8 @@ import type { FhirEncounter, FhirObservation, FhirPatient } from "../fhir-mapper
 import type { FhirBundle } from "./fhir-bundle.types";
 import type { ParsedFhirObservationSearch } from "./dto/fhir-read.schemas";
 import { parseFhirObservationOpaqueId } from "./fhir-observation-id";
-import { ENCOUNTER_CORE_SELECT, ENCOUNTER_NESTED_CORE_SELECT } from "../encounters/encounter-query-contracts";
-import { FhirSearchService, searchBundle } from "./fhir-search";
+import { ENCOUNTER_CORE_SELECT } from "../encounters/encounter-query-contracts";
+import { decodeFhirCursor, FhirSearchService, searchBundle } from "./fhir-search";
 import { parseFhirReference } from "./fhir-protocol";
 
 @Injectable()
@@ -23,7 +23,7 @@ export class FhirResourceService {
   ) {}
 
   async searchPatients(facilityId: string, query: Record<string, unknown>): Promise<FhirBundle> {
-    const parsed = this.search.parse(query, ["_id", "identifier", "family", "given", "name", "birthdate", "gender", "_count", "_cursor"]);
+    const parsed = this.search.parse(query, ["_id", "identifier", "family", "given", "name", "birthdate", "gender", "_count", "_cursor"], "Patient");
     const v = parsed.values;
     const identifier = v.identifier?.includes("|") ? v.identifier.split("|").at(-1) : v.identifier;
     const patientSex = v.gender ? ({ male: "MALE", female: "FEMALE", other: "OTHER", unknown: "UNKNOWN" } as const)[v.gender as "male"] : undefined;
@@ -43,7 +43,7 @@ export class FhirResourceService {
   }
 
   async searchEncounters(facilityId: string, query: Record<string, unknown>): Promise<FhirBundle> {
-    const parsed = this.search.parse(query, ["_id", "patient", "subject", "date", "status", "class", "_count", "_cursor"]);
+    const parsed = this.search.parse(query, ["_id", "patient", "subject", "date", "status", "class", "_count", "_cursor"], "Encounter");
     const v = parsed.values;
     const patientRef = v.patient ?? v.subject;
     const patientId = patientRef ? parseFhirReference(patientRef, "Patient").id : undefined;
@@ -113,8 +113,9 @@ export class FhirResourceService {
     query: Record<string, unknown> = {}
   ): Promise<FhirBundle> {
     const take = Math.min(parsed.count ?? 20, 50);
-    const cursorReading = parsed.cursor ? parseFhirObservationOpaqueId(parsed.cursor) : undefined;
-    if (parsed.cursor && (!cursorReading || cursorReading.kind !== "reading")) throw new BadRequestException("Invalid _cursor");
+    const cursorValue = parsed.cursor ? decodeFhirCursor(parsed.cursor, "Observation") : undefined;
+    const cursorReading = cursorValue ? parseFhirObservationOpaqueId(cursorValue) : undefined;
+    if (cursorValue && (!cursorReading || cursorReading.kind !== "reading")) throw new BadRequestException("Invalid _cursor");
     const cursorReadingId = cursorReading?.kind === "reading" ? cursorReading.readingId : undefined;
     const requestedReading = parsed.id ? parseFhirObservationOpaqueId(parsed.id) : undefined;
     if (parsed.id && (!requestedReading || requestedReading.kind !== "reading")) return searchBundle(this.search.baseUrl(), "Observation", query, [], false) as FhirBundle;
@@ -134,7 +135,7 @@ export class FhirResourceService {
       for (const row of rows) {
         sourceRows.set(row.id, row);
         const mapped = this.fhirMapper.vitalsToObservations(row.vitalsJson, { idBase: `reading-${row.id}`, patientReference: `Patient/${row.patientId}`, encounterReference: `Encounter/${row.encounterId}`, effectiveDateTime: row.measuredAt.toISOString() });
-        for (const observation of mapped) if ((!parsed.cursor || observation.id! > parsed.cursor) && (!parsed.id || observation.id === parsed.id) && (!code || observation.code.coding?.some((coding) => coding.code === code))) resources.push(observation);
+        for (const observation of mapped) if ((!cursorValue || observation.id! > cursorValue) && (!parsed.id || observation.id === parsed.id) && (!code || observation.code.coding?.some((coding) => coding.code === code))) resources.push(observation);
       }
       if (rows.length < 51 || requestedReading) break;
       scanAfter = rows.at(-1)!.id;
@@ -170,5 +171,4 @@ export class FhirResourceService {
   private auditObservation(row: { id: string; patientId: string; encounterId: string }, facilityId: string, userId: string | undefined, ip: string | undefined, userAgent: string | undefined, interaction: "read" | "search") {
     return this.audit.log(AuditAction.ENCOUNTER_VIEW, "TRIAGE_VITALS_READING", { userId, facilityId, patientId: row.patientId, encounterId: row.encounterId, entityId: row.id, ip, userAgent, metadata: { source: "fhir", resourceType: "Observation", interaction } });
   }
-
 }
