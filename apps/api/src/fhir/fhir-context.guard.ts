@@ -2,7 +2,19 @@ import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException,
 import { PrismaService } from "../prisma/prisma.service";
 import { JurisdictionProfileRegistry } from "./jurisdiction-profile.registry";
 
-export type FhirRequestContext = { actorType: "human"; actorId: string; facilityId: string; role?: string; scopes: readonly string[]; jurisdiction: string; profiles: readonly string[]; correlationId: string };
+export type FhirRequestContext = {
+  actorType: "human" | "machine";
+  actorId: string;
+  facilityId: string;
+  role?: string;
+  scopes: readonly string[];
+  jurisdiction: string;
+  profiles: readonly string[];
+  correlationId: string;
+  integrationId?: string;
+  credentialId?: string;
+  keyId?: string;
+};
 
 @Injectable()
 export class FhirDeploymentGuard implements CanActivate {
@@ -15,15 +27,40 @@ export class FhirDeploymentGuard implements CanActivate {
 @Injectable()
 export class FhirContextGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService, private readonly profiles: JurisdictionProfileRegistry) {}
+
   async canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
+    const headerFacility = typeof req.headers["x-facility-id"] === "string" ? req.headers["x-facility-id"].trim() : "";
+    if (req.headers["x-jurisdiction"] || req.query?.jurisdiction || req.query?.country) throw new BadRequestException("Jurisdiction is server controlled");
+
+    if (req.user?.principalType === "fhir-client") {
+      const clientId = String(req.user.clientId ?? "");
+      const facilityId = String(req.user.facilityId ?? "");
+      if (!clientId || !facilityId) throw new ForbiddenException("Authentication required");
+      if (headerFacility && headerFacility !== facilityId) throw new ForbiddenException("Conflicting facility context");
+      const facility = await this.prisma.facility.findFirst({ where: { id: facilityId, isActive: true }, select: { country: true } });
+      if (!facility) throw new ForbiddenException("Access denied for this facility");
+      const effective = this.profiles.resolve(facility.country);
+      req.fhirContext = {
+        actorType: "machine",
+        actorId: clientId,
+        facilityId,
+        scopes: Array.isArray(req.user.scopes) ? req.user.scopes : [],
+        jurisdiction: facility.country,
+        profiles: effective.map((p) => p.packageId),
+        correlationId: String(req.requestId ?? ""),
+        integrationId: String(req.user.integrationId ?? ""),
+        credentialId: String(req.user.credentialId ?? ""),
+        keyId: String(req.user.keyId ?? ""),
+      } satisfies FhirRequestContext;
+      return true;
+    }
+
     const actorId = String(req.user?.userId ?? "");
     const tokenFacility = String(req.user?.facilityId ?? req.facilityId ?? "");
-    const headerFacility = typeof req.headers["x-facility-id"] === "string" ? req.headers["x-facility-id"].trim() : "";
     if (!actorId) throw new ForbiddenException("Authentication required");
     if (!tokenFacility) throw new BadRequestException("Facility context required");
     if (headerFacility && headerFacility !== tokenFacility) throw new ForbiddenException("Conflicting facility context");
-    if (req.headers["x-jurisdiction"] || req.query?.jurisdiction || req.query?.country) throw new BadRequestException("Jurisdiction is server controlled");
     const membership = await this.prisma.userRole.findFirst({ where: { userId: actorId, facilityId: tokenFacility, isActive: true, facility: { isActive: true } }, include: { role: true, facility: { select: { country: true } } } });
     if (!membership) throw new ForbiddenException("Access denied for this facility");
     const effective = this.profiles.resolve(membership.facility.country);
