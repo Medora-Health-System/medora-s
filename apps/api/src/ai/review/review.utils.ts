@@ -59,9 +59,7 @@ export function buildAiSuggestion(
     summary: params.summary,
     reasoningSummary: params.reasoningSummary,
     evidence: params.evidence,
-    recommendedActions: params.recommendedActions ?? [
-      { actionType: "REVIEW", label: "Review chart" },
-    ],
+    recommendedActions: params.recommendedActions ?? [],
     clinicalDisclaimer: DEFAULT_CLINICAL_DISCLAIMER,
     source: "deterministic",
     generatedAt: ctx.generatedAt,
