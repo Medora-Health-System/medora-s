@@ -10,7 +10,11 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
-import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RequireRoles,
+  RolesGuard,
+} from "../../common/guards/roles.guard";
 import { PatientPortalActivationService } from "./patient-portal-activation.service";
 
 @Controller("patient-portal-admin/v1")
@@ -31,14 +35,16 @@ export class PatientPortalStaffActivationController {
   }
 
   @Get("patients/:patientId/access")
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async access(@Param("patientId") patientId: string, @Req() req: any) {
     const { facilityId } = this.staffContext(req);
     return this.activation.getAccessForStaff({ patientId, facilityId });
   }
 
   @Post("patients/:patientId/activation")
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async issue(@Param("patientId") patientId: string, @Req() req: any) {
     const { facilityId, userId } = this.staffContext(req);
 
@@ -52,7 +58,8 @@ export class PatientPortalStaffActivationController {
   }
 
   @Delete("patients/:patientId/access")
-  @RequireRoles(RoleCode.ADMIN)
+  @RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
   async revoke(@Param("patientId") patientId: string, @Req() req: any) {
     const { facilityId, userId } = this.staffContext(req);
     return this.activation.revokeForStaff({
