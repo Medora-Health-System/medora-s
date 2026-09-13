@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { z } from "zod";
+import { FhirDeploymentGuard } from "./fhir-context.guard";
 import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
 
 const tokenRequestSchema = z.object({
@@ -12,6 +13,7 @@ const tokenRequestSchema = z.object({
 }).strict();
 
 @Controller("fhir/auth")
+@UseGuards(FhirDeploymentGuard)
 export class FhirMachineAuthController {
   constructor(private readonly identities: FhirMachineIdentityService) {}
 
