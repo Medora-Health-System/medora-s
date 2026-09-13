@@ -140,17 +140,19 @@ ON "PatientPortalMessageThread"
 FOR EACH ROW
 EXECUTE FUNCTION "enforcePatientPortalMessageThreadScope"();
 
--- Defense in depth: patient-authored messages must come from the thread owner, and no
--- message can be appended after staff closes the thread. Staff authorization remains
--- enforced by the existing JWT + RolesGuard application boundary.
+-- Defense in depth: no new content is permitted after the verified portal scope is revoked
+-- or disabled. This closes the race between application authorization and the message INSERT.
 CREATE OR REPLACE FUNCTION "enforcePatientPortalMessageInsert"()
 RETURNS TRIGGER AS $$
 DECLARE
   thread_account_id TEXT;
+  thread_patient_id TEXT;
+  thread_facility_id TEXT;
   thread_status "PatientPortalMessageThreadStatus";
+  scope_is_valid BOOLEAN;
 BEGIN
-  SELECT "portalAccountId", "status"
-    INTO thread_account_id, thread_status
+  SELECT "portalAccountId", "patientId", "facilityId", "status"
+    INTO thread_account_id, thread_patient_id, thread_facility_id, thread_status
     FROM "PatientPortalMessageThread"
     WHERE "id" = NEW."threadId";
 
@@ -160,6 +162,26 @@ BEGIN
 
   IF thread_status <> 'OPEN'::"PatientPortalMessageThreadStatus" THEN
     RAISE EXCEPTION 'PatientPortalMessage thread is closed';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM "PatientPortalLink" l
+    INNER JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
+    INNER JOIN "Patient" p ON p."id" = l."patientId"
+    INNER JOIN "Facility" f ON f."id" = l."facilityId"
+    WHERE l."portalAccountId" = thread_account_id
+      AND l."patientId" = thread_patient_id
+      AND l."facilityId" = thread_facility_id
+      AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
+      AND l."revokedAt" IS NULL
+      AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
+      AND p."facilityId" = thread_facility_id
+      AND f."isActive" = TRUE
+  ) INTO scope_is_valid;
+
+  IF NOT scope_is_valid THEN
+    RAISE EXCEPTION 'PatientPortalMessage thread no longer has an active verified portal scope';
   END IF;
 
   IF NEW."senderType" = 'PATIENT'::"PatientPortalMessageSenderType"
