@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UseGuards,
@@ -36,7 +37,10 @@ export class PatientSessionSecurityController {
   }
 
   @Delete("sessions/:sessionId")
-  async revokeSession(@Param("sessionId") sessionId: string, @Req() req: any) {
+  async revokeSession(
+    @Param("sessionId", new ParseUUIDPipe({ version: "4" })) sessionId: string,
+    @Req() req: any,
+  ) {
     return this.security.revokeSession(
       this.principal(req),
       sessionId,
