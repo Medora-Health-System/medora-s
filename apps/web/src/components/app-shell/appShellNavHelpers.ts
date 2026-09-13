@@ -5,6 +5,10 @@ import {
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
+import {
+  PATIENT_PORTAL_ADMIN_HREF,
+  patientPortalAdminNavLabel,
+} from "./patientPortalAdminNav";
 
 /** Desktop persistent expanded sidebar (>=1200px). */
 export const APP_SHELL_DESKTOP_NAV_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN}px)`;
@@ -43,6 +47,12 @@ export function resolveActiveNavLabel(
   mounted: boolean
 ): string | null {
   if (!mounted) return null;
+  if (
+    pathname === PATIENT_PORTAL_ADMIN_HREF ||
+    pathname.startsWith(`${PATIENT_PORTAL_ADMIN_HREF}/`)
+  ) {
+    return patientPortalAdminNavLabel(t);
+  }
   for (const section of groupedNavSections) {
     for (const item of section.items) {
       if (isSidebarNavItemActive(pathname, item.href, mounted)) {
