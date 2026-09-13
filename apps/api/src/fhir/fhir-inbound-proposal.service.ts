@@ -7,9 +7,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import { FHIR_PROPOSAL_PERMISSIONS } from "./fhir-capability.registry";
 import type { FhirRequestContext } from "./fhir-context.guard";
 import { FHIR_REQUEST_POLICY, parseFhirReference } from "./fhir-protocol";
+import { verifiedTerminologyVersion } from "./fhir-terminology";
 
 const coding = z.object({
   system: z.string().url().max(256),
+  version: z.string().trim().min(1).max(64).optional(),
   code: z.string().min(1).max(128),
   display: z.string().max(256).optional(),
 }).strict();
@@ -94,6 +96,7 @@ export class FhirInboundProposalService {
     const parsedResult = fhirInboundProposalSchema.safeParse(body);
     if (!parsedResult.success) throw new BadRequestException("Malformed FHIR proposal");
     const parsed = parsedResult.data;
+    this.assertTerminologyVersions(parsed.resource);
     const requiredScope = this.scopeFor(parsed.resource.resourceType);
     if (!context.scopes.includes(requiredScope)) throw new ForbiddenException("FHIR proposal scope is not authorized");
 
@@ -146,6 +149,22 @@ export class FhirInboundProposalService {
     const permission = FHIR_PROPOSAL_PERMISSIONS.find((item) => item.resourceType === resourceType);
     if (!permission) throw new BadRequestException("FHIR resource is not approved for staged proposals");
     return permission.code;
+  }
+
+  private assertTerminologyVersions(resource: ProposalResource) {
+    const concepts = [resource.code];
+    if (resource.resourceType === "Condition") {
+      if (resource.clinicalStatus) concepts.push(resource.clinicalStatus);
+      if (resource.verificationStatus) concepts.push(resource.verificationStatus);
+    }
+    for (const concept of concepts) {
+      for (const entry of concept.coding) {
+        const configured = verifiedTerminologyVersion(entry.system);
+        if (configured && entry.version && entry.version !== configured) {
+          throw new BadRequestException("FHIR coding version does not match the configured terminology release");
+        }
+      }
+    }
   }
 
   private async validateTenantReferences(facilityId: string, resource: ProposalResource) {

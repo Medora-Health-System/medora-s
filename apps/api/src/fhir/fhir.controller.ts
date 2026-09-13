@@ -5,8 +5,8 @@ import { FhirMediaInterceptor } from "./fhir-media.interceptor";
 import { FhirOperationOutcomeFilter } from "./fhir-operation-outcome.filter";
 import { FhirSearchService } from "./fhir-search";
 
-const REFERENCE_SEARCH_PARAMS = new Set(["patient", "subject", "encounter", "organization", "practitioner", "based-on"]);
-const DATE_SEARCH_PARAMS = new Set(["birthdate", "date", "recorded-date", "authored"]);
+const REFERENCE_SEARCH_PARAMS = new Set(["patient", "subject", "encounter", "organization", "practitioner", "based-on", "target", "agent"]);
+const DATE_SEARCH_PARAMS = new Set(["birthdate", "date", "recorded-date", "authored", "recorded"]);
 const STRING_SEARCH_PARAMS = new Set(["family", "given", "name", "_cursor"]);
 const NUMBER_SEARCH_PARAMS = new Set(["_count"]);
 

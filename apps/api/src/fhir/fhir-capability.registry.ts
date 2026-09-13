@@ -6,7 +6,7 @@ export const FHIR_MEDIA_TYPES = ["application/fhir+json", "application/json"] as
 export type FhirInteraction = "read" | "search-type" | "create" | "update" | "patch" | "delete" | "history-instance" | "history-type";
 
 export type FhirCapability = {
-  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
+  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location" | "Provenance";
   interaction: FhirInteraction;
   searchParameters: readonly string[];
   profiles: readonly string[];
@@ -44,6 +44,8 @@ export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
     { resourceType, interaction: "read" as const, searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: `${resourceType[0]!.toLowerCase()}${resourceType.slice(1)}.read`, deploymentEnabled: true, productionEnabled: true, evidenceTestIds: [`C-${resourceType}-READ`] },
     { resourceType, interaction: "search-type" as const, searchParameters: resourceType === "Condition" ? ["_id", "patient", "subject", "encounter", "code", "clinical-status", "verification-status", "recorded-date", "_count", "_cursor"] : resourceType === "ServiceRequest" ? ["_id", "patient", "subject", "encounter", "code", "status", "authored", "_count", "_cursor"] : resourceType === "DiagnosticReport" ? ["_id", "patient", "subject", "encounter", "based-on", "status", "date", "_count", "_cursor"] : ["_id", "patient", "subject", "encounter", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: `${resourceType[0]!.toLowerCase()}${resourceType.slice(1)}.search`, deploymentEnabled: true, productionEnabled: true, evidenceTestIds: [`C-${resourceType}-SEARCH`] },
   ]),
+  { resourceType: "Provenance", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "provenance.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["G-PROVENANCE-READ"] },
+  { resourceType: "Provenance", interaction: "search-type", searchParameters: ["_id", "target", "patient", "agent", "recorded", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "provenance.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["G-PROVENANCE-SEARCH"] },
 ]);
 
 @Injectable()
