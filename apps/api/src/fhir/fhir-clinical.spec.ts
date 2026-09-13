@@ -1,4 +1,4 @@
-import { FhirClinicalService } from "./fhir-clinical.service";
+import { conditionDiagnosisStatuses, FhirClinicalService, serviceRequestOrderStatuses } from "./fhir-clinical.service";
 
 describe("FHIR core clinical projections", () => {
   const refs = { reference: (type:string,id:string) => ({ reference:`${type}/${id}` }), assertVisible: jest.fn().mockResolvedValue(undefined) };
@@ -15,4 +15,20 @@ describe("FHIR core clinical projections", () => {
   it("uses only a verified same-facility membership for CarePlan author", async () => { prisma.encounterCarePlan.findFirst.mockResolvedValue({id:"c",patientId:"p",encounterId:"e",activatedByUserId:"u",title:"Plan",status:"ACTIVE",activatedAt:new Date("2026-01-01Z"),createdAt:new Date("2026-01-01Z"),components:[]}); prisma.userRole.findFirst.mockResolvedValue(null); const r:any=await service.read("CarePlan","f","c"); expect(r.author).toBeUndefined(); expect(prisma.userRole.findFirst).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({facilityId:"f",userId:"u",isActive:true})})); });
   it("filters confirmed Conditions canonically before pagination", async () => { search.parse.mockReturnValue({count:1,values:{"verification-status":"confirmed"}}); prisma.diagnosis.findMany.mockResolvedValue([]); await service.find("Condition","f",{"verification-status":"confirmed",_count:"1"}); expect(prisma.diagnosis.findMany.mock.calls[0][0].where.status).toEqual({in:["ACTIVE","RESOLVED"]}); });
   it("filters DiagnosticReport status in Prisma before pagination", async () => { search.parse.mockReturnValue({count:1,values:{status:"final"}}); prisma.result.findMany.mockResolvedValue([]); await service.find("DiagnosticReport","f",{status:"final",_count:"1"}); expect(prisma.result.findMany.mock.calls[0][0].where).toMatchObject({verifiedAt:{not:null},orderItem:{status:{not:"CANCELLED"}}}); });
+
+  it("maps ServiceRequest search statuses to every canonical source status", () => {
+    expect(serviceRequestOrderStatuses("active").sort()).toEqual(["ACKNOWLEDGED","IN_PROGRESS","PENDING","PLACED","SIGNED"].sort());
+    expect(serviceRequestOrderStatuses("completed").sort()).toEqual(["COMPLETED","RESULTED","VERIFIED"].sort());
+    expect(serviceRequestOrderStatuses("draft")).toEqual(["DRAFT"]);
+    expect(serviceRequestOrderStatuses("revoked")).toEqual(["CANCELLED"]);
+    expect(() => serviceRequestOrderStatuses("unknown")).toThrow("Unsupported status");
+  });
+
+  it("intersects Condition clinical and verification status filters", () => {
+    expect(conditionDiagnosisStatuses("active", "confirmed")).toEqual(["ACTIVE"]);
+    expect(conditionDiagnosisStatuses("resolved", "confirmed")).toEqual(["RESOLVED"]);
+    expect(conditionDiagnosisStatuses("active", "entered-in-error")).toEqual([]);
+    expect(conditionDiagnosisStatuses("resolved", "entered-in-error")).toEqual([]);
+    expect(conditionDiagnosisStatuses(undefined, "entered-in-error")).toEqual(["REMOVED"]);
+  });
 });
