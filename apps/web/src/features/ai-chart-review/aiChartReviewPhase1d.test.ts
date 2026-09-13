@@ -4,28 +4,53 @@ import { join } from "node:path";
 
 const featureDir = __dirname;
 const panelPath = join(featureDir, "AiChartReviewPanel.tsx");
-const layoutPath = join(featureDir, "../../../app/app/encounters/[id]/layout.tsx");
+const clinicLayoutPath = join(featureDir, "../../../app/app/encounters/[id]/layout.tsx");
+const emergencyLayoutPath = join(featureDir, "../../../app/app/emergency/active/[id]/layout.tsx");
+const inpatientLayoutPath = join(
+  featureDir,
+  "../../../app/app/hospitalisation/inpatient/active/[id]/layout.tsx"
+);
 
 function read(path: string): string {
   return readFileSync(path, "utf8");
 }
 
-describe("Medora AI Phase 1D provider chart review panel", () => {
-  it("mounts only for PROVIDER ambulatory encounter context", () => {
-    const layout = read(layoutPath);
-    expect(layout).toContain('roles.includes("PROVIDER")');
+describe("Medora AI chart review clinical workspace rail", () => {
+  it("allows provider and administrator roles in the ambulatory workspace", () => {
+    const layout = read(clinicLayoutPath);
+    expect(layout).toContain('"PROVIDER", "ADMIN", "MEDORA_SUPER_ADMIN"');
     expect(layout).toContain("isClinicCareAmbulatoryEncounterType");
     expect(layout).toContain("AiChartReviewPanel");
   });
 
+  it("mounts the same AI chart review in active ED and inpatient workspaces", () => {
+    const emergency = read(emergencyLayoutPath);
+    const inpatient = read(inpatientLayoutPath);
+    expect(emergency).toContain("AiChartReviewPanel");
+    expect(emergency).toContain("emergencyActiveWorkspacePath");
+    expect(inpatient).toContain("AiChartReviewPanel");
+    expect(inpatient).toContain("inpatientProviderWorkspacePath");
+  });
+
+  it("keeps the AI rail visible while the chart scrolls", () => {
+    for (const layoutPath of [clinicLayoutPath, emergencyLayoutPath, inpatientLayoutPath]) {
+      const layout = read(layoutPath);
+      expect(layout).toContain('data-testid="ai-chart-review-sticky-rail"');
+      expect(layout).toContain('position: "sticky"');
+      expect(layout).toContain('top: 12');
+      expect(layout).toContain('maxHeight: "calc(100vh - 24px)"');
+      expect(layout).toContain('overflowY: "auto"');
+    }
+  });
+
   it("renders the six required panel tabs and read-only safety copy", () => {
     const panel = read(panelPath);
-    expect(panel).toContain('Clinical Safety');
-    expect(panel).toContain('Diagnostics');
-    expect(panel).toContain('Treatment & Orders');
-    expect(panel).toContain('Documentation / MDM');
-    expect(panel).toContain('Discharge');
-    expect(panel).toContain('Coding & Medical Necessity');
+    expect(panel).toContain("Clinical Safety");
+    expect(panel).toContain("Diagnostics");
+    expect(panel).toContain("Treatment & Orders");
+    expect(panel).toContain("Documentation / MDM");
+    expect(panel).toContain("Discharge");
+    expect(panel).toContain("Coding & Medical Necessity");
     expect(panel).toContain('data-read-only="true"');
   });
 
@@ -38,8 +63,8 @@ describe("Medora AI Phase 1D provider chart review panel", () => {
 
   it("contains English, French, and Spanish panel chrome", () => {
     const panel = read(panelPath);
-    expect(panel).toContain('AI Chart Review');
-    expect(panel).toContain('Révision IA du dossier');
-    expect(panel).toContain('Revisión de historia con IA');
+    expect(panel).toContain("AI Chart Review");
+    expect(panel).toContain("Révision IA du dossier");
+    expect(panel).toContain("Revisión de historia con IA");
   });
 });
