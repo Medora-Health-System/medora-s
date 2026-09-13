@@ -57,6 +57,7 @@ describe("Clinic disposition actions", () => {
 
   it("reuses diagnosis-driven discharge content to suggest referral and transfer documentation", () => {
     expect(details).toContain("buildClinicCheckoutDiagnosisSuggestions");
+    expect(details).toContain("primaryDiagnosisCode");
     expect(details).toContain("primary?.displayName");
     expect(details).toContain("primary?.diagnosisInstructions");
     expect(details).toContain("primary?.returnPrecautions");
@@ -64,6 +65,16 @@ describe("Clinic disposition actions", () => {
     expect(details).toContain("form.followUps");
     expect(workflow).toContain("buildClinicCheckoutDiagnosisSuggestions(providerForm, language)");
     expect(workflow).toContain("suggestions={checkoutSuggestions}");
+  });
+
+  it("resolves the diagnosis suggestion label through the same locale-aware ICD catalog as the diagnosis UI", () => {
+    expect(details).toContain('import { searchIcd10Catalog } from "@/lib/chartApi"');
+    expect(details).toContain("searchIcd10Catalog(code, 10, normalizedLocale(language))");
+    expect(details).toContain("exact?.displayLabel?.trim()");
+    expect(details).toContain("localizedDiagnosisLabel || suggestions.referralReason");
+    expect(details).toContain("localizedDiagnosisLabel || suggestions.transferReason");
+    expect(details).toContain('locale === "en"');
+    expect(details).toContain("primaryDiagnosisCode || primary?.displayName");
   });
 
   it("uses editable datalist suggestions instead of locking providers into fixed dropdown values", () => {
