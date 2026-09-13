@@ -58,6 +58,13 @@ function statusSoft(status: string): PriorityBadgeSoft {
   return STATUS_BADGE_SOFT[status] ?? { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
 }
 
+/** Compact label for the dense patient header; deliberately shorter than the full workflow label. */
+export function clinicCareHeaderPhysicianLabel(language: SupportedLanguage): string {
+  if (language === "es") return "Médico";
+  if (language === "fr") return "Médecin";
+  return "Physician";
+}
+
 export function ClinicCareAmbulatoryPatientHeader({
   patient,
   chiefComplaint,
@@ -72,7 +79,6 @@ export function ClinicCareAmbulatoryPatientHeader({
   onRoomClick,
   roomClickable = false,
   providerName,
-  workflowStateLabel,
   followUpDateLabel,
   language,
   t,
@@ -93,6 +99,7 @@ export function ClinicCareAmbulatoryPatientHeader({
   onRoomClick?: () => void;
   roomClickable?: boolean;
   providerName?: string | null;
+  /** Kept in the public prop contract for callers, but intentionally not rendered in the compact header. */
   workflowStateLabel?: string | null;
   followUpDateLabel?: string | null;
   language: SupportedLanguage;
@@ -142,26 +149,9 @@ export function ClinicCareAmbulatoryPatientHeader({
           <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
             <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.arrived")}</span>{" "}
             {arrivedAt ? formatEncounterChromeDateTime(arrivedAt, language) : notDocumented}
-            {providerName ? (
-              <>
-                {" · "}
-                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.provider")}</span>{" "}
-                {providerName}
-              </>
-            ) : (
-              <>
-                {" · "}
-                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.provider")}</span>{" "}
-                {notDocumented}
-              </>
-            )}
-            {workflowStateLabel ? (
-              <>
-                {" · "}
-                <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicCareD4c5b.header.status")}</span>{" "}
-                {workflowStateLabel}
-              </>
-            ) : null}
+            {" · "}
+            <span style={{ fontWeight: 600, color: "#475569" }}>{clinicCareHeaderPhysicianLabel(language)}</span>{" "}
+            {(providerName ?? "").trim() || notDocumented}
             {followUpDateLabel ? (
               <>
                 {" · "}
