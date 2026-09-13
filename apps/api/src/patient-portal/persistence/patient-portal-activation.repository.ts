@@ -15,6 +15,19 @@ export type PatientPortalActivationRow = {
   revokedAt: Date | null;
 };
 
+export type PatientPortalStaffAccessRow = {
+  linkId: string | null;
+  linkStatus: string | null;
+  verifiedAt: Date | null;
+  revokedAt: Date | null;
+  accountStatus: string | null;
+  latestActivationId: string | null;
+  activationCreatedAt: Date | null;
+  activationExpiresAt: Date | null;
+  activationUsedAt: Date | null;
+  activationRevokedAt: Date | null;
+};
+
 @Injectable()
 export class PatientPortalActivationRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -38,18 +51,29 @@ export class PatientPortalActivationRepository {
     createdByUserId: string;
     expiresAt: Date;
   }): Promise<PatientPortalActivationRow> {
-    const rows = await this.prisma.$queryRaw<PatientPortalActivationRow[]>(Prisma.sql`
-      INSERT INTO "PatientPortalActivation" (
-        "id", "patientId", "facilityId", "secretHash", "createdByUserId", "expiresAt"
-      ) VALUES (
-        ${input.id}, ${input.patientId}, ${input.facilityId}, ${input.secretHash},
-        ${input.createdByUserId}, ${input.expiresAt}
-      )
-      RETURNING
-        "id", "patientId", "facilityId", "secretHash", "createdByUserId",
-        "createdAt", "expiresAt", "usedAt", "revokedAt"
-    `);
-    return rows[0]!;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalActivation"
+        SET "revokedAt" = CURRENT_TIMESTAMP
+        WHERE "patientId" = ${input.patientId}
+          AND "facilityId" = ${input.facilityId}
+          AND "usedAt" IS NULL
+          AND "revokedAt" IS NULL
+      `);
+
+      const rows = await tx.$queryRaw<PatientPortalActivationRow[]>(Prisma.sql`
+        INSERT INTO "PatientPortalActivation" (
+          "id", "patientId", "facilityId", "secretHash", "createdByUserId", "expiresAt"
+        ) VALUES (
+          ${input.id}, ${input.patientId}, ${input.facilityId}, ${input.secretHash},
+          ${input.createdByUserId}, ${input.expiresAt}
+        )
+        RETURNING
+          "id", "patientId", "facilityId", "secretHash", "createdByUserId",
+          "createdAt", "expiresAt", "usedAt", "revokedAt"
+      `);
+      return rows[0]!;
+    });
   }
 
   async findUsableActivation(id: string): Promise<PatientPortalActivationRow | null> {
@@ -65,6 +89,78 @@ export class PatientPortalActivationRepository {
       LIMIT 1
     `);
     return rows[0] ?? null;
+  }
+
+  async getStaffAccess(patientId: string, facilityId: string): Promise<PatientPortalStaffAccessRow> {
+    const rows = await this.prisma.$queryRaw<PatientPortalStaffAccessRow[]>(Prisma.sql`
+      SELECT
+        l."id" AS "linkId",
+        l."status"::text AS "linkStatus",
+        l."verifiedAt",
+        l."revokedAt",
+        a."status"::text AS "accountStatus",
+        act."id" AS "latestActivationId",
+        act."createdAt" AS "activationCreatedAt",
+        act."expiresAt" AS "activationExpiresAt",
+        act."usedAt" AS "activationUsedAt",
+        act."revokedAt" AS "activationRevokedAt"
+      FROM (SELECT 1) seed
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM "PatientPortalLink"
+        WHERE "patientId" = ${patientId}
+          AND "facilityId" = ${facilityId}
+        ORDER BY "updatedAt" DESC, "createdAt" DESC
+        LIMIT 1
+      ) l ON TRUE
+      LEFT JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
+      LEFT JOIN LATERAL (
+        SELECT "id", "createdAt", "expiresAt", "usedAt", "revokedAt"
+        FROM "PatientPortalActivation"
+        WHERE "patientId" = ${patientId}
+          AND "facilityId" = ${facilityId}
+        ORDER BY "createdAt" DESC
+        LIMIT 1
+      ) act ON TRUE
+    `);
+
+    return rows[0] ?? {
+      linkId: null,
+      linkStatus: null,
+      verifiedAt: null,
+      revokedAt: null,
+      accountStatus: null,
+      latestActivationId: null,
+      activationCreatedAt: null,
+      activationExpiresAt: null,
+      activationUsedAt: null,
+      activationRevokedAt: null,
+    };
+  }
+
+  async revokePatientFacilityAccess(patientId: string, facilityId: string): Promise<{ revokedLinks: number; revokedActivations: number }> {
+    return this.prisma.$transaction(async (tx) => {
+      const revokedLinks = await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalLink"
+        SET "status" = 'REVOKED'::"PatientPortalLinkStatus",
+            "revokedAt" = CURRENT_TIMESTAMP,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "patientId" = ${patientId}
+          AND "facilityId" = ${facilityId}
+          AND "status" <> 'REVOKED'::"PatientPortalLinkStatus"
+      `);
+
+      const revokedActivations = await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalActivation"
+        SET "revokedAt" = CURRENT_TIMESTAMP
+        WHERE "patientId" = ${patientId}
+          AND "facilityId" = ${facilityId}
+          AND "usedAt" IS NULL
+          AND "revokedAt" IS NULL
+      `);
+
+      return { revokedLinks, revokedActivations };
+    });
   }
 
   async consumeAndLink(input: {

@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
+  Get,
   Param,
   Post,
   Req,
@@ -8,7 +10,11 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
-import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RequireRoles,
+  RolesGuard,
+} from "../../common/guards/roles.guard";
 import { PatientPortalActivationService } from "./patient-portal-activation.service";
 
 @Controller("patient-portal-admin/v1")
@@ -16,9 +22,7 @@ import { PatientPortalActivationService } from "./patient-portal-activation.serv
 export class PatientPortalStaffActivationController {
   constructor(private readonly activation: PatientPortalActivationService) {}
 
-  @Post("patients/:patientId/activation")
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
-  async issue(@Param("patientId") patientId: string, @Req() req: any) {
+  private staffContext(req: any) {
     const facilityId = req.facilityId || req.user?.facilityId || req.headers?.["x-facility-id"];
     const userId = req.user?.userId;
     if (!facilityId || typeof facilityId !== "string") {
@@ -27,11 +31,41 @@ export class PatientPortalStaffActivationController {
     if (!userId || typeof userId !== "string") {
       throw new BadRequestException("Staff user required");
     }
+    return { facilityId, userId };
+  }
+
+  @Get("patients/:patientId/access")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async access(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId } = this.staffContext(req);
+    return this.activation.getAccessForStaff({ patientId, facilityId });
+  }
+
+  @Post("patients/:patientId/activation")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async issue(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId, userId } = this.staffContext(req);
 
     return this.activation.issueForStaff({
       patientId,
       facilityId,
       createdByUserId: userId,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
+  }
+
+  @Delete("patients/:patientId/access")
+  @RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async revoke(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId, userId } = this.staffContext(req);
+    return this.activation.revokeForStaff({
+      patientId,
+      facilityId,
+      revokedByUserId: userId,
       ip: req.ip,
       userAgent: req.headers?.["user-agent"],
     });
