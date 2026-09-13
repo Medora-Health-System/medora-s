@@ -198,6 +198,14 @@ export class ClinicalReviewOrchestratorService {
       reasoningSummary = locale === "es"
         ? "Este hallazgo revisa si los datos diagnósticos disponibles están explícitamente integrados en la toma de decisiones médicas; no determina si la interpretación clínica es correcta."
         : "Ce constat vérifie si les données diagnostiques disponibles sont explicitement intégrées à la prise de décision médicale; il ne détermine pas si l'interprétation clinique est correcte.";
+    } else if (suggestion.title === "Medication administration timestamp missing") {
+      title = locale === "es" ? "Falta la hora de administración de un medicamento" : "L'heure d'administration d'un médicament est manquante";
+      summary = locale === "es"
+        ? "Una o más entradas del registro de administración están marcadas como administradas, pero no incluyen la hora de administración. Confirme y complete el registro cuando corresponda."
+        : "Une ou plusieurs entrées du registre d'administration sont marquées comme administrées, mais l'heure d'administration est absente. Confirmez et complétez le registre lorsque cela s'applique.";
+      reasoningSummary = locale === "es"
+        ? "Este hallazgo compara únicamente la acción registrada y la hora de administración; no determina si el medicamento se administró realmente."
+        : "Ce constat compare uniquement l'action enregistrée et l'heure d'administration; il ne détermine pas si le médicament a réellement été administré.";
     }
 
     return {
