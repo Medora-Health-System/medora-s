@@ -1,5 +1,12 @@
 export type IntegrationPermissionOption = { code: string; resourceType: string; interaction: string };
-export type IntegrationFacilityOption = { id: string; code: string; name: string; country: string; billingCity: string | null; billingStateProvince: string | null };
+export type IntegrationFacilityOption = {
+  id: string;
+  code?: string | null;
+  name: string;
+  country?: string | null;
+  billingCity?: string | null;
+  billingStateProvince?: string | null;
+};
 export type IntegrationRow = { id: string; displayName: string; partnerName: string; status: string; protocol: string; direction: string; environment: string; jurisdiction: string; provisioningState: string; facilities: { facilityId: string }[]; permissions: { capabilityCode: string }[] };
 
 async function call(path: string, init?: RequestInit) {
