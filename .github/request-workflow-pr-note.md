@@ -1,0 +1,1 @@
+This branch is intentionally stacked on feat/patient-portal-secure-messages until PR #247 merges. The request workflow PR should target that branch first, then be retargeted to main after the dependency merges.
