@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -78,15 +78,7 @@ export const fhirInboundProposalSchema = z.object({
 
 type ProposalInput = z.infer<typeof fhirInboundProposalSchema>;
 type ProposalResource = ProposalInput["resource"];
-
-type ExistingProposal = {
-  id: string;
-  requestFingerprint: string;
-  status: string;
-  resourceType: string;
-  createdAt: Date;
-};
-
+type ExistingProposal = { id: string; requestFingerprint: string; status: string; resourceType: string; createdAt: Date };
 type SourceRow = { sourceSystemIdentifier: string | null; integrationSourceSystemIdentifier: string | null };
 
 @Injectable()
@@ -94,34 +86,38 @@ export class FhirInboundProposalService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   async stage(context: FhirRequestContext, body: unknown) {
-    if (context.actorType !== "machine" || !context.clientId || !context.integrationId) throw new BadRequestException("Machine integration context required");
+    const clientId = context.actorId;
+    const integrationId = context.integrationId;
+    if (context.actorType !== "machine" || !clientId || !integrationId) throw new BadRequestException("Machine integration context required");
     if (Buffer.byteLength(JSON.stringify(body ?? null)) > FHIR_REQUEST_POLICY.futureWritePayloadBytes) throw new BadRequestException("FHIR proposal payload is too large");
 
     const parsedResult = fhirInboundProposalSchema.safeParse(body);
     if (!parsedResult.success) throw new BadRequestException("Malformed FHIR proposal");
     const parsed = parsedResult.data;
     const requiredScope = this.scopeFor(parsed.resource.resourceType);
-    if (!context.scopes.includes(requiredScope)) throw new BadRequestException("FHIR proposal scope is not authorized");
+    if (!context.scopes.includes(requiredScope)) throw new ForbiddenException("FHIR proposal scope is not authorized");
 
     const { patientId, encounterId } = await this.validateTenantReferences(context.facilityId, parsed.resource);
-    const sourceSystem = await this.resolveSourceSystem(context.clientId, context.integrationId);
+    const sourceSystem = await this.resolveSourceSystem(clientId, integrationId);
     const fingerprint = createHash("sha256").update(this.canonicalJson(parsed)).digest("hex");
     const proposalId = randomUUID();
     const now = new Date();
 
     return this.prisma.$transaction(async (tx) => {
-      const existing = await this.findExisting(tx, context.facilityId, context.clientId!, sourceSystem, parsed.externalMessageId, parsed.resource.resourceType);
-      if (existing) {
-        if (existing.requestFingerprint !== fingerprint) throw new ConflictException("Idempotency key was reused with different proposal content");
-        return this.response(existing.id, existing.resourceType, existing.status, existing.createdAt, true);
-      }
-
-      await tx.$executeRaw(Prisma.sql`
+      const inserted = await tx.$executeRaw(Prisma.sql`
         INSERT INTO interop."FhirInboundProposal"
           ("id", "integrationId", "clientId", "facilityId", "sourceSystem", "externalMessageId", "resourceType", "status", "subjectPatientId", "encounterId", "requestFingerprint", "proposalJson", "createdAt", "updatedAt")
         VALUES
-          (${proposalId}, ${context.integrationId}, ${context.clientId}, ${context.facilityId}, ${sourceSystem}, ${parsed.externalMessageId}, ${parsed.resource.resourceType}, 'PENDING_REVIEW', ${patientId}, ${encounterId}, ${fingerprint}, ${JSON.stringify(parsed.resource)}::jsonb, ${now}, ${now})
+          (${proposalId}, ${integrationId}, ${clientId}, ${context.facilityId}, ${sourceSystem}, ${parsed.externalMessageId}, ${parsed.resource.resourceType}, 'PENDING_REVIEW', ${patientId}, ${encounterId}, ${fingerprint}, ${JSON.stringify(parsed.resource)}::jsonb, ${now}, ${now})
+        ON CONFLICT ("facilityId", "clientId", "sourceSystem", "externalMessageId", "resourceType") DO NOTHING
       `);
+
+      if (inserted === 0) {
+        const existing = await this.findExisting(tx, context.facilityId, clientId, sourceSystem, parsed.externalMessageId, parsed.resource.resourceType);
+        if (!existing) throw new ConflictException("FHIR proposal idempotency conflict");
+        if (existing.requestFingerprint !== fingerprint) throw new ConflictException("Idempotency key was reused with different proposal content");
+        return this.response(existing.id, existing.resourceType, existing.status, existing.createdAt, true);
+      }
 
       await this.audit.log(AuditAction.UPDATE, "FHIR_INBOUND_PROPOSAL", {
         tx,
@@ -133,8 +129,8 @@ export class FhirInboundProposalService {
         metadata: {
           event: "FHIR_PROPOSAL_STAGED",
           actorType: "machine",
-          clientId: context.clientId,
-          integrationId: context.integrationId,
+          clientId,
+          integrationId,
           resourceType: parsed.resource.resourceType,
           sourceSystem,
           externalMessageIdHash: createHash("sha256").update(parsed.externalMessageId).digest("hex").slice(0, 16),
