@@ -1,0 +1,36 @@
+name: Patient Portal Session Security
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/src/patient-portal/security/**"
+      - "apps/api/src/patient-portal/patient-portal.module.ts"
+      - ".github/workflows/patient-portal-session-security.yml"
+
+jobs:
+  session-security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+
+      - name: Patient session security tests
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs patient-session-security.service.spec.ts --runInBand
