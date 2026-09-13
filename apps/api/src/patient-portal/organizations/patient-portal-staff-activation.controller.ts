@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
+  Get,
   Param,
   Post,
   Req,
@@ -16,9 +18,7 @@ import { PatientPortalActivationService } from "./patient-portal-activation.serv
 export class PatientPortalStaffActivationController {
   constructor(private readonly activation: PatientPortalActivationService) {}
 
-  @Post("patients/:patientId/activation")
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
-  async issue(@Param("patientId") patientId: string, @Req() req: any) {
+  private staffContext(req: any) {
     const facilityId = req.facilityId || req.user?.facilityId || req.headers?.["x-facility-id"];
     const userId = req.user?.userId;
     if (!facilityId || typeof facilityId !== "string") {
@@ -27,11 +27,38 @@ export class PatientPortalStaffActivationController {
     if (!userId || typeof userId !== "string") {
       throw new BadRequestException("Staff user required");
     }
+    return { facilityId, userId };
+  }
+
+  @Get("patients/:patientId/access")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
+  async access(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId } = this.staffContext(req);
+    return this.activation.getAccessForStaff({ patientId, facilityId });
+  }
+
+  @Post("patients/:patientId/activation")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
+  async issue(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId, userId } = this.staffContext(req);
 
     return this.activation.issueForStaff({
       patientId,
       facilityId,
       createdByUserId: userId,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
+  }
+
+  @Delete("patients/:patientId/access")
+  @RequireRoles(RoleCode.ADMIN)
+  async revoke(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId, userId } = this.staffContext(req);
+    return this.activation.revokeForStaff({
+      patientId,
+      facilityId,
+      revokedByUserId: userId,
       ip: req.ip,
       userAgent: req.headers?.["user-agent"],
     });
