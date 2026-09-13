@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
+import { NAV_ACCENT, type GroupedSidebarSection, type SidebarNavItem } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
 import { isSidebarNavItemActive } from "./appShellNavHelpers";
+import {
+  PATIENT_PORTAL_ADMIN_HREF,
+  patientPortalAdminNavLabel,
+} from "./patientPortalAdminNav";
 
 export type AppShellSidebarNavProps = {
   groupedNavSections: GroupedSidebarSection[];
@@ -18,6 +22,14 @@ export type AppShellSidebarNavProps = {
   onNavLinkClick?: () => void;
 };
 
+const PATIENT_PORTAL_ADMIN_NAV_ITEM: SidebarNavItem = {
+  href: PATIENT_PORTAL_ADMIN_HREF,
+  label: "patientPortalAdmin.localLabel",
+  roles: [],
+  group: "admin",
+  accent: "teal",
+};
+
 export function AppShellSidebarNav({
   groupedNavSections,
   pathname,
@@ -30,6 +42,11 @@ export function AppShellSidebarNav({
   onNavLinkClick,
 }: AppShellSidebarNavProps) {
   const iconOnly = !showLabels;
+  const navSections = groupedNavSections.map((section) => {
+    if (section.groupId !== "admin") return section;
+    if (section.items.some((item) => item.href === PATIENT_PORTAL_ADMIN_HREF)) return section;
+    return { ...section, items: [PATIENT_PORTAL_ADMIN_NAV_ITEM, ...section.items] };
+  });
 
   return (
     <nav
@@ -49,7 +66,7 @@ export function AppShellSidebarNav({
           {t("common.loading")}
         </p>
       ) : (
-        groupedNavSections.map((section, si) => (
+        navSections.map((section, si) => (
           <div
             key={section.groupId}
             className={si > 0 ? "border-t border-white/10" : undefined}
@@ -68,7 +85,10 @@ export function AppShellSidebarNav({
               {section.items.map((item) => {
                 const accent = NAV_ACCENT[item.accent];
                 const active = isSidebarNavItemActive(pathname, item.href, mounted);
-                const label = t(item.label);
+                const label =
+                  item.href === PATIENT_PORTAL_ADMIN_HREF
+                    ? patientPortalAdminNavLabel(t)
+                    : t(item.label);
                 return (
                   <Link
                     key={item.href}
