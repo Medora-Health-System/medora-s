@@ -3,6 +3,8 @@ import { AuditAction } from "@prisma/client";
 import { AuditService } from "../../common/services/audit.service";
 import { AiAuditAction, AiAuditMetadata } from "./ai-audit.types";
 
+type AiAuditLogMetadata = Omit<AiAuditMetadata, "aiAction">;
+
 /**
  * AI-specific audit wrapper.
  *
@@ -23,7 +25,7 @@ export class AiAuditService {
 
   async log(
     aiAction: AiAuditAction,
-    metadata: AiAuditMetadata,
+    metadata: AiAuditLogMetadata,
     actorUserId?: string
   ): Promise<void> {
     const validated = this.validateMetadata(aiAction, metadata);
@@ -37,7 +39,10 @@ export class AiAuditService {
     });
   }
 
-  private validateMetadata(aiAction: AiAuditAction, metadata: AiAuditMetadata): AiAuditMetadata {
+  private validateMetadata(
+    aiAction: AiAuditAction,
+    metadata: AiAuditLogMetadata
+  ): AiAuditMetadata {
     return {
       aiAction,
       facilityId: metadata.facilityId,

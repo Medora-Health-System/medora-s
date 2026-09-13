@@ -17,6 +17,8 @@ type EncounterIdentity = {
   type?: string | null;
 };
 
+const AI_CHART_REVIEW_ROLES = new Set(["PROVIDER", "ADMIN", "MEDORA_SUPER_ADMIN"]);
+
 export default function EncounterLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const router = useRouter();
@@ -26,8 +28,10 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
   const { language } = useI18n();
   const [encounterType, setEncounterType] = useState<string | null>(null);
 
+  const canUseAiChartReview = roles.some((role) => AI_CHART_REVIEW_ROLES.has(role));
+
   useEffect(() => {
-    if (!encounterId || !facilityId || !ready || !roles.includes("PROVIDER")) return;
+    if (!encounterId || !facilityId || !ready || !canUseAiChartReview) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -41,7 +45,7 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
     return () => {
       cancelled = true;
     };
-  }, [encounterId, facilityId, ready, roles]);
+  }, [canUseAiChartReview, encounterId, facilityId, ready]);
 
   const navigate = useCallback(
     (section: ClinicCareAmbulatoryWorkspaceSection) => {
@@ -53,14 +57,14 @@ export default function EncounterLayout({ children }: { children: React.ReactNod
     [encounterId, router, searchParams]
   );
 
-  const providerCanSeeAi =
+  const authorizedUserCanSeeAi =
     ready &&
     Boolean(facilityId) &&
-    roles.includes("PROVIDER") &&
+    canUseAiChartReview &&
     (searchParams?.get("workspace") === CLINIC_CARE_AMBULATORY_WORKSPACE_QUERY ||
       isClinicCareAmbulatoryEncounterType(encounterType));
 
-  if (!providerCanSeeAi || !facilityId) return <>{children}</>;
+  if (!authorizedUserCanSeeAi || !facilityId) return <>{children}</>;
 
   return (
     <div
