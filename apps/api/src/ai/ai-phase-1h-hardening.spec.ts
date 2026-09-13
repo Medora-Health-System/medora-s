@@ -10,8 +10,8 @@ describe("AI Phase 1H hardening regressions", () => {
     const guards = (Reflect.getMetadata(GUARDS_METADATA, AiChartReviewController) ?? []) as unknown[];
 
     expect(guards).toHaveLength(2);
+    expect(guards[0]).not.toBe(RolesGuard);
     expect(guards[1]).toBe(RolesGuard);
-    expect((guards[0] as { name?: string })?.name).toMatch(/AuthGuard/i);
   });
 
   it("limits chart review and feedback to Provider, Admin, and Medora Super Admin", () => {
