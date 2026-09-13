@@ -10,6 +10,19 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
 
+/**
+ * Keep the Clinic home navigation intentionally compact. These routes still exist and
+ * remain protected by the normal capability/role guards; they are only removed from
+ * the top shortcut strip to reduce visual duplication inside the Clinic workspace.
+ */
+const CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS = new Set<ClinicWorkspaceNavId>([
+  "provider",
+  "orders",
+  "results",
+  "patients",
+  "encounters",
+]);
+
 export function ClinicCareTopNav({ active }: { active: ClinicWorkspaceNavId }) {
   const { t } = useI18n();
   const {
@@ -30,7 +43,7 @@ export function ClinicCareTopNav({ active }: { active: ClinicWorkspaceNavId }) {
           careProfileJson,
           facilityCountry,
         }).access
-      )
+      ).filter((item) => !CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS.has(item.id))
     : [];
 
   return (
