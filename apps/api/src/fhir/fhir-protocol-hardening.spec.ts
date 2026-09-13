@@ -1,7 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { fhirSearchParameterType } from "./fhir.controller";
 import { decorateFhirReadResource } from "./fhir-media.interceptor";
-import { decodeFhirCursor, encodeFhirCursor, searchBundle } from "./fhir-search";
+import { decodeFhirCursor, encodeFhirCursor, FhirSearchService, searchBundle } from "./fhir-search";
 
 describe("MEDORA.RD.P0.3D FHIR protocol hardening", () => {
   const previousCursorKey = process.env.FHIR_CURSOR_SIGNING_KEY;
@@ -23,6 +23,14 @@ describe("MEDORA.RD.P0.3D FHIR protocol hardening", () => {
     expect(() => decodeFhirCursor(cursor, "Encounter")).toThrow(BadRequestException);
     const tampered = `${cursor.slice(0, -1)}${cursor.endsWith("a") ? "b" : "a"}`;
     expect(() => decodeFhirCursor(tampered, "Patient")).toThrow(BadRequestException);
+  });
+
+  test("strict search rejects unknown keys and decodes only a resource-bound cursor", () => {
+    const service = new FhirSearchService({ get: () => "https://fhir.example.test/fhir" } as any);
+    expect(() => service.parse({ unexpected: "value" }, ["_id", "_count", "_cursor"], "Patient")).toThrow("Unsupported search parameter");
+    const cursor = encodeFhirCursor("Patient", "00000000-0000-4000-8000-000000000001");
+    expect(service.parse({ _cursor: cursor }, ["_cursor"], "Patient").cursor).toBe("00000000-0000-4000-8000-000000000001");
+    expect(() => service.parse({ _cursor: cursor }, ["_cursor"], "Encounter")).toThrow("Invalid pagination cursor");
   });
 
   test("searchset bundles emit absolute self/fullUrl links and opaque continuation cursors", () => {
