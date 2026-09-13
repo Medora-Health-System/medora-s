@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Injectable, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { resolvePlatformPrincipalAccess } from "../../auth/platform-principal.js";
 import type { EncounterAiSnapshot, AiEncounterContext } from "@medora/shared";
 import { toAiBoundedText } from "@medora/shared";
 import { EncounterType, BillingClassification } from "@prisma/client";
@@ -136,12 +137,34 @@ export class EncounterAiSnapshotBuilder {
 
   private async assertActorFacilityAccess(actorUserId: string, facilityId: string): Promise<void> {
     const activeRole = await this.prisma.userRole.findFirst({
-      where: { userId: actorUserId, facilityId, isActive: true },
+      where: {
+        userId: actorUserId,
+        facilityId,
+        isActive: true,
+        facility: { isActive: true },
+      },
       select: { id: true },
     });
-    if (!activeRole) {
-      throw new ForbiddenException("Actor does not have access to the requested facility");
+    if (activeRole) return;
+
+    try {
+      const platformAccess = await resolvePlatformPrincipalAccess(this.prisma, {
+        userId: actorUserId,
+        facilityId,
+      });
+      if (platformAccess.granted) {
+        const activeFacility = await this.prisma.facility.findFirst({
+          where: { id: facilityId, isActive: true },
+          select: { id: true },
+        });
+        if (activeFacility) return;
+      }
+    } catch {
+      // Authorization resolution is fail-closed. Missing/incomplete context,
+      // database failures, or malformed platform authority never grant access.
     }
+
+    throw new ForbiddenException("Actor does not have access to the requested facility");
   }
 
   private async findAuthorizedEncounter(encounterId: string, facilityId: string) {
