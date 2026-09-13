@@ -8,7 +8,7 @@ export type RequiredFhirCapability = { resourceType: import("./fhir-capability.r
 export const RequireFhirCapability = (resourceType: RequiredFhirCapability["resourceType"], interaction: FhirInteraction) =>
   SetMetadata(FHIR_CAPABILITY_METADATA, { resourceType, interaction } satisfies RequiredFhirCapability);
 
-/** Enforces the same registry entry used by metadata and integration permission options. */
+/** Enforces one registry entry for humans and machine clients. */
 @Injectable()
 export class FhirCapabilityGuard implements CanActivate {
   constructor(private readonly reflector: Reflector, private readonly registry: FhirCapabilityRegistry) {}
@@ -17,10 +17,17 @@ export class FhirCapabilityGuard implements CanActivate {
     const required = this.reflector.getAllAndOverride<RequiredFhirCapability>(FHIR_CAPABILITY_METADATA, [context.getHandler(), context.getClass()]);
     if (!required) throw new ForbiddenException("FHIR capability policy is required");
     const request = context.switchToHttp().getRequest();
-    const resourceType = required.resourceType;
-    const capability = this.registry.enabled(request.fhirContext?.jurisdiction).find((entry) => entry.resourceType === resourceType && entry.interaction === required.interaction);
+    const capability = this.registry.enabled(request.fhirContext?.jurisdiction).find((entry) => entry.resourceType === required.resourceType && entry.interaction === required.interaction);
     if (!capability) throw new NotFoundException("FHIR interaction is disabled");
-    const role = request.userRole as RoleCode | undefined;
+
+    if (request.fhirContext?.actorType === "machine") {
+      const scopes = Array.isArray(request.fhirContext.scopes) ? request.fhirContext.scopes : [];
+      if (!scopes.includes(capability.futureM2mScope)) throw new ForbiddenException("FHIR machine scope is not authorized");
+      request.fhirCapability = capability;
+      return true;
+    }
+
+    const role = request.fhirContext?.role as RoleCode | undefined;
     if (!role || !capability.humanRoles.includes(role)) throw new ForbiddenException("FHIR capability is not permitted for this role");
     request.fhirCapability = capability;
     return true;

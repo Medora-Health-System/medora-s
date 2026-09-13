@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
 import { AuditService } from "../common/services/audit.service";
 import { FhirMapperModule } from "../fhir-mapper/fhir-mapper.module";
 import { PatientsModule } from "../patients/patients.module";
@@ -19,10 +21,14 @@ import { FhirReferenceResolver } from "./fhir-reference.resolver";
 import { FhirSearchService } from "./fhir-search";
 import { FhirClinicalService } from "./fhir-clinical.service";
 import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportController, FhirServiceRequestController } from "./fhir-clinical.controller";
+import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
+import { FhirMachineStrategy } from "./fhir-machine.strategy";
+import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
+import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
 
 @Module({
-  imports: [PatientsModule, FhirMapperModule],
-  controllers: [FhirController, FhirConditionController, FhirServiceRequestController, FhirDiagnosticReportController, FhirCarePlanController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
+  imports: [PatientsModule, FhirMapperModule, PassportModule, JwtModule.register({})],
+  controllers: [FhirController, FhirMachineAuthController, FhirConditionController, FhirServiceRequestController, FhirDiagnosticReportController, FhirCarePlanController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
     AuditService,
@@ -31,6 +37,9 @@ import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportCo
     FhirContextGuard,
     FhirDeploymentGuard,
     FhirMediaInterceptor,
+    FhirMachineIdentityService,
+    FhirMachineStrategy,
+    FhirMachineAuditInterceptor,
     { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
     {
       provide: JurisdictionProfileRegistry,
@@ -43,6 +52,6 @@ import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportCo
     FhirSearchService,
     FhirClinicalService,
   ],
-  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry],
+  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService],
 })
 export class FhirModule {}

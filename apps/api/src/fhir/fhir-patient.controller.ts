@@ -2,22 +2,22 @@ import { Controller, Get, Header, Param, Query, Req, UseFilters, UseGuards, UseI
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { assertZod } from "../common/http/zod-parse";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import { RequireRoles } from "../common/guards/roles.guard";
 import { fhirResourceIdParamSchema } from "./dto/fhir-read.schemas";
 import { FhirResourceService } from "./fhir-resource.service";
 import { FhirContextGuard, FhirDeploymentGuard, FhirRequestContext } from "./fhir-context.guard";
 import { FhirOperationOutcomeFilter } from "./fhir-operation-outcome.filter";
 import { FhirMediaInterceptor } from "./fhir-media.interceptor";
 import { FhirCapabilityGuard, RequireFhirCapability } from "./fhir-capability.guard";
+import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
 
 @Controller("fhir/Patient")
-@UseGuards(FhirDeploymentGuard, AuthGuard("jwt"), RolesGuard, FhirContextGuard, FhirCapabilityGuard)
+@UseGuards(FhirDeploymentGuard, AuthGuard(["jwt", "fhir-client"]), FhirContextGuard, FhirCapabilityGuard)
 @UseFilters(FhirOperationOutcomeFilter)
-@UseInterceptors(FhirMediaInterceptor)
+@UseInterceptors(FhirMediaInterceptor, FhirMachineAuditInterceptor)
 export class FhirPatientController {
   constructor(private readonly fhirResource: FhirResourceService) {}
 
-  /** FHIR R4 instance read: `GET [base]/Patient/{id}` */
   @Get(":id")
   @Header("Content-Type", "application/fhir+json; charset=utf-8")
   @Header("Cache-Control", "no-store")
@@ -41,5 +41,4 @@ export class FhirPatientController {
     const h = req.headers?.["user-agent"];
     return typeof h === "string" ? h : Array.isArray(h) ? h[0] : undefined;
   }
-
 }
