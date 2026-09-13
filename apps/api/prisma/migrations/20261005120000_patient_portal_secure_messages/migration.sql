@@ -36,9 +36,13 @@ CREATE TABLE "PatientPortalMessageThread" (
     CHECK (char_length(btrim("subject")) BETWEEN 1 AND 120),
   CONSTRAINT "PatientPortalMessageThread_closed_state_check"
     CHECK (
-      ("status" = 'OPEN'::"PatientPortalMessageThreadStatus" AND "closedAt" IS NULL)
+      ("status" = 'OPEN'::"PatientPortalMessageThreadStatus"
+        AND "closedAt" IS NULL
+        AND "closedByUserId" IS NULL)
       OR
-      ("status" = 'CLOSED'::"PatientPortalMessageThreadStatus" AND "closedAt" IS NOT NULL)
+      ("status" = 'CLOSED'::"PatientPortalMessageThreadStatus"
+        AND "closedAt" IS NOT NULL
+        AND "closedByUserId" IS NOT NULL)
     )
 );
 
@@ -60,7 +64,7 @@ ALTER TABLE "PatientPortalMessageThread"
   FOREIGN KEY ("facilityId") REFERENCES "Facility"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "PatientPortalMessageThread"
   ADD CONSTRAINT "PatientPortalMessageThread_closedByUserId_fkey"
-  FOREIGN KEY ("closedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("closedByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 CREATE TABLE "PatientPortalMessage" (
   "id" TEXT NOT NULL,
