@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
 import { AuditService } from "../common/services/audit.service";
 import { FhirMapperModule } from "../fhir-mapper/fhir-mapper.module";
 import { PatientsModule } from "../patients/patients.module";
@@ -17,10 +18,12 @@ import { FhirLocationController, FhirOrganizationController, FhirPractitionerCon
 import { FhirAdministrativeService } from "./fhir-administrative.service";
 import { FhirReferenceResolver } from "./fhir-reference.resolver";
 import { FhirSearchService } from "./fhir-search";
+import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
+import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
 
 @Module({
-  imports: [PatientsModule, FhirMapperModule],
-  controllers: [FhirController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
+  imports: [PatientsModule, FhirMapperModule, JwtModule.register({})],
+  controllers: [FhirController, FhirMachineAuthController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
   providers: [
     FhirResourceService,
     AuditService,
@@ -29,6 +32,7 @@ import { FhirSearchService } from "./fhir-search";
     FhirContextGuard,
     FhirDeploymentGuard,
     FhirMediaInterceptor,
+    FhirMachineIdentityService,
     { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
     {
       provide: JurisdictionProfileRegistry,
@@ -40,6 +44,6 @@ import { FhirSearchService } from "./fhir-search";
     FhirReferenceResolver,
     FhirSearchService,
   ],
-  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry],
+  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService],
 })
 export class FhirModule {}
