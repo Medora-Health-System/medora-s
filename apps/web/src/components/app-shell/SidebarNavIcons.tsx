@@ -35,6 +35,7 @@ const HREF_TWEMOJI_SVG: Record<string, string> = {
   "/app/billing": "1f4b3.svg",
   "/app/fracture": "1f9fe.svg",
   "/app/admin": "2699.svg",
+  "/app/admin/patient-portal": "1f3e5.svg",
   "/app/admin/users": "1f465.svg",
   "/app/admin/audit": "1f4cb.svg",
   "/app/reports": "1f4ca.svg",
