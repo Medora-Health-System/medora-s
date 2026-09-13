@@ -30,7 +30,7 @@ const DETERMINISTIC_COPY: Record<Exclude<AiReviewLocale, "en">, Record<string, {
     ORDER_CONSIDERATION: { title: "Revisar órdenes clínicas", summary: "Hay una consideración relacionada con las órdenes de este encuentro.", why: "Revise las órdenes y su relación con la evaluación, los resultados y el plan documentado.", action: "Revisar órdenes" },
     REASSESSMENT_GAP: { title: "Revisar reevaluación clínica", summary: "La documentación estructurada sugiere que la reevaluación puede estar ausente o incompleta.", why: "La reevaluación debe relacionar la evolución del paciente con el tratamiento, los resultados y la disposición.", action: "Revisar reevaluación" },
     DOCUMENTATION_GAP: { title: "Revisar documentación clínica", summary: "La documentación de este encuentro puede estar incompleta o pendiente.", why: "Complete o reconcilie la documentación aplicable antes de finalizar el encuentro.", action: "Revisar documentación" },
-    MDM_GAP: { title: "La toma de decisiones médicas puede estar incompleta", summary: "Medora Asistente detectó uno o más componentes estructurados del MDM que requieren revisión.", why: "Este hallazgo revisa la integridad de la documentación del MDM; no determina por sí solo que la decisión clínica sea incorrecta.", action: "Revisar toma de decisiones médicas" },
+    MDM_GAP: { title: "La toma de decisiones médicas puede estar incompleta", summary: "La documentación del MDM tiene componentes clínicos pendientes de completar.", why: "Este hallazgo revisa la integridad de la documentación del MDM; no determina por sí solo que la decisión clínica sea incorrecta.", action: "Revisar toma de decisiones médicas" },
     DISPOSITION_GAP: { title: "Revisar disposición", summary: "La disposición documentada puede estar ausente o incompleta.", why: "La disposición debe ser coherente con la evaluación, los resultados, el tratamiento y la reevaluación documentados.", action: "Revisar disposición" },
     DISCHARGE_SAFETY: { title: "Revisar seguridad del alta", summary: "Hay un elemento de seguridad del alta que requiere revisión antes de finalizar el encuentro.", why: "Revise resultados pendientes, reevaluación, tratamiento, medicamentos e instrucciones de seguimiento aplicables.", action: "Revisar alta" },
     FOLLOW_UP_GAP: { title: "Revisar seguimiento", summary: "El seguimiento documentado puede estar incompleto o pendiente.", why: "El plan de seguimiento debe corresponder a la evaluación y disposición de este encuentro.", action: "Revisar seguimiento" },
@@ -46,7 +46,7 @@ const DETERMINISTIC_COPY: Record<Exclude<AiReviewLocale, "en">, Record<string, {
     ORDER_CONSIDERATION: { title: "Revoir les ordres cliniques", summary: "Une considération liée aux ordres de cette consultation nécessite une revue.", why: "Revoyez les ordres avec l'évaluation, les résultats et le plan documenté.", action: "Revoir les ordres" },
     REASSESSMENT_GAP: { title: "Revoir la réévaluation clinique", summary: "La documentation structurée suggère que la réévaluation peut être absente ou incomplète.", why: "La réévaluation doit relier l'évolution du patient au traitement, aux résultats et à la disposition.", action: "Revoir la réévaluation" },
     DOCUMENTATION_GAP: { title: "Revoir la documentation clinique", summary: "La documentation de cette consultation peut être incomplète ou en attente.", why: "Complétez ou rapprochez la documentation applicable avant de finaliser la consultation.", action: "Revoir la documentation" },
-    MDM_GAP: { title: "La prise de décision médicale peut être incomplète", summary: "Medora Assistance a détecté un ou plusieurs composants structurés du MDM nécessitant une revue.", why: "Ce constat évalue l'intégrité de la documentation du MDM; il ne détermine pas à lui seul qu'une décision clinique est incorrecte.", action: "Revoir la prise de décision médicale" },
+    MDM_GAP: { title: "La prise de décision médicale peut être incomplète", summary: "La documentation du MDM contient des éléments cliniques à compléter.", why: "Ce constat évalue l'intégrité de la documentation du MDM; il ne détermine pas à lui seul qu'une décision clinique est incorrecte.", action: "Revoir la prise de décision médicale" },
     DISPOSITION_GAP: { title: "Revoir la disposition", summary: "La disposition documentée peut être absente ou incomplète.", why: "La disposition doit être cohérente avec l'évaluation, les résultats, le traitement et la réévaluation documentés.", action: "Revoir la disposition" },
     DISCHARGE_SAFETY: { title: "Revoir la sécurité de sortie", summary: "Un élément de sécurité de sortie nécessite une revue avant de finaliser la consultation.", why: "Revoyez les résultats en attente, la réévaluation, le traitement, les médicaments et le suivi applicables.", action: "Revoir la sortie" },
     FOLLOW_UP_GAP: { title: "Revoir le suivi", summary: "Le suivi documenté peut être incomplet ou en attente.", why: "Le plan de suivi doit correspondre à l'évaluation et à la disposition de cette consultation.", action: "Revoir le suivi" },
@@ -56,9 +56,48 @@ const DETERMINISTIC_COPY: Record<Exclude<AiReviewLocale, "en">, Record<string, {
   },
 };
 
+const MDM_DOMAIN_LABELS = {
+  es: {
+    "working assessment": "evaluación clínica de trabajo",
+    "data reviewed": "datos revisados",
+    "risk/management reasoning": "razonamiento de riesgo y manejo",
+    "plan/disposition reasoning": "razonamiento del plan y la disposición",
+  },
+  fr: {
+    "working assessment": "évaluation clinique de travail",
+    "data reviewed": "données examinées",
+    "risk/management reasoning": "raisonnement sur le risque et la prise en charge",
+    "plan/disposition reasoning": "raisonnement du plan et de la disposition",
+  },
+} as const;
+
+function localizedMdmSummary(summary: string, locale: Exclude<AiReviewLocale, "en">): string | null {
+  if (summary.includes("do not contain documented clinical reasoning")) {
+    return locale === "es"
+      ? "La documentación del profesional está presente, pero el MDM no contiene razonamiento clínico documentado."
+      : "La documentation du clinicien est présente, mais le MDM ne contient pas de raisonnement clinique documenté.";
+  }
+
+  const prefix = "The structured MDM is missing documented ";
+  if (!summary.startsWith(prefix)) return null;
+  const raw = summary.slice(prefix.length).replace(/\.$/, "");
+  const translated = raw
+    .split(", ")
+    .map((item) => MDM_DOMAIN_LABELS[locale][item as keyof typeof MDM_DOMAIN_LABELS[typeof locale]] ?? item);
+  if (!translated.length) return null;
+  const joined = translated.length === 1
+    ? translated[0]
+    : `${translated.slice(0, -1).join(", ")} ${locale === "es" ? "y" : "et"} ${translated.at(-1)}`;
+  return locale === "es"
+    ? `Falta documentar ${joined} en la toma de decisiones médicas.`
+    : `Il manque la documentation de ${joined} dans la prise de décision médicale.`;
+}
+
 const EXTERNAL_CLINICAL_REVIEW_SYSTEM_INSTRUCTION = `You are Medora Assist, a strong structured clinical chart-review assistant. Review only the supplied encounter facts and evaluate the current encounter section by section. Never use facts from another patient, encounter, facility, or care setting.
 
 CARE-SETTING ISOLATION IS A HARD BOUNDARY. The supplied encounter.careSetting is authoritative for this review. Apply expectations appropriate to that setting only. Do not apply emergency-department workflow expectations to an office/outpatient clinic encounter, do not apply outpatient assumptions to an emergency encounter, and do not transfer findings between encounters even when they share the same facility or user session.
+
+CLINICIAN-FIRST DISPLAY IS REQUIRED. Each finding must be understandable from the card title and summary alone. The title must name the actual problem. The summary must be one or two direct sentences stating the exact chart gap, contradiction, pending item, medication issue, order/result issue, or discharge concern and the specific chart facts that support it. Never make the clinician decode labels such as "Evidence 1", "Evidence 2", counts such as "2 of 4", internal field names, IDs, hashes, namespaces, or implementation terminology. Evidence is optional supporting detail only and must never be necessary to understand the finding.
 
 Review every domain with usable data; do not stop after the first finding:
 1. Presentation and documentation: chief complaint, HPI, ROS, physical examination, reassessment, provider documentation, MDM completeness, internal consistency, and whether the assessment/plan addresses important chart facts.
@@ -167,15 +206,27 @@ export class ClinicalReviewOrchestratorService {
     if (locale === "en") return suggestion;
     const copy = DETERMINISTIC_COPY[locale][suggestion.category];
     if (!copy) return suggestion;
+
+    let summary = copy.summary;
+    if (suggestion.category === "MDM_GAP") {
+      summary = localizedMdmSummary(suggestion.summary, locale) ?? summary;
+    } else if (
+      suggestion.category === "DOCUMENTATION_GAP" &&
+      (suggestion.title.toLowerCase().includes("unsigned") || suggestion.summary.includes("expected SIGNED"))
+    ) {
+      summary = locale === "es"
+        ? "La documentación del profesional clínico está en BORRADOR y todavía no está firmada o finalizada."
+        : "La documentation du clinicien est encore en BROUILLON et n'est pas encore signée ou finalisée.";
+    }
+
     return {
       ...suggestion,
       title: copy.title,
-      summary: copy.summary,
+      summary,
       reasoningSummary: copy.why,
-      evidence: suggestion.evidence.map((item, index) => ({
-        ...item,
-        label: locale === "es" ? `Evidencia clínica ${index + 1}` : `Élément clinique ${index + 1}`,
-      })),
+      // Deterministic findings must be understandable without decoding raw counters.
+      // Keep evidence in the internal rule result, but do not expose opaque translated labels.
+      evidence: [],
       recommendedActions: suggestion.recommendedActions.map((action) => ({ ...action, label: copy.action })),
       clinicalDisclaimer:
         locale === "es"
