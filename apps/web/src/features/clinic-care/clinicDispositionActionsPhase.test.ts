@@ -51,6 +51,17 @@ describe("Clinic disposition actions", () => {
     expect(workflow).toContain('state === \"CLINIC_FOLLOW_UP\"');
   });
 
+  it("creates or reuses the enterprise FollowUp when Clinic Follow-up is confirmed", () => {
+    expect(workflow).toContain('import { createFollowUp, fetchPatientFollowUps } from \"@/lib/followUpsApi\"');
+    expect(workflow).toContain('checkoutState === \"CLINIC_FOLLOW_UP\"');
+    expect(workflow).toContain("ensureEnterpriseClinicFollowUp");
+    expect(workflow).toContain("fetchPatientFollowUps");
+    expect(workflow).toContain("item.encounterId === input.encounterId");
+    expect(workflow).toContain("createFollowUp(input.facilityId");
+    expect(workflow).toContain("encounter.followUpDate");
+    expect(workflow).toContain("clinicAmbulatoryFollowUpId");
+  });
+
   it("does not falsely claim that confirming Transfer to ED created an ED encounter", () => {
     expect(workflow).toContain("creating an ED encounter remains a separate action");
     expect(details).toContain("does not create an ED encounter");
