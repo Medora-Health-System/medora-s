@@ -91,12 +91,15 @@ export function providerDischargeCardNeedsLocaleReapply(
   const activeHash = computeProviderDischargeTemplateAppliedHash(template, activeLocale);
   if (appliedHash === activeHash) return false;
 
-  // SAFE NON-DISPLAY MULTILINGUAL LOGIC: compare the other stored bilingual
-  // template hash only. A match means reapply in `activeLocale` — never render
-  // the other language as the current locale.
-  const otherLocale: ProviderDischargeTemplateLocale = activeLocale === "fr" ? "en" : "fr";
-  const otherHash = computeProviderDischargeTemplateAppliedHash(template, otherLocale);
-  return appliedHash === otherHash;
+  // SAFE NON-DISPLAY MULTILINGUAL LOGIC: compare every other supported template
+  // locale hash. This is especially important for legacy Spanish encounters: prior
+  // versions stamped appliedLocale="es" while resolving the EN body through the
+  // bilingual storage helper, so appliedLocale alone cannot prove the body language.
+  const candidateOtherLocales: ProviderDischargeTemplateLocale[] = ["en", "fr", "es"]
+    .filter((locale) => locale !== activeLocale);
+  return candidateOtherLocales.some(
+    (locale) => appliedHash === computeProviderDischargeTemplateAppliedHash(template, locale)
+  );
 }
 
 export function isProviderDischargeCardTemplateStale(
