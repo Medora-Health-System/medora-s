@@ -30,7 +30,7 @@ export class PatientServiceRequestsStaffController {
   }
 
   @Post(":requestId/decision")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.PROVIDER)
   decide(@Param("requestId") requestId: string, @Body() body: unknown, @Req() req: any) {
     const parsed = patientServiceRequestDecisionSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException("Invalid service request decision payload");
