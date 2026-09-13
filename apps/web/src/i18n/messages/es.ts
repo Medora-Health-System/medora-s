@@ -16,6 +16,7 @@ import { MEDUI_ES_1K1_OVERLAY } from "./meduiEs1k1ReachabilityHotfixOverlay";
 import { MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY } from "./meduiTrilang1ClinicalChromeOverlay";
 import { MEDUI_TRILANG_2_OVERLAY } from "./meduiTrilang2ClinicalWorkspaceOverlay";
 import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompleteOverlay";
+import { MEDUI_AI_PHASE_1G_SPANISH_PROVIDER_DOCUMENTATION_OVERLAY } from "./meduiAiPhase1gSpanishProviderDocumentationOverlay";
 
 /**
  * MEDUI public Spanish product UI catalog.
@@ -25,10 +26,11 @@ import { MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY } from "./meduiPublicCatalogCompl
  *  2. applyApprovedSpanishTerminology  → 1D canon overlays (46 APPROVED uiMessageKeys)
  *  3–13. governed Spanish overlays (1E through TRILANG.2)
  * 14. applyGovernedSpanishOverlay(PUBLIC_CATALOG_COMPLETE) → remaining public chrome
- * 15. applyEnglishSourceForRemainingSentinels → legal/source leaves keep English provenance
+ * 15. applyGovernedSpanishOverlay(AI_PHASE_1G_PROVIDER_DOCUMENTATION) → provider documentation clinical content
+ * 16. applyEnglishSourceForRemainingSentinels → frozen/legal or still-untranslated source leaves keep source provenance
  *
- * Español is publicly selectable. Public chrome must be Spanish. Source clinical packs
- * and legally frozen packet/EMTALA bodies keep English source text (not sentinel syntax).
+ * Español is publicly selectable. Public chrome and approved provider-documentation content must be Spanish.
+ * Remaining source-language clinical packs are tracked explicitly rather than exposing sentinel syntax.
  */
 
 export function applyGovernedSpanishOverlay<T>(
@@ -75,6 +77,10 @@ const { tree: afterPublicComplete } = applyGovernedSpanishOverlay(
   afterTrilang2,
   MEDUI_PUBLIC_CATALOG_COMPLETE_OVERLAY
 );
-const { tree: esMessages } = applyEnglishSourceForRemainingSentinels(afterPublicComplete, en);
+const { tree: afterProviderDocumentation } = applyGovernedSpanishOverlay(
+  afterPublicComplete,
+  MEDUI_AI_PHASE_1G_SPANISH_PROVIDER_DOCUMENTATION_OVERLAY
+);
+const { tree: esMessages } = applyEnglishSourceForRemainingSentinels(afterProviderDocumentation, en);
 
 export default esMessages;
