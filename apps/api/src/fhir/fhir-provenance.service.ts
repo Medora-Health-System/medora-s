@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { AuditService } from "../common/services/audit.service";
 import { hashCanonicalJson } from "../encounters/chart-export-hash.util";
@@ -149,9 +149,9 @@ export class FhirProvenanceService {
   }
 
   private day(value: string) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new NotFoundException("Malformed recorded date");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException("Malformed recorded date");
     const start = new Date(`${value}T00:00:00.000Z`);
-    if (Number.isNaN(start.valueOf()) || start.toISOString().slice(0, 10) !== value) throw new NotFoundException("Malformed recorded date");
+    if (Number.isNaN(start.valueOf()) || start.toISOString().slice(0, 10) !== value) throw new BadRequestException("Malformed recorded date");
     return { gte: start, lt: new Date(start.getTime() + 86_400_000) };
   }
 }
