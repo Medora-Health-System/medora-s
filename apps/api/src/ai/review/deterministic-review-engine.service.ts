@@ -9,21 +9,12 @@ import { rule5OpenFollowUp } from "./rules/rule-5-open-follow-up.rule.js";
 import { rule6OrderMarMismatch } from "./rules/rule-6-order-mar-mismatch.rule.js";
 import { rule7TransitionReassessment } from "./rules/rule-7-transition-reassessment.rule.js";
 import { rule8TransitionDiagnosticContext } from "./rules/rule-8-transition-diagnostic-context.rule.js";
+import { rule9PossibleDuplicateMedication } from "./rules/rule-9-possible-duplicate-medication.rule.js";
 
-/**
- * Deterministic clinical review engine.
- *
- * Runs a fixed set of rules against an EncounterAiSnapshot and returns a
- * structured AiClinicalReviewOutput. Each rule is isolated: a rule failure
- * is logged and does not crash the overall review.
- *
- * The engine performs no LLM calls, no database writes, no chart mutation,
- * and no reimbursement/coding logic.
- */
+/** Deterministic, read-only clinical review engine. */
 @Injectable()
 export class DeterministicReviewEngine {
   private readonly logger = new Logger(DeterministicReviewEngine.name);
-
   private readonly rules: DeterministicRule[] = [
     rule1UnacknowledgedCriticalResult,
     rule2PendingDiagnosticAtDischarge,
@@ -33,31 +24,19 @@ export class DeterministicReviewEngine {
     rule6OrderMarMismatch,
     rule7TransitionReassessment,
     rule8TransitionDiagnosticContext,
+    rule9PossibleDuplicateMedication,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
     const generatedAt = new Date().toISOString();
-    const ctx = {
-      generatedAt,
-      snapshotVersion: snapshot.snapshotVersion,
-    };
-
+    const ctx = { generatedAt, snapshotVersion: snapshot.snapshotVersion };
     const suggestions: AiSuggestion[] = [];
-
     for (const rule of this.rules) {
-      try {
-        suggestions.push(...rule(snapshot, ctx));
-      } catch (err) {
-        this.logger.error({
-          message: "Deterministic review rule failed",
-          rule: rule.name,
-          error: err instanceof Error ? err.message : String(err),
-        });
+      try { suggestions.push(...rule(snapshot, ctx)); }
+      catch (err) {
+        this.logger.error({ message: "Deterministic review rule failed", rule: rule.name, error: err instanceof Error ? err.message : String(err) });
       }
     }
-
-    return {
-      suggestions,
-    };
+    return { suggestions };
   }
 }
