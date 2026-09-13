@@ -36,7 +36,7 @@ export class FhirMediaInterceptor implements NestInterceptor {
     const isMetadata = String(req.originalUrl ?? req.url).replace(/\?.*$/, "").endsWith("/metadata");
     res.setHeader("Cache-Control", isMetadata ? "private, max-age=60" : "no-store");
     return next.handle().pipe(timeout(FHIR_REQUEST_POLICY.timeoutMs), map((body) => {
-      const decorated = req.method === "GET" ? decorateFhirReadResource(body) : { body };
+      const decorated: { body: unknown; etag?: string } = req.method === "GET" ? decorateFhirReadResource(body) : { body };
       if (decorated.etag) res.setHeader("ETag", decorated.etag);
       const decoratedBody = decorated.body;
       if (Buffer.byteLength(JSON.stringify(decoratedBody)) > FHIR_REQUEST_POLICY.maxResponseBytes) throw new NotAcceptableException("FHIR response exceeds safety ceiling");
