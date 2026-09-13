@@ -242,9 +242,12 @@ export default function IntegrationsPage() {
     <section>
       <h2>Connected Systems</h2>
       {rows.length === 0 ? <p>No integrations configured.</p> : rows.map((row) => <article key={row.id} style={{ border: "1px solid #ddd", padding: 16, marginBottom: 10, borderRadius: 8, opacity: row.status === "DISABLED" ? .55 : 1 }}>
-        <strong>{row.displayName}</strong> — {row.status}
-        <div>{row.partnerName} · FHIR R4 · {labels[row.environment] ?? row.environment} · {row.facilities.length} facilities</div>
-        <button onClick={async () => { await setIntegrationEnabled(row.id, row.status === "DISABLED"); await load(); }}>{row.status === "DISABLED" ? "Enable" : "Disable"}</button>
+        <strong><Link href={`/app/admin/integrations/${row.id}`}>{row.displayName}</Link></strong> — {row.status}
+        <div>{row.partnerName} · FHIR R4 · {labels[row.environment] ?? row.environment} · {row.facilities.length} facilities · {row.provisioningState.replaceAll("_", " ")}</div>
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <Link href={`/app/admin/integrations/${row.id}`}>Manage FHIR connection & credentials</Link>
+          <button onClick={async () => { await setIntegrationEnabled(row.id, row.status === "DISABLED"); await load(); }}>{row.status === "DISABLED" ? "Enable" : "Disable"}</button>
+        </div>
       </article>)}
     </section>
 
