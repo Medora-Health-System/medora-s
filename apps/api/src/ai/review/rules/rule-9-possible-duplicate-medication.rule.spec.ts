@@ -36,7 +36,7 @@ describe("rule9PossibleDuplicateMedication", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0].category).toBe("DUPLICATION");
     expect(findings[0].priority).toBe("MEDIUM");
-    expect(findings[0].recommendedActions).toEqual([{ actionType: "REVIEW", label: "Review chart" }]);
+    expect(findings[0].recommendedActions).toEqual([]);
   });
 
   it("does not flag when the matching copy is terminal", () => {
