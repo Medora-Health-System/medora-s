@@ -12,10 +12,20 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { AiSuggestionFeedbackRequest } from "@medora/shared";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard.js";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard.js";
 import { AiAuditService } from "./audit/ai-audit.service.js";
 import { ClinicalReviewOrchestratorService } from "./review/clinical-review-orchestrator.service.js";
 import { EncounterAiSnapshotBuilder } from "./snapshot/encounter-ai-snapshot.builder.js";
+
+const AI_CHART_REVIEW_ROLES = [
+  RoleCode.PROVIDER,
+  RoleCode.ADMIN,
+  RoleCode.MEDORA_SUPER_ADMIN,
+] as const;
 
 @Controller("ai/chart-review")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -27,7 +37,8 @@ export class AiChartReviewController {
   ) {}
 
   @Get(":encounterId")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(...AI_CHART_REVIEW_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async getChartReview(@Param("encounterId") encounterId: string, @Req() req: any) {
     const { facilityId, actorUserId } = this.resolveActor(req);
 
@@ -47,7 +58,8 @@ export class AiChartReviewController {
   }
 
   @Post(":encounterId/feedback")
-  @RequireRoles(RoleCode.PROVIDER)
+  @RequireRoles(...AI_CHART_REVIEW_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async submitSuggestionFeedback(
     @Param("encounterId") encounterId: string,
     @Body() body: unknown,
@@ -63,7 +75,7 @@ export class AiChartReviewController {
     }
 
     // Feedback itself is an audit-backed record. Unlike review telemetry, do
-    // not report success if persistence fails; the UI should tell the provider
+    // not report success if persistence fails; the UI should tell the reviewer
     // that the feedback was not recorded.
     await this.aiAudit.log(
       parsed.data.rating === "HELPFUL" ? "AI_SUGGESTION_HELPFUL" : "AI_SUGGESTION_NOT_HELPFUL",
