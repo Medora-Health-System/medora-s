@@ -37,6 +37,7 @@ import {
 } from "@/features/emergency/providerDischargeDocumentationModel";
 import {
   ClinicCareCheckoutDetailsPanel,
+  buildClinicCheckoutDiagnosisSuggestions,
   markClinicCheckoutActionConfirmed,
   readClinicAmbulatoryCheckoutDetails,
   validateClinicAmbulatoryCheckoutDetails,
@@ -44,18 +45,14 @@ import {
 } from "./ClinicCareCheckoutDetailsPanel";
 import { localizeClinicDischargeFormForPresentation } from "./clinicDischargeLocalization";
 
-const sectionShell: React.CSSProperties = {
-  ...MEDORA_CARD_SHELL,
-  padding: "14px 16px",
-};
+const sectionShell: React.CSSProperties = { ...MEDORA_CARD_SHELL, padding: "14px 16px" };
 
 function readCheckoutState(raw: unknown): ClinicAmbulatoryCheckoutState {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return "HOME";
-  const v = (raw as Record<string, unknown>).clinicAmbulatoryCheckoutState;
-  if (typeof v === "string" && (CLINIC_AMBULATORY_CHECKOUT_STATES as readonly string[]).includes(v)) {
-    return v as ClinicAmbulatoryCheckoutState;
-  }
-  return "HOME";
+  const value = (raw as Record<string, unknown>).clinicAmbulatoryCheckoutState;
+  return typeof value === "string" && (CLINIC_AMBULATORY_CHECKOUT_STATES as readonly string[]).includes(value)
+    ? value as ClinicAmbulatoryCheckoutState
+    : "HOME";
 }
 
 function readPersistedClinicFollowUpId(raw: unknown): string | null {
@@ -68,15 +65,8 @@ function narrativeBlobFromForm(form: ProviderDischargeDocumentationForm): string
   return [
     form.returnPrecautions,
     form.returnWorkSchool,
-    ...form.diagnosisDocs.flatMap((d) => [
-      d.description,
-      d.diagnosisInstructions,
-      d.medicationTreatment,
-      d.returnPrecautions,
-    ]),
-  ]
-    .filter(Boolean)
-    .join("\n");
+    ...form.diagnosisDocs.flatMap((d) => [d.description, d.diagnosisInstructions, d.medicationTreatment, d.returnPrecautions]),
+  ].filter(Boolean).join("\n");
 }
 
 function clinicFacilityFallback(language: string): string {
@@ -85,65 +75,32 @@ function clinicFacilityFallback(language: string): string {
   return "this facility";
 }
 
-export function clinicCheckoutActionLabel(
-  language: string,
-  state: ClinicAmbulatoryCheckoutState
-): string {
+export function clinicCheckoutActionLabel(language: string, state: ClinicAmbulatoryCheckoutState): string {
   const es = language === "es";
   const fr = language === "fr";
   switch (state) {
-    case "HOME":
-      return es ? "Confirmar alta a domicilio"
-        : fr ? "Confirmer le retour à domicile"
-        : "Confirm discharge home";
-    case "CLINIC_FOLLOW_UP":
-      return es ? "Confirmar seguimiento de clínica"
-        : fr ? "Confirmer le suivi en clinique"
-        : "Confirm clinic follow-up";
-    case "REFERRAL":
-      return es ? "Confirmar plan de referencia"
-        : fr ? "Confirmer le plan d’orientation"
-        : "Confirm referral plan";
-    case "TRANSFER_ED":
-      return es ? "Confirmar traslado a urgencias"
-        : fr ? "Confirmer le transfert vers les urgences"
-        : "Confirm transfer to ED";
-    case "AMA":
-      return es ? "Confirmar salida contra consejo médico"
-        : fr ? "Confirmer le départ contre avis médical"
-        : "Confirm AMA departure";
-    case "OTHER":
-      return es ? "Confirmar otro resultado"
-        : fr ? "Confirmer l’autre issue"
-        : "Confirm other outcome";
+    case "HOME": return es ? "Confirmar alta a domicilio" : fr ? "Confirmer le retour à domicile" : "Confirm discharge home";
+    case "CLINIC_FOLLOW_UP": return es ? "Confirmar seguimiento de clínica" : fr ? "Confirmer le suivi en clinique" : "Confirm clinic follow-up";
+    case "REFERRAL": return es ? "Confirmar plan de referencia" : fr ? "Confirmer le plan d’orientation" : "Confirm referral plan";
+    case "TRANSFER_ED": return es ? "Confirmar traslado a urgencias" : fr ? "Confirmer le transfert vers les urgences" : "Confirm transfer to ED";
+    case "AMA": return es ? "Confirmar salida contra consejo médico" : fr ? "Confirmer le départ contre avis médical" : "Confirm AMA departure";
+    case "OTHER": return es ? "Confirmar otro resultado" : fr ? "Confirmer l’autre issue" : "Confirm other outcome";
   }
 }
 
 function checkoutReadyMessage(language: string, state: ClinicAmbulatoryCheckoutState): string {
   if (language === "es") {
-    if (state === "TRANSFER_ED") {
-      return "Plan de traslado documentado. La visita está lista para completarse; la creación de un encuentro de urgencias sigue siendo una acción separada.";
-    }
-    if (state === "CLINIC_FOLLOW_UP") {
-      return "Seguimiento de clínica creado y resultado confirmado. La visita está lista para completarse.";
-    }
+    if (state === "TRANSFER_ED") return "Plan de traslado documentado. La visita está lista para completarse; la creación de un encuentro de urgencias sigue siendo una acción separada.";
+    if (state === "CLINIC_FOLLOW_UP") return "Seguimiento de clínica creado y resultado confirmado. La visita está lista para completarse.";
     return "Resultado del egreso confirmado. La visita está lista para completarse.";
   }
   if (language === "fr") {
-    if (state === "TRANSFER_ED") {
-      return "Plan de transfert documenté. La consultation est prête à être clôturée; la création d’une visite aux urgences reste une action distincte.";
-    }
-    if (state === "CLINIC_FOLLOW_UP") {
-      return "Suivi en clinique créé et issue confirmée. La consultation est prête à être clôturée.";
-    }
+    if (state === "TRANSFER_ED") return "Plan de transfert documenté. La consultation est prête à être clôturée; la création d’une visite aux urgences reste une action distincte.";
+    if (state === "CLINIC_FOLLOW_UP") return "Suivi en clinique créé et issue confirmée. La consultation est prête à être clôturée.";
     return "Issue de consultation confirmée. La consultation est prête à être clôturée.";
   }
-  if (state === "TRANSFER_ED") {
-    return "Transfer plan documented. The visit is ready for completion; creating an ED encounter remains a separate action.";
-  }
-  if (state === "CLINIC_FOLLOW_UP") {
-    return "Clinic follow-up created and outcome confirmed. The visit is ready for completion.";
-  }
+  if (state === "TRANSFER_ED") return "Transfer plan documented. The visit is ready for completion; creating an ED encounter remains a separate action.";
+  if (state === "CLINIC_FOLLOW_UP") return "Clinic follow-up created and outcome confirmed. The visit is ready for completion.";
   return "Checkout outcome confirmed. The visit is ready for completion.";
 }
 
@@ -171,21 +128,10 @@ function clinicFollowUpPatientRequiredMessage(language: string): string {
       : "The follow-up cannot be created because the encounter patient is missing.";
 }
 
-function clinicFollowUpReason(
-  form: ProviderDischargeDocumentationForm,
-  language: string
-): string {
-  const row = form.followUps.find((item) =>
-    Boolean(
-      item.specialty?.trim() ||
-      item.providerOrFacility?.trim() ||
-      item.comments?.trim()
-    )
-  );
+function clinicFollowUpReason(form: ProviderDischargeDocumentationForm, language: string): string {
+  const row = form.followUps.find((item) => Boolean(item.specialty?.trim() || item.providerOrFacility?.trim() || item.comments?.trim()));
   const detail = row
-    ? [row.specialty?.trim(), row.providerOrFacility?.trim(), row.comments?.trim()]
-        .filter((value): value is string => Boolean(value))
-        .join(" — ")
+    ? [row.specialty?.trim(), row.providerOrFacility?.trim(), row.comments?.trim()].filter((value): value is string => Boolean(value)).join(" — ")
     : "";
   if (detail) return detail.slice(0, 2000);
   if (language === "es") return "Seguimiento de clínica posterior al alta";
@@ -205,18 +151,12 @@ async function ensureEnterpriseClinicFollowUp(input: {
   if (persistedId) return persistedId;
 
   const existing = await fetchPatientFollowUps(input.facilityId, input.patientId, { limit: 100 });
-  const linked = existing.items.find(
-    (item) => item.encounterId === input.encounterId && item.status !== "CANCELLED"
-  );
+  const linked = existing.items.find((item) => item.encounterId === input.encounterId && item.status !== "CANCELLED");
   if (linked) return linked.id;
 
-  const encounter = await apiFetch(`/encounters/${input.encounterId}`, {
-    facilityId: input.facilityId,
-  }) as Record<string, unknown>;
+  const encounter = await apiFetch(`/encounters/${input.encounterId}`, { facilityId: input.facilityId }) as Record<string, unknown>;
   const dueDate = typeof encounter.followUpDate === "string" ? encounter.followUpDate : "";
-  if (!dueDate || Number.isNaN(Date.parse(dueDate))) {
-    throw new Error(clinicFollowUpRequiredMessage(input.language));
-  }
+  if (!dueDate || Number.isNaN(Date.parse(dueDate))) throw new Error(clinicFollowUpRequiredMessage(input.language));
 
   const created = await createFollowUp(input.facilityId, {
     patientId: input.patientId,
@@ -254,12 +194,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
   facilityCountry?: string | null;
   facilityCareProfileJson?: unknown;
   patientId?: string | null;
-  patient?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    mrn?: string | null;
-  } | null;
+  patient?: { id?: string; firstName?: string | null; lastName?: string | null; mrn?: string | null } | null;
   encounterCreatedAt?: string | null;
   dischargeSummaryJson?: unknown;
   encounterStatus?: string | null;
@@ -273,58 +208,39 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
   const canEditNursing = roles.includes("RN") || roles.includes("ADMIN");
   const formDisabled = isLocked || encounterStatus !== "OPEN" || (!canEditMedical && !canEditNursing);
 
-  const careSettingContext = useMemo<DischargeInstructionCareSettingContext>(
-    () => ({
-      careSetting: "CLINIC",
-      facilityDisplayName: facilityDisplayName.trim() || clinicFacilityFallback(language),
-      locale: language,
-      jurisdictionCountry: facilityCountry ?? null,
-    }),
-    [facilityCountry, facilityDisplayName, language]
-  );
+  const careSettingContext = useMemo<DischargeInstructionCareSettingContext>(() => ({
+    careSetting: "CLINIC",
+    facilityDisplayName: facilityDisplayName.trim() || clinicFacilityFallback(language),
+    locale: language,
+    jurisdictionCountry: facilityCountry ?? null,
+  }), [facilityCountry, facilityDisplayName, language]);
 
   const [providerForm, setProviderForm] = useState<ProviderDischargeDocumentationForm>(() =>
-    localizeClinicDischargeFormForPresentation(
-      hydrateProviderDischargeDocumentationForm(dischargeSummaryJson),
-      language,
-      facilityDisplayName
-    )
+    localizeClinicDischargeFormForPresentation(hydrateProviderDischargeDocumentationForm(dischargeSummaryJson), language, facilityDisplayName)
   );
-  const [checkoutState, setCheckoutState] = useState<ClinicAmbulatoryCheckoutState>(() =>
-    readCheckoutState(dischargeSummaryJson)
-  );
-  const [checkoutDetails, setCheckoutDetails] = useState<ClinicAmbulatoryCheckoutDetails>(() =>
-    readClinicAmbulatoryCheckoutDetails(dischargeSummaryJson)
-  );
+  const [checkoutState, setCheckoutState] = useState<ClinicAmbulatoryCheckoutState>(() => readCheckoutState(dischargeSummaryJson));
+  const [checkoutDetails, setCheckoutDetails] = useState<ClinicAmbulatoryCheckoutDetails>(() => readClinicAmbulatoryCheckoutDetails(dischargeSummaryJson));
   const [saving, setSaving] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    setProviderForm(
-      localizeClinicDischargeFormForPresentation(
-        hydrateProviderDischargeDocumentationForm(dischargeSummaryJson),
-        language,
-        facilityDisplayName
-      )
-    );
+    setProviderForm(localizeClinicDischargeFormForPresentation(hydrateProviderDischargeDocumentationForm(dischargeSummaryJson), language, facilityDisplayName));
     setCheckoutState(readCheckoutState(dischargeSummaryJson));
     setCheckoutDetails(readClinicAmbulatoryCheckoutDetails(dischargeSummaryJson));
   }, [encounterId, dischargeSummaryJson]);
 
   useEffect(() => {
-    setProviderForm((current) =>
-      localizeClinicDischargeFormForPresentation(current, language, facilityDisplayName)
-    );
+    setProviderForm((current) => localizeClinicDischargeFormForPresentation(current, language, facilityDisplayName));
   }, [facilityDisplayName, language]);
 
-  const updateProviderForm = useCallback(
-    (next: ProviderDischargeDocumentationForm) => {
-      setProviderForm(
-        localizeClinicDischargeFormForPresentation(next, language, facilityDisplayName)
-      );
-    },
-    [facilityDisplayName, language]
+  const updateProviderForm = useCallback((next: ProviderDischargeDocumentationForm) => {
+    setProviderForm(localizeClinicDischargeFormForPresentation(next, language, facilityDisplayName));
+  }, [facilityDisplayName, language]);
+
+  const checkoutSuggestions = useMemo(
+    () => buildClinicCheckoutDiagnosisSuggestions(providerForm, language),
+    [providerForm, language]
   );
 
   const saveProviderDischarge = useCallback(async (confirmCheckoutAction = false) => {
@@ -337,11 +253,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       return;
     }
 
-    const localizedForm = localizeClinicDischargeFormForPresentation(
-      providerForm,
-      language,
-      careSettingContext.facilityDisplayName
-    );
+    const localizedForm = localizeClinicDischargeFormForPresentation(providerForm, language, careSettingContext.facilityDisplayName);
 
     if (confirmCheckoutAction && requiresStrictDischargeDocumentation(checkoutState)) {
       const validationErrors = validateProviderDischargeDocumentation(
@@ -358,9 +270,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
           requireInstructionsCommunicated: true,
           messages: {
             requiredFinalDiagnosis: t("emergencyDisposition.homeValidation.requiredFinalDiagnosis"),
-            requiredInstructionsCommunicated: t(
-              "emergencyDisposition.homeValidation.requiredInstructionsCommunicated"
-            ),
+            requiredInstructionsCommunicated: t("emergencyDisposition.homeValidation.requiredInstructionsCommunicated"),
           },
         }
       );
@@ -377,9 +287,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       let enterpriseFollowUpId: string | null = null;
 
       if (confirmCheckoutAction && checkoutState === "CLINIC_FOLLOW_UP") {
-        if (!patientId) {
-          throw new Error(clinicFollowUpPatientRequiredMessage(language));
-        }
+        if (!patientId) throw new Error(clinicFollowUpPatientRequiredMessage(language));
         enterpriseFollowUpId = await ensureEnterpriseClinicFollowUp({
           facilityId,
           encounterId,
@@ -390,10 +298,9 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         });
       }
 
-      const detailsForSave =
-        confirmCheckoutAction
-          ? markClinicCheckoutActionConfirmed(checkoutState, checkoutDetails, actor, nowIso)
-          : checkoutDetails;
+      const detailsForSave = confirmCheckoutAction
+        ? markClinicCheckoutActionConfirmed(checkoutState, checkoutDetails, actor, nowIso)
+        : checkoutDetails;
 
       const merged = {
         ...buildProviderDischargeJsonForSave(dischargeSummaryJson, localizedForm, {
@@ -405,15 +312,9 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
         clinicAmbulatoryCheckoutUpdatedAt: nowIso,
         clinicAmbulatoryCheckoutUpdatedByDisplayName: actor,
         ...(enterpriseFollowUpId ? { clinicAmbulatoryFollowUpId: enterpriseFollowUpId } : {}),
-        ...(confirmCheckoutAction
-          ? {
-              clinicAmbulatoryCheckoutConfirmation: {
-                state: checkoutState,
-                confirmedAt: nowIso,
-                confirmedByDisplayName: actor,
-              },
-            }
-          : {}),
+        ...(confirmCheckoutAction ? {
+          clinicAmbulatoryCheckoutConfirmation: { state: checkoutState, confirmedAt: nowIso, confirmedByDisplayName: actor },
+        } : {}),
         careSetting: "CLINIC",
         facilityDisplayName: careSettingContext.facilityDisplayName,
       };
@@ -429,21 +330,13 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
 
       setCheckoutDetails(detailsForSave);
       setProviderForm(localizedForm);
-      setMessage({
-        error: false,
-        text: confirmCheckoutAction
-          ? checkoutReadyMessage(language, checkoutState)
-          : t("clinicCareD4c7.discharge.saved"),
-      });
+      setMessage({ error: false, text: confirmCheckoutAction ? checkoutReadyMessage(language, checkoutState) : t("clinicCareD4c7.discharge.saved") });
       await onSaved();
     } catch (e) {
       const directMessage = e instanceof Error ? e.message : null;
       setMessage({
         error: true,
-        text:
-          directMessage ||
-          normalizeUserFacingError(directMessage, language) ||
-          t("clinicCareD4c7.discharge.saveFailed"),
+        text: directMessage || normalizeUserFacingError(directMessage, language) || t("clinicCareD4c7.discharge.saveFailed"),
       });
     } finally {
       setSaving(false);
@@ -466,21 +359,14 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
 
   const handlePrint = useCallback(() => {
     setPrintError(null);
-    const localizedForm = localizeClinicDischargeFormForPresentation(
-      providerForm,
-      language,
-      careSettingContext.facilityDisplayName
-    );
+    const localizedForm = localizeClinicDischargeFormForPresentation(providerForm, language, careSettingContext.facilityDisplayName);
     const blob = narrativeBlobFromForm(localizedForm);
     const hasContent = blob.trim().length > 0;
-    const signed =
-      Boolean(
-        dischargeSummaryJson &&
-          typeof dischargeSummaryJson === "object" &&
-          !Array.isArray(dischargeSummaryJson) &&
-          ((dischargeSummaryJson as Record<string, unknown>).providerDischargeDocumentedAt ||
-            (dischargeSummaryJson as Record<string, unknown>).patientInstructionsGiven === true)
-      ) || localizedForm.patientInstructionsGiven === true;
+    const signed = Boolean(
+      dischargeSummaryJson && typeof dischargeSummaryJson === "object" && !Array.isArray(dischargeSummaryJson) &&
+      ((dischargeSummaryJson as Record<string, unknown>).providerDischargeDocumentedAt || (dischargeSummaryJson as Record<string, unknown>).patientInstructionsGiven === true)
+    ) || localizedForm.patientInstructionsGiven === true;
+
     const blocked = clinicDischargePrintBlockedReason({
       hasSignedFinal: signed,
       hasInstructionContent: hasContent,
@@ -495,6 +381,7 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       setPrintError(t("clinicCareD4c7.print.blockedEmpty"));
       return;
     }
+
     const merged = {
       ...buildProviderDischargeJsonForSave(dischargeSummaryJson, localizedForm, {
         documentedAt: new Date().toISOString(),
@@ -504,13 +391,10 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
       clinicAmbulatoryCheckoutDetails: checkoutDetails,
       careSetting: "CLINIC",
     };
+
     printDischarge({
       patient,
-      encounter: {
-        createdAt: encounterCreatedAt,
-        dischargeSummaryJson: merged,
-        physicianAssigned: null,
-      },
+      encounter: { createdAt: encounterCreatedAt, dischargeSummaryJson: merged, physicianAssigned: null },
       facilityName: careSettingContext.facilityDisplayName,
       facility: printFacilityInfoFromEnterpriseSource({
         facilityName: careSettingContext.facilityDisplayName,
@@ -535,55 +419,24 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
     t,
   ]);
 
-  const vaccinationsHref = buildClinicCarePublicHealthDeepLink({
-    target: "vaccinations",
-    encounterId,
-    patientId,
-  });
-  const diseaseReportsHref = buildClinicCarePublicHealthDeepLink({
-    target: "diseaseReports",
-    encounterId,
-    patientId,
-  });
+  const vaccinationsHref = buildClinicCarePublicHealthDeepLink({ target: "vaccinations", encounterId, patientId });
+  const diseaseReportsHref = buildClinicCarePublicHealthDeepLink({ target: "diseaseReports", encounterId, patientId });
   const contextualActionLabel = clinicCheckoutActionLabel(language, checkoutState);
 
   return (
-    <div
-      data-testid="clinic-care-d4c7-discharge-workflow"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
+    <div data-testid="clinic-care-d4c7-discharge-workflow" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={sectionShell}>
-        <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-          {t("clinicCareD4c7.checkout.title")}
-        </h3>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-          {t("clinicCareD4c7.checkout.subtitle")}
-        </p>
-        <div
-          style={{ display: "flex", flexDirection: "column", gap: 6 }}
-          role="radiogroup"
-          aria-label={t("clinicCareD4c7.checkout.title")}
-        >
+        <h3 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.checkout.title")}</h3>
+        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.checkout.subtitle")}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }} role="radiogroup" aria-label={t("clinicCareD4c7.checkout.title")}>
           {CLINIC_AMBULATORY_CHECKOUT_STATES.map((state) => (
-            <label
-              key={state}
-              style={{
-                display: "flex",
-                gap: 8,
-                fontSize: 13,
-                color: "#0f172a",
-                cursor: formDisabled ? "not-allowed" : "pointer",
-              }}
-            >
+            <label key={state} style={{ display: "flex", gap: 8, fontSize: 13, color: "#0f172a", cursor: formDisabled ? "not-allowed" : "pointer" }}>
               <input
                 type="radio"
                 name="clinic-ambulatory-checkout"
                 checked={checkoutState === state}
                 disabled={formDisabled || !canEditMedical}
-                onChange={() => {
-                  setCheckoutState(state);
-                  setMessage(null);
-                }}
+                onChange={() => { setCheckoutState(state); setMessage(null); }}
               />
               {t(CLINIC_AMBULATORY_CHECKOUT_I18N_KEYS[state])}
             </label>
@@ -594,20 +447,15 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
           details={checkoutDetails}
           language={language}
           disabled={formDisabled || !canEditMedical}
+          suggestions={checkoutSuggestions}
           onChange={setCheckoutDetails}
         />
       </div>
 
       <div data-testid="clinic-care-ambulatory-provider-discharge" style={sectionShell}>
-        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-          {t("clinicCareD4c5b2.followUp.dischargeTitle")}
-        </h3>
-        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>
-          {t("clinicCareD4c7.discharge.sharedEngineHint")}
-        </p>
-        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#94a3b8" }}>
-          {t("clinicCareD4c7a.discharge.singleEngineHint")}
-        </p>
+        <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c5b2.followUp.dischargeTitle")}</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.discharge.sharedEngineHint")}</p>
+        <p style={{ margin: "0 0 12px", fontSize: 11, color: "#94a3b8" }}>{t("clinicCareD4c7a.discharge.singleEngineHint")}</p>
         <ProviderDischargeDocumentationSection
           facilityId={facilityId}
           patientId={patientId}
@@ -618,94 +466,42 @@ export function ClinicCareAmbulatoryDischargeWorkflow({
           careSettingContext={careSettingContext}
         />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, alignItems: "center" }}>
-          {canEditMedical ? (
-            <button
-              type="button"
-              onClick={() => void saveProviderDischarge(false)}
-              disabled={saving || formDisabled}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "none",
-                background: "#1e3a5f",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: saving ? "wait" : "pointer",
-              }}
-            >
-              {saving ? t("common.saving") : t("clinicCareD4c7.discharge.saveProvider")}
-            </button>
-          ) : null}
-          {canEditMedical ? (
-            <button
-              type="button"
-              data-testid={`clinic-checkout-confirm-${checkoutState.toLowerCase()}`}
-              onClick={() => void saveProviderDischarge(true)}
-              disabled={saving || formDisabled}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #0f766e",
-                background: "#f0fdfa",
-                color: "#115e59",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: saving ? "wait" : "pointer",
-              }}
-            >
-              {contextualActionLabel}
-            </button>
-          ) : null}
+          {canEditMedical ? <button
+            type="button"
+            onClick={() => void saveProviderDischarge(false)}
+            disabled={saving || formDisabled}
+            style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer" }}
+          >{saving ? t("common.saving") : t("clinicCareD4c7.discharge.saveProvider")}</button> : null}
+          {canEditMedical ? <button
+            type="button"
+            data-testid={`clinic-checkout-confirm-${checkoutState.toLowerCase()}`}
+            onClick={() => void saveProviderDischarge(true)}
+            disabled={saving || formDisabled}
+            style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #0f766e", background: "#f0fdfa", color: "#115e59", fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer" }}
+          >{contextualActionLabel}</button> : null}
           <button
             type="button"
             onClick={handlePrint}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              background: "#fff",
-              color: "#0f172a",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            {t("clinicCareD4c7.discharge.print")}
-          </button>
-          {message ? (
-            <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>
-              {message.text}
-            </span>
-          ) : null}
+            style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", color: "#0f172a", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >{t("clinicCareD4c7.discharge.print")}</button>
+          {message ? <span style={{ fontSize: 12, color: message.error ? "#b91c1c" : "#166534" }}>{message.text}</span> : null}
           {printError ? <span style={{ fontSize: 12, color: "#b91c1c" }}>{printError}</span> : null}
         </div>
       </div>
 
       <div style={sectionShell} data-testid="clinic-care-d4c7-public-health-links">
-        <h3 style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-          {t("clinicCareD4c7.publicHealth.title")}
-        </h3>
-        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-          {t("clinicCareD4c7.publicHealth.hint")}
-        </p>
+        <h3 style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{t("clinicCareD4c7.publicHealth.title")}</h3>
+        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{t("clinicCareD4c7.publicHealth.hint")}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 13 }}>
-          <Link href={vaccinationsHref} style={{ color: "#0d9488", fontWeight: 600 }}>
-            {t("clinicCareD4c7.publicHealth.vaccinations")}
-          </Link>
-          <Link href={diseaseReportsHref} style={{ color: "#0d9488", fontWeight: 600 }}>
-            {t("clinicCareD4c7.publicHealth.diseaseReports")}
-          </Link>
-          <Link href={buildClinicPharmacyEntryHref()} style={{ color: "#0d9488", fontWeight: 600 }}>
-            {t("clinicCareD4c7.pharmacy.openEnterprise")}
-          </Link>
+          <Link href={vaccinationsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.vaccinations")}</Link>
+          <Link href={diseaseReportsHref} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.publicHealth.diseaseReports")}</Link>
+          <Link href={buildClinicPharmacyEntryHref()} style={{ color: "#0d9488", fontWeight: 600 }}>{t("clinicCareD4c7.pharmacy.openEnterprise")}</Link>
         </div>
       </div>
     </div>
   );
 }
 
-/** Hydrate empty form when JSON missing — exported for tests. */
 export function emptyClinicAmbulatoryProviderDischargeForm(): ProviderDischargeDocumentationForm {
   return emptyProviderDischargeDocumentationForm();
 }
