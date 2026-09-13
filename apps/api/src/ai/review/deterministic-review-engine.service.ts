@@ -12,6 +12,7 @@ import { rule8TransitionDiagnosticContext } from "./rules/rule-8-transition-diag
 import { rule9PossibleDuplicateMedication } from "./rules/rule-9-possible-duplicate-medication.rule.js";
 import { rule10PrimaryDiagnosisConsistency } from "./rules/rule-10-primary-diagnosis-consistency.rule.js";
 import { rule11AdministrationTimestampIntegrity } from "./rules/rule-11-administration-timestamp-integrity.rule.js";
+import { rule12DischargedSummaryCompleteness } from "./rules/rule-12-discharged-summary-completeness.rule.js";
 
 /**
  * Deterministic clinical review engine.
@@ -39,6 +40,7 @@ export class DeterministicReviewEngine {
     rule9PossibleDuplicateMedication,
     rule10PrimaryDiagnosisConsistency,
     rule11AdministrationTimestampIntegrity,
+    rule12DischargedSummaryCompleteness,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
