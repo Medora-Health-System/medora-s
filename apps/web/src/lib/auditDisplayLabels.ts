@@ -4,9 +4,19 @@
 
 export type AuditDisplayTranslate = (key: string) => string;
 
+const GENERIC_MISSING_TRANSLATIONS = new Set([
+  "unavailable",
+  "indisponible",
+  "no disponible",
+  "non disponible",
+  "n/a",
+]);
+
 function tryTranslate(t: AuditDisplayTranslate, key: string): string | null {
-  const out = t(key);
-  return out === key ? null : out;
+  const out = t(key)?.trim();
+  if (!out || out === key) return null;
+  if (GENERIC_MISSING_TRANSLATIONS.has(out.toLowerCase())) return null;
+  return out;
 }
 
 function humanizeAuditCode(raw: string | undefined): string {
@@ -22,36 +32,24 @@ function humanizeAuditCode(raw: string | undefined): string {
     .join(" ");
 }
 
-function fhirLifecycleEventLabel(
-  t: AuditDisplayTranslate,
-  meta: Record<string, string | number | boolean>
-): string | null {
+const FHIR_LIFECYCLE_LABELS: Record<string, string> = {
+  FHIR_M2M_CLIENT_PROVISIONED: "FHIR M2M client provisioned",
+  FHIR_M2M_CREDENTIAL_ROTATED: "FHIR M2M credential rotated",
+  FHIR_M2M_CREDENTIAL_REVOKED: "FHIR M2M credential revoked",
+  FHIR_M2M_CLIENT_REVOKED: "FHIR M2M client revoked",
+  FHIR_M2M_TOKEN_ISSUED: "FHIR M2M token issued",
+};
+
+function fhirLifecycleEventLabel(meta: Record<string, string | number | boolean>): string | null {
   const event = typeof meta.event === "string" ? meta.event.trim() : "";
   if (!event.startsWith("FHIR_M2M_")) return null;
-
-  const translated = tryTranslate(t, `auditLabels.events.${event}`);
-  if (translated) return translated;
-
-  switch (event) {
-    case "FHIR_M2M_CLIENT_PROVISIONED":
-      return "FHIR M2M client provisioned";
-    case "FHIR_M2M_CREDENTIAL_ROTATED":
-      return "FHIR M2M credential rotated";
-    case "FHIR_M2M_CREDENTIAL_REVOKED":
-      return "FHIR M2M credential revoked";
-    case "FHIR_M2M_CLIENT_REVOKED":
-      return "FHIR M2M client revoked";
-    case "FHIR_M2M_TOKEN_ISSUED":
-      return "FHIR M2M token issued";
-    default:
-      return humanizeAuditCode(event);
-  }
+  return FHIR_LIFECYCLE_LABELS[event] ?? humanizeAuditCode(event);
 }
 
 /**
- * Primary line for the Action column. Uses event-specific labels first for security/interoperability
- * lifecycle evidence, then composite keys `auditLabels.actions.{ACTION}_{ENTITY}`, then
- * `auditLabels.actions.{ACTION}`, then a stable humanized-code fallback.
+ * Primary line for the Action column. Uses FHIR event-specific labels first for
+ * security/interoperability lifecycle evidence, then translated action labels,
+ * then a stable humanized-code fallback.
  */
 export function auditActionLabel(
   t: AuditDisplayTranslate,
@@ -61,7 +59,7 @@ export function auditActionLabel(
 ): string {
   const meta = metadataSummary ?? {};
 
-  const lifecycle = fhirLifecycleEventLabel(t, meta);
+  const lifecycle = fhirLifecycleEventLabel(meta);
   if (lifecycle) return lifecycle;
 
   if (
@@ -89,14 +87,17 @@ export function auditActionLabel(
 /** Entity column primary line (raw code still shown underneath). */
 export function auditEntityLabel(t: AuditDisplayTranslate, entity: string): string {
   if (!entity?.trim()) return "—";
+  if (entity === "FHIR_INTEGRATION_CLIENT") return "FHIR integration client";
+  if (entity === "FHIR_INTEGRATION_ACCESS") return "FHIR integration access";
   const key = `auditLabels.entities.${entity.trim()}`;
   const out = tryTranslate(t, key);
   if (out) return out;
   return humanizeAuditCode(entity);
 }
 
-/** Table section headers — matches `AuditUiCategory` from the API (`critical`, `clinical`, …). */
+/** Table section headers — matches `AuditUiCategory` from the API. */
 export function auditCategoryLabel(t: AuditDisplayTranslate, category: string): string {
+  if (category === "security") return "Security & interoperability";
   const key = `auditLabels.categories.${category}`;
   const out = tryTranslate(t, key);
   if (out) return out;
@@ -121,17 +122,17 @@ export function auditMetadataSummaryEntries(
 /** Human label for persisted `metadata.actorRole` (backend codes only). */
 export function getAuditActorRoleLabel(role: string | undefined, t: AuditDisplayTranslate): string {
   const raw = role?.trim();
-  if (!raw) return t("audit.context.roles.UNKNOWN");
+  if (!raw) return "Unknown";
   const key = `audit.context.roles.${raw}`;
-  const out = t(key);
-  return out !== key ? out : raw;
+  const out = tryTranslate(t, key);
+  return out ?? raw;
 }
 
 /** Human label for persisted `metadata.source` (backend codes only). */
 export function getAuditSourceLabel(source: string | undefined, t: AuditDisplayTranslate): string {
   const raw = source?.trim();
-  if (!raw) return t("audit.context.sources.UNKNOWN");
+  if (!raw) return "Unknown";
   const key = `audit.context.sources.${raw}`;
-  const out = t(key);
-  return out !== key ? out : raw;
+  const out = tryTranslate(t, key);
+  return out ?? raw;
 }
