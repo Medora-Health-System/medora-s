@@ -15,7 +15,11 @@ import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
 } from "@/lib/jwtAccessTtl";
-import { filterSidebarNavItemsByNavigationAreas, buildNavigationProfileFromSession } from "@/features/navigation/navigationVisibility";
+import {
+  filterSidebarNavItemsByFacilityJurisdiction,
+  filterSidebarNavItemsByNavigationAreas,
+  buildNavigationProfileFromSession,
+} from "@/features/navigation/navigationVisibility";
 /**
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
@@ -429,6 +433,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     return item.roles.some((role) => combinedRolesForNav.includes(role));
   });
+
+  const navigationProfile = buildNavigationProfile();
+  navItems = filterSidebarNavItemsByFacilityJurisdiction(navItems, {
+    ...navigationProfile,
+    roleCodes: combinedRolesForNav,
+  });
+
   /** Portail MSPP national : ne pas réduire le menu à « pharmacie seule » ou « accueil seul » (sinon perte d’Accès MSPP / routes nationales). */
   const hasNationalMsppRoles = msppRolesForNav.length > 0;
   if (!hasNationalMsppRoles && isFrontDeskNavRestricted) {
@@ -438,7 +449,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!hasNationalMsppRoles && !isFrontDeskNavRestricted) {
-    navItems = filterSidebarNavItemsByNavigationAreas(navItems, buildNavigationProfile());
+    navItems = filterSidebarNavItemsByNavigationAreas(navItems, navigationProfile);
   }
 
   const groupedNavSections = groupSidebarNavItems(navItems);
