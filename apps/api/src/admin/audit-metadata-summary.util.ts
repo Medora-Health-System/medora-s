@@ -75,6 +75,12 @@ const SAFE_METADATA_KEYS = new Set([
   "originalSystemTime",
   "reasonProvided",
   "deltaMinutes",
+  /** FHIR M2M lifecycle evidence — operational identifiers only, never secrets/tokens/PHI. */
+  "event",
+  "integrationId",
+  "credentialId",
+  "keyId",
+  "scopeCount",
 ]);
 
 const MAX_SCALAR_LEN = 120;
