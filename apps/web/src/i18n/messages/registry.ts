@@ -8,6 +8,7 @@ import {
 import enMessages from "@/i18n/messages/en";
 import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
+import { resolveClinicPresentationOverride } from "@/i18n/messages/clinicPresentationOverrides";
 
 /**
  * Clinical UI message roots keyed by product UI locale, including hidden Spanish.
@@ -38,6 +39,9 @@ export function getMessageByPath(obj: unknown, path: string): unknown {
  * Missing keys return the key path. Never read another language catalog.
  */
 export function resolveClinicalUiMessage(language: string, key: string): string {
+  const presentationOverride = resolveClinicPresentationOverride(language, key);
+  if (presentationOverride !== undefined) return presentationOverride;
+
   const v = getMessageByPath(getClinicalUiMessages(language), key);
   if (typeof v !== "string") {
     if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
