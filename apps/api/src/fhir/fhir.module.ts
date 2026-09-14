@@ -19,6 +19,8 @@ import { FhirLocationController, FhirOrganizationController, FhirPractitionerCon
 import { FhirAdministrativeService } from "./fhir-administrative.service";
 import { FhirReferenceResolver } from "./fhir-reference.resolver";
 import { FhirSearchService } from "./fhir-search";
+import { FhirClinicalService } from "./fhir-clinical.service";
+import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportController, FhirServiceRequestController } from "./fhir-clinical.controller";
 import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
 import { FhirMachineStrategy } from "./fhir-machine.strategy";
 import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
@@ -26,7 +28,21 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule, PassportModule, JwtModule.register({})],
-  controllers: [FhirController, FhirMachineAuthController, FhirPatientController, FhirEncounterController, FhirObservationController, FhirPractitionerController, FhirPractitionerRoleController, FhirOrganizationController, FhirLocationController],
+  controllers: [
+    FhirController,
+    FhirMachineAuthController,
+    FhirConditionController,
+    FhirServiceRequestController,
+    FhirDiagnosticReportController,
+    FhirCarePlanController,
+    FhirPatientController,
+    FhirEncounterController,
+    FhirObservationController,
+    FhirPractitionerController,
+    FhirPractitionerRoleController,
+    FhirOrganizationController,
+    FhirLocationController,
+  ],
   providers: [
     FhirResourceService,
     AuditService,
@@ -48,6 +64,7 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirAdministrativeService,
     FhirReferenceResolver,
     FhirSearchService,
+    FhirClinicalService,
   ],
   exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService],
 })
