@@ -322,10 +322,6 @@ function RegistrationPageInner() {
 
       {effectiveFacilityId && rolesReady && (
         <section style={{ marginBottom: 28, maxWidth: 920 }}>
-          <h2 style={{ margin: "0 0 6px 0", fontSize: 20, color: "#0f172a" }}>{t("registrationWorkspace.title")}</h2>
-          <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#475569", maxWidth: 720, lineHeight: 1.5 }}>
-            {t("registrationWorkspace.subtitle")}
-          </p>
           <div
             style={{
               padding: "18px 20px",
@@ -344,7 +340,7 @@ function RegistrationPageInner() {
               showSearchButton
               clearSelectionOnQueryChange={false}
               selectedPatientId={selectedRegPatient?.id ?? null}
-              label={t("registrationWorkspace.searchHeading")}
+              label=""
               placeholder={t("registrationHome.patientChartToolsSearchPlaceholder")}
               testIdPrefix="registration-patient-search"
               onSelect={(p) => {
@@ -385,9 +381,6 @@ function RegistrationPageInner() {
                 {t("registrationWorkspace.newPatientCta")}
               </Link>
             </div>
-            <p style={{ margin: "10px 0 10px 0", fontSize: 13, color: "#64748b" }}>
-              {t("registrationHome.patientChartToolsSelectHint")}
-            </p>
 
             {selectedRegPatient && canOpenChart ? (
               <div
@@ -755,7 +748,6 @@ function RegistrationPageInner() {
 
         <section style={{ padding: 20, backgroundColor: "white", borderRadius: 8, border: "1px solid #ddd" }}>
           <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>{t("registrationHome.upcomingFollowUps")}</h2>
-          <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "#333" }}>{t("registrationHome.upcomingFollowUpsIntro")}</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
             <Link
               href="/app/follow-ups"
@@ -798,9 +790,7 @@ function RegistrationPageInner() {
           )}
           {followUpsLoading ? (
             <p style={{ fontSize: 14, color: "#666" }}>{t("common.loading")}</p>
-          ) : followUps.length === 0 ? (
-            <p style={{ fontSize: 14, color: "#666" }}>{t("followUpsPage.noUpcoming14Days")}</p>
-          ) : (
+          ) : followUps.length === 0 ? null : (
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>
               {followUps.slice(0, 10).map((f) => (
                 <li key={f.id} style={{ marginBottom: 6 }}>
