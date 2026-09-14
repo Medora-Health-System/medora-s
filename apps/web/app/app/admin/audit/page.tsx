@@ -1,97 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
   fetchAdminAuditEvents,
   type AdminAuditEventRow,
   type AdminAuditEventsQuery,
+  type AdminAuditEventsResponse,
   type AdminAuditPreset,
 } from "@/lib/adminAuditApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import {
-  auditActionLabel,
-  auditCategoryLabel,
-  auditEntityLabel,
-  auditMetadataSummaryEntries,
-  auditSummaryEmptyText,
-  getAuditActorRoleLabel,
-  getAuditSourceLabel,
-} from "@/lib/auditDisplayLabels";
+import { auditActionLabel, auditEntityLabel } from "@/lib/auditDisplayLabels";
 
-function formatSummary(
-  t: (key: string) => string,
-  meta: Record<string, string | number | boolean>
-): string {
-  const entries = auditMetadataSummaryEntries(meta);
-  if (entries.length === 0) return auditSummaryEmptyText(t);
-  return entries
-    .map(([k, v]) => `${k}=${typeof v === "string" ? v : String(v)}`)
-    .join(" · ");
-}
-
-function highlightTagLabel(t: (key: string) => string, tag: string): string {
-  const key = `adminAudit.tag.${tag}`;
-  const out = t(key);
-  return out === key ? tag : out;
-}
-
-function auditActorContextBlock(
-  t: (key: string) => string,
-  meta: Record<string, string | number | boolean>
-) {
-  const ar = meta.actorRole;
-  const src = meta.source;
-  const hasAr = ar !== undefined && ar !== null && String(ar).trim() !== "";
-  const hasSrc = src !== undefined && src !== null && String(src).trim() !== "";
-  if (!hasAr && !hasSrc) return null;
-  return (
-    <div style={{ marginTop: 6, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-      {hasAr ? (
-        <div>
-          {t("audit.context.actorRole")}: {getAuditActorRoleLabel(String(ar), t)}
-        </div>
-      ) : null}
-      {hasSrc ? (
-        <div>
-          {t("audit.context.source")}: {getAuditSourceLabel(String(src), t)}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function defaultDateRange(): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date(to.getTime() - 7 * 86400_000);
-  const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: isoDay(from), to: isoDay(to) };
-}
-
-function presetLabel(t: (key: string) => string, preset: AdminAuditPreset): string {
-  const key = `adminAudit.preset.${preset}`;
-  const translated = t(key);
-  if (translated !== key && !/^(Unavailable|Indisponible|No disponible)$/i.test(translated.trim())) return translated;
-  if (preset === "security_interop") return "Security & interoperability";
-  return preset.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function contextForRow(row: AdminAuditEventRow): { title: string; value: string } {
-  if (row.encounterId) return { title: "Encounter", value: row.encounterId };
-  if (row.entity === "FHIR_INTEGRATION_CLIENT" || row.entity === "FHIR_INTEGRATION_ACCESS") {
-    return { title: "Facility / integration", value: "Non-encounter interoperability event" };
-  }
-  if (row.facilityId) return { title: "Facility", value: "Facility-level event" };
-  return { title: "System", value: "System-level event" };
-}
-
-function csvEscape(value: unknown): string {
-  const s = value == null ? "" : String(value);
-  return `"${s.replaceAll('"', '""')}"`;
-}
-
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200] as const;
 const PRESETS: AdminAuditPreset[] = [
   "critical_events",
   "security_interop",
@@ -101,7 +24,114 @@ const PRESETS: AdminAuditPreset[] = [
   "overrides",
 ];
 
-const CATEGORY_ORDER = ["critical", "security", "clinical", "billing", "access", "override", "other"] as const;
+function defaultDateRange(): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date(to.getTime() - 7 * 86400_000);
+  const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+  return { from: isoDay(from), to: isoDay(to) };
+}
+
+function safeTranslation(t: (key: string) => string, key: string, fallback: string): string {
+  const value = t(key);
+  if (!value || value === key || /^(Unavailable|Indisponible|No disponible)$/i.test(value.trim())) return fallback;
+  return value;
+}
+
+function presetLabel(t: (key: string) => string, preset: AdminAuditPreset): string {
+  const fallbacks: Record<AdminAuditPreset, string> = {
+    critical_events: "Critical events",
+    security_interop: "Security & interoperability",
+    clinical_actions: "Clinical actions",
+    billing_exports: "Billing exports",
+    access_views: "Access / views",
+    overrides: "Overrides & addenda",
+  };
+  return safeTranslation(t, `adminAudit.preset.${preset}`, fallbacks[preset]);
+}
+
+function contextForRow(row: AdminAuditEventRow): { title: string; detail: string } {
+  if (row.encounterId) return { title: "Encounter", detail: "Patient context" };
+  if (row.entity === "FHIR_INTEGRATION_CLIENT" || row.entity === "FHIR_INTEGRATION_ACCESS") {
+    return { title: "Facility / integration", detail: "Non-encounter event" };
+  }
+  if (row.facilityId) return { title: "Facility / system", detail: "Facility-level event" };
+  return { title: "System", detail: "System-level event" };
+}
+
+function operationalSummary(row: AdminAuditEventRow): { title: string; detail: string } {
+  const meta = row.metadataSummary;
+  const event = typeof meta.event === "string" ? meta.event : "";
+  const scopeCount = typeof meta.scopeCount === "number" ? meta.scopeCount : null;
+
+  switch (event) {
+    case "FHIR_M2M_CLIENT_REVOKED":
+      return { title: "Machine client revoked", detail: "All client credentials disabled for this integration." };
+    case "FHIR_M2M_TOKEN_ISSUED":
+      return {
+        title: "Token issued for machine credential",
+        detail: scopeCount == null ? "Authorized machine access granted." : `${scopeCount} scope${scopeCount === 1 ? "" : "s"} granted.`,
+      };
+    case "FHIR_M2M_CREDENTIAL_REVOKED":
+      return { title: "Credential revoked", detail: "Access disabled for this credential." };
+    case "FHIR_M2M_CREDENTIAL_ROTATED":
+      return { title: "Credential rotated", detail: "Replacement machine credential created." };
+    case "FHIR_M2M_CLIENT_PROVISIONED":
+      return { title: "Machine client provisioned", detail: "Integration client and machine credential created." };
+    default:
+      break;
+  }
+
+  if (row.action === "ENCOUNTER_VIEW") return { title: "Encounter viewed", detail: "User accessed an encounter record." };
+  if (row.action === "PATIENT_VIEW") return { title: "Patient chart accessed", detail: "User viewed the patient chart." };
+  if (row.auditCategory === "access") return { title: "Access event recorded", detail: "A read or view operation was recorded." };
+  if (row.auditCategory === "clinical") return { title: "Clinical activity recorded", detail: "A clinical workflow action was recorded." };
+  if (row.auditCategory === "billing") return { title: "Billing activity recorded", detail: "A billing workflow action was recorded." };
+  if (row.auditCategory === "critical") return { title: "Critical audit event", detail: "A high-priority audit event was recorded." };
+  return { title: auditActionLabel((k) => k, row.action, row.entity, row.metadataSummary), detail: "Audit activity recorded." };
+}
+
+function badgeForCategory(category: string | undefined): { label: string; bg: string; border: string; text: string } {
+  switch (category) {
+    case "security":
+      return { label: "Security", bg: "#eff6ff", border: "#93c5fd", text: "#1d4ed8" };
+    case "access":
+      return { label: "Access", bg: "#ecfdf5", border: "#86efac", text: "#047857" };
+    case "clinical":
+      return { label: "Clinical", bg: "#f1f5f9", border: "#cbd5e1", text: "#475569" };
+    case "critical":
+      return { label: "Critical", bg: "#fef2f2", border: "#fca5a5", text: "#b91c1c" };
+    case "billing":
+      return { label: "Billing", bg: "#fffbeb", border: "#fcd34d", text: "#92400e" };
+    case "override":
+      return { label: "Override", bg: "#fff7ed", border: "#fdba74", text: "#9a3412" };
+    default:
+      return { label: "System", bg: "#f8fafc", border: "#cbd5e1", text: "#475569" };
+  }
+}
+
+function csvEscape(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  return `"${s.replaceAll('"', '""')}"`;
+}
+
+function paginationTokens(page: number, totalPages: number): Array<number | "ellipsis"> {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const wanted = new Set([1, totalPages, page - 2, page - 1, page, page + 1, page + 2]);
+  const pages = [...wanted].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const out: Array<number | "ellipsis"> = [];
+  pages.forEach((p, i) => {
+    if (i > 0 && p - pages[i - 1] > 1) out.push("ellipsis");
+    out.push(p);
+  });
+  return out;
+}
+
+const initialStats: AdminAuditEventsResponse["stats"] = {
+  totalCount: 0,
+  securityInteropCount: 0,
+  encounterLinkedCount: 0,
+  facilitySystemCount: 0,
+};
 
 export default function AdminAuditPage() {
   const { t, language } = useI18n();
@@ -112,86 +142,86 @@ export default function AdminAuditPage() {
   const [encounterId, setEncounterId] = useState("");
   const [preset, setPreset] = useState<AdminAuditPreset | "">("");
   const [items, setItems] = useState<AdminAuditEventRow[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [stats, setStats] = useState(initialStats);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadPage = useCallback(
-    async (cursor: string | undefined, append: boolean) => {
+    async (targetPage = page, targetPageSize = pageSize, presetOverride?: AdminAuditPreset | "") => {
       if (!facilityId) {
         setError(t("adminAudit.errorFacility"));
         return;
       }
       setLoading(true);
       setError(null);
+      const effectivePreset = presetOverride === undefined ? preset : presetOverride;
       const q: AdminAuditEventsQuery = {
         from: `${range.from}T00:00:00.000Z`,
         to: `${range.to}T23:59:59.999Z`,
-        limit: 50,
-        ...(preset ? { preset } : {}),
-        ...(!preset && action.trim() ? { action: action.trim() } : {}),
-        ...(!preset && entity.trim() ? { entity: entity.trim() } : {}),
+        limit: targetPageSize,
+        page: targetPage,
+        ...(effectivePreset ? { preset: effectivePreset } : {}),
+        ...(!effectivePreset && action.trim() ? { action: action.trim() } : {}),
+        ...(!effectivePreset && entity.trim() ? { entity: entity.trim() } : {}),
         ...(encounterId.trim() ? { encounterId: encounterId.trim() } : {}),
-        ...(cursor ? { cursor } : {}),
       };
       try {
         const res = await fetchAdminAuditEvents(facilityId, q);
-        setItems((prev) => (append ? [...prev, ...res.events] : res.events));
-        setNextCursor(res.nextCursor);
+        setItems(res.events);
+        setPage(res.pagination.page);
+        setPageSize(res.pagination.pageSize);
+        setTotalPages(res.pagination.totalPages);
+        setStats(res.stats);
       } catch (e: unknown) {
         const raw = e instanceof Error ? e.message : "";
         setError(normalizeUserFacingError(raw, language) || t("adminAudit.errorLoad"));
-        if (!append) setItems([]);
-        setNextCursor(null);
+        setItems([]);
+        setStats(initialStats);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     },
-    [facilityId, range.from, range.to, action, entity, encounterId, preset, language, t]
+    [facilityId, range.from, range.to, action, entity, encounterId, preset, page, pageSize, language, t]
   );
 
   useEffect(() => {
     if (!ready || !facilityId) return;
-    void loadPage(undefined, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- filter changes require « Actualiser »
+    void loadPage(1, 10, "");
+    // Initial load only; administrators explicitly refresh after editing filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, facilityId]);
 
-  const hasHighlight = (row: AdminAuditEventRow) => row.highlightTags.length > 0;
+  const shownStart = stats.totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const shownEnd = stats.totalCount === 0 ? 0 : Math.min((page - 1) * pageSize + items.length, stats.totalCount);
+  const pageTokens = useMemo(() => paginationTokens(page, totalPages), [page, totalPages]);
 
-  const grouped = useMemo(() => {
-    const buckets = new Map<string, AdminAuditEventRow[]>();
-    for (const cat of CATEGORY_ORDER) buckets.set(cat, []);
-    for (const row of items) {
-      const raw = row.auditCategory ?? "other";
-      const cat = buckets.has(raw) ? raw : "other";
-      buckets.get(cat)!.push(row);
-    }
-    return CATEGORY_ORDER.map((cat) => ({ cat, rows: buckets.get(cat) ?? [] })).filter((g) => g.rows.length > 0);
-  }, [items]);
-
-  const metrics = useMemo(() => {
-    const security = items.filter((x) => x.auditCategory === "security").length;
-    const encounterLinked = items.filter((x) => Boolean(x.encounterId)).length;
-    return {
-      total: items.length,
-      security,
-      encounterLinked,
-      nonEncounter: items.length - encounterLinked,
-    };
-  }, [items]);
+  const applyPreset = (value: AdminAuditPreset | "") => {
+    setPreset(value);
+    setAction("");
+    setEntity("");
+    setPage(1);
+    void loadPage(1, pageSize, value);
+  };
 
   const exportCsv = () => {
-    const header = ["Time", "Actor", "Action", "Entity", "Entity ID", "Context", "Summary"];
+    const header = ["Time", "Actor", "Action", "Category", "Entity", "Entity ID", "Context", "Summary", "Details"];
     const rows = items.map((row) => {
       const context = contextForRow(row);
+      const summary = operationalSummary(row);
       return [
         row.createdAt,
         row.actor.displayName,
         auditActionLabel(t, row.action, row.entity, row.metadataSummary),
+        badgeForCategory(row.auditCategory).label,
         row.entity,
         row.entityId ?? "",
-        `${context.title}: ${context.value}`,
-        formatSummary(t, row.metadataSummary),
+        `${context.title}: ${row.encounterId ?? context.detail}`,
+        `${summary.title}: ${summary.detail}`,
+        Object.entries(row.metadataSummary).map(([k, v]) => `${k}=${String(v)}`).join("; "),
       ];
     });
     const csv = [header, ...rows].map((r) => r.map(csvEscape).join(",")).join("\n");
@@ -199,211 +229,139 @@ export default function AdminAuditPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `medora-audit-${range.from}-${range.to}.csv`;
+    a.download = `medora-audit-${range.from}-${range.to}-page-${page}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div style={{ padding: 24, maxWidth: 1500 }}>
-      <p style={{ marginTop: 0 }}>
-        <Link href="/app/admin" style={{ color: "#1a1a1a" }}>
-          {t("adminAudit.backAdmin")}
-        </Link>
-        {" · "}
-        <Link href="/app/reports" style={{ color: "#1a1a1a" }}>
-          {t("adminAudit.linkOpsReports")}
-        </Link>
-      </p>
-      <h1 style={{ marginTop: 8 }}>{t("adminAudit.title")}</h1>
-      <p style={{ color: "#555", maxWidth: 860 }}>
-        {t("adminAudit.intro")} Non-encounter events are explicitly labeled as facility, integration, or system context.
-      </p>
+  const cardStyle = {
+    border: "1px solid #dbe5f1",
+    borderRadius: 10,
+    background: "#fff",
+    padding: "14px 16px",
+    minHeight: 76,
+    display: "flex",
+    gap: 14,
+    alignItems: "center",
+  } as const;
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, margin: "16px 0" }}>
-        {[
-          ["Events loaded", metrics.total],
-          ["Security / interoperability", metrics.security],
-          ["Encounter-linked", metrics.encounterLinked],
-          ["Facility / system level", metrics.nonEncounter],
-        ].map(([label, value]) => (
-          <div key={String(label)} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, background: "#fff" }}>
-            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{value}</div>
-          </div>
-        ))}
+  return (
+    <div style={{ padding: "18px 24px 28px", maxWidth: 1650, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            <Link href="/app/admin" style={{ color: "#334155" }}>{t("adminAudit.backAdmin")}</Link>
+            {" › "}
+            <Link href="/app/reports" style={{ color: "#334155" }}>{t("adminAudit.linkOpsReports")}</Link>
+          </p>
+          <h1 style={{ margin: "8px 0 2px", fontSize: 30, lineHeight: 1.1 }}>{t("adminAudit.title")}</h1>
+          <p style={{ color: "#475569", margin: "6px 0 0", maxWidth: 900, fontSize: 13 }}>
+            {t("adminAudit.intro")} Non-encounter events are explicitly labeled as facility, integration, or system context.
+          </p>
+        </div>
+      </div>
+
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, margin: "16px 0 18px" }}>
+        <div style={cardStyle}>
+          <div style={{ width: 44, height: 44, borderRadius: 9, background: "#eff6ff", display: "grid", placeItems: "center", color: "#2563eb", fontSize: 22 }}>▤</div>
+          <div><div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Total matching events</div><div style={{ fontSize: 25, fontWeight: 800 }}>{stats.totalCount}</div><div style={{ fontSize: 11, color: "#64748b" }}>{items.length} currently shown</div></div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ width: 44, height: 44, borderRadius: 9, background: "#eff6ff", display: "grid", placeItems: "center", color: "#2563eb", fontSize: 22 }}>◇</div>
+          <div><div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Security & interoperability</div><div style={{ fontSize: 25, fontWeight: 800 }}>{stats.securityInteropCount}</div><div style={{ fontSize: 11, color: "#64748b" }}>FHIR, integrations, API access</div></div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ width: 44, height: 44, borderRadius: 9, background: "#eff6ff", display: "grid", placeItems: "center", color: "#2563eb", fontSize: 22 }}>◎</div>
+          <div><div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Encounter-linked events</div><div style={{ fontSize: 25, fontWeight: 800 }}>{stats.encounterLinkedCount}</div><div style={{ fontSize: 11, color: "#64748b" }}>Patient, clinical, encounter actions</div></div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ width: 44, height: 44, borderRadius: 9, background: "#eff6ff", display: "grid", placeItems: "center", color: "#2563eb", fontSize: 22 }}>▥</div>
+          <div><div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Facility / system level</div><div style={{ fontSize: 25, fontWeight: 800 }}>{stats.facilitySystemCount}</div><div style={{ fontSize: 11, color: "#64748b" }}>Administration, configuration, system</div></div>
+        </div>
       </section>
 
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 }}>
-          {t("adminAudit.presetHeading")}
-        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 }}>{t("adminAudit.presetHeading")}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setPreset("")}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 999,
-              border: preset === "" ? "2px solid #0f172a" : "1px solid #cbd5e1",
-              background: preset === "" ? "#f1f5f9" : "#fff",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            {t("adminAudit.presetAll")}
-          </button>
+          <button type="button" onClick={() => applyPreset("")} style={{ padding: "6px 13px", borderRadius: 999, border: preset === "" ? "2px solid #0f172a" : "1px solid #cbd5e1", background: preset === "" ? "#0f172a" : "#fff", color: preset === "" ? "#fff" : "#0f172a", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>{t("adminAudit.presetAll")}</button>
           {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => {
-                setPreset(p);
-                setAction("");
-                setEntity("");
-              }}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 999,
-                border: preset === p ? "2px solid #0f172a" : "1px solid #cbd5e1",
-                background: preset === p ? "#f1f5f9" : "#fff",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {presetLabel(t, p)}
-            </button>
+            <button key={p} type="button" onClick={() => applyPreset(p)} style={{ padding: "6px 13px", borderRadius: 999, border: preset === p ? "2px solid #0f172a" : "1px solid #cbd5e1", background: preset === p ? "#f1f5f9" : "#fff", color: "#0f172a", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>{presetLabel(t, p)}</button>
           ))}
         </div>
-        {preset ? <p style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>{t("adminAudit.presetHint")}</p> : null}
       </div>
 
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: 12,
-          marginBottom: 16,
-          alignItems: "end",
-        }}
-      >
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-          <span>{t("adminAudit.filterFrom")}</span>
-          <input type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-          <span>{t("adminAudit.filterTo")}</span>
-          <input type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, opacity: preset ? 0.45 : 1 }}>
-          <span>{t("adminAudit.filterAction")}</span>
-          <input value={action} onChange={(e) => setAction(e.target.value)} disabled={Boolean(preset)} placeholder={t("adminAudit.placeholderAction")} list="admin-audit-actions" style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-          <datalist id="admin-audit-actions">
-            <option value="ENCOUNTER_CLOSE" /><option value="ENCOUNTER_VIEW" /><option value="ORDER_VIEW" /><option value="ORDER_CREATE" /><option value="TRIAGE_SAVE" /><option value="VIEW" /><option value="CREATE" /><option value="UPDATE" /><option value="DELETE" /><option value="ENCOUNTER_UPDATE" /><option value="LOGIN" /><option value="LOGOUT" />
-          </datalist>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, opacity: preset ? 0.45 : 1 }}>
-          <span>{t("adminAudit.filterEntity")}</span>
-          <input value={entity} onChange={(e) => setEntity(e.target.value)} disabled={Boolean(preset)} placeholder={t("adminAudit.placeholderEntity")} list="admin-audit-entities" style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }} />
-          <datalist id="admin-audit-entities">
-            <option value="FHIR_INTEGRATION_CLIENT" /><option value="FHIR_INTEGRATION_ACCESS" /><option value="EXTERNAL_BILLING_EXPORT" /><option value="EXTERNAL_BILLING_AUTO_EXPORT" /><option value="ED_REPORT_EXPORT" /><option value="ENCOUNTER" /><option value="ORDER" /><option value="TRIAGE" /><option value="DIAGNOSIS" /><option value="MEDICATION_ADMINISTRATION" />
-          </datalist>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
-          <span>{t("adminAudit.filterEncounterId")}</span>
-          <input value={encounterId} onChange={(e) => setEncounterId(e.target.value)} placeholder="uuid" style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc", fontFamily: "monospace", fontSize: 12 }} />
-        </label>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" disabled={loading || !facilityId} onClick={() => void loadPage(undefined, false)} style={{ padding: "10px 16px", borderRadius: 6, border: "none", background: "#1a1a1a", color: "#fff", fontWeight: 600, cursor: loading ? "wait" : "pointer" }}>
-            {t("adminAudit.apply")}
-          </button>
-          <button type="button" disabled={items.length === 0} onClick={exportCsv} style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid #334155", background: "#fff", color: "#0f172a", fontWeight: 600, cursor: items.length === 0 ? "not-allowed" : "pointer" }}>
-            Export evidence CSV
-          </button>
-        </div>
+      <section style={{ display: "grid", gridTemplateColumns: "180px 180px minmax(180px, 1fr) minmax(180px, 1fr) minmax(240px, 1.2fr) auto auto", gap: 10, alignItems: "end", marginBottom: 14 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12 }}><span>{t("adminAudit.filterFrom")}</span><input type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} style={{ padding: 9, borderRadius: 6, border: "1px solid #cbd5e1" }} /></label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12 }}><span>{t("adminAudit.filterTo")}</span><input type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} style={{ padding: 9, borderRadius: 6, border: "1px solid #cbd5e1" }} /></label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, opacity: preset ? 0.5 : 1 }}><span>{t("adminAudit.filterAction")}</span><input value={action} onChange={(e) => setAction(e.target.value)} disabled={Boolean(preset)} placeholder="e.g. TOKEN_ISSUED" style={{ padding: 9, borderRadius: 6, border: "1px solid #cbd5e1" }} /></label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, opacity: preset ? 0.5 : 1 }}><span>{t("adminAudit.filterEntity")}</span><input value={entity} onChange={(e) => setEntity(e.target.value)} disabled={Boolean(preset)} placeholder="e.g. FHIR_INTEGRATION_CLIENT" style={{ padding: 9, borderRadius: 6, border: "1px solid #cbd5e1" }} /></label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12 }}><span>{t("adminAudit.filterEncounterId")}</span><input value={encounterId} onChange={(e) => setEncounterId(e.target.value)} placeholder="uuid (optional)" style={{ padding: 9, borderRadius: 6, border: "1px solid #cbd5e1", fontFamily: "monospace", fontSize: 11 }} /></label>
+        <button type="button" disabled={loading || !facilityId} onClick={() => void loadPage(1, pageSize)} style={{ height: 36, padding: "0 18px", borderRadius: 5, border: "none", background: "#0f172a", color: "#fff", fontWeight: 700, cursor: loading ? "wait" : "pointer" }}>Refresh</button>
+        <button type="button" disabled={items.length === 0} onClick={exportCsv} style={{ height: 36, padding: "0 16px", borderRadius: 5, border: "1px solid #64748b", background: "#fff", color: "#0f172a", fontWeight: 700, cursor: items.length ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>⇩ Export evidence CSV</button>
       </section>
 
-      {error ? <p style={{ color: "#b71c1c" }}>{error}</p> : null}
+      {error ? <p style={{ color: "#b91c1c", padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>{error}</p> : null}
 
-      <div style={{ overflowX: "auto", border: "1px solid #e0e0e0", borderRadius: 8 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <div id="audit-events" style={{ overflowX: "auto", border: "1px solid #dbe5f1", borderRadius: 8, background: "#fff" }}>
+        <table style={{ width: "100%", minWidth: 1180, borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ background: "#fafafa", borderBottom: "1px solid #e0e0e0", textAlign: "left" }}>
-              <th style={{ padding: 10, whiteSpace: "nowrap" }}>{t("adminAudit.colTime")}</th>
-              <th style={{ padding: 10 }}>{t("adminAudit.colActor")}</th>
-              <th style={{ padding: 10 }}>{t("adminAudit.colAction")}</th>
-              <th style={{ padding: 10 }}>{t("adminAudit.colEntity")}</th>
-              <th style={{ padding: 10 }}>Context</th>
-              <th style={{ padding: 10 }}>{t("adminAudit.colSummary")}</th>
+            <tr style={{ background: "#f8fafc", borderBottom: "1px solid #dbe5f1", textAlign: "left" }}>
+              <th style={{ padding: "10px 12px", width: 145 }}>Time ↓</th>
+              <th style={{ padding: "10px 12px", width: 170 }}>Actor</th>
+              <th style={{ padding: "10px 12px", width: 205 }}>Action</th>
+              <th style={{ padding: "10px 12px", width: 220 }}>Entity</th>
+              <th style={{ padding: "10px 12px", width: 190 }}>Context</th>
+              <th style={{ padding: "10px 12px" }}>Summary</th>
+              <th style={{ padding: "10px 12px", width: 125 }}>Details</th>
             </tr>
           </thead>
           <tbody>
-            {grouped.map(({ cat, rows }) => (
-              <Fragment key={cat}>
-                <tr style={{ background: cat === "security" ? "#f0f9ff" : "#f8fafc" }}>
-                  <td colSpan={6} style={{ padding: "8px 10px", fontWeight: 800, fontSize: 12, color: "#0f172a" }}>
-                    {cat === "security" ? "Security & interoperability" : auditCategoryLabel(t, cat)}
+            {items.map((row) => {
+              const badge = badgeForCategory(row.auditCategory);
+              const context = contextForRow(row);
+              const summary = operationalSummary(row);
+              return (
+                <tr key={row.id} style={{ borderBottom: "1px solid #e5e7eb", verticalAlign: "top" }}>
+                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#334155" }}>{new Date(row.createdAt).toLocaleString(language === "en" ? "en-CA" : "fr-CA", { dateStyle: "short", timeStyle: "short" })}</td>
+                  <td style={{ padding: "9px 12px" }}><div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><span style={{ fontSize: 15, color: "#334155" }}>{row.actor.displayName === "System" ? "▣" : "⚙"}</span><div><div style={{ fontWeight: 600 }}>{row.actor.displayName || "—"}</div>{row.actor.roleHint ? <div style={{ fontSize: 10, color: "#64748b" }}>{row.actor.roleHint}</div> : null}</div></div></td>
+                  <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 700 }}>{auditActionLabel(t, row.action, row.entity, row.metadataSummary)}</div><span style={{ display: "inline-block", marginTop: 4, padding: "1px 7px", borderRadius: 999, border: `1px solid ${badge.border}`, background: badge.bg, color: badge.text, fontSize: 10, fontWeight: 700 }}>{badge.label}</span></td>
+                  <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 700 }}>{auditEntityLabel(t, row.entity)}</div><div style={{ fontSize: 9, color: "#64748b", fontFamily: "monospace" }}>{row.entity}</div>{row.entityId ? <div style={{ fontSize: 9, color: "#64748b", fontFamily: "monospace", wordBreak: "break-all", marginTop: 2 }}>{row.entityId}</div> : null}</td>
+                  <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 700 }}>{context.title}</div><div style={{ fontSize: 10, color: "#64748b" }}>{row.encounterId ?? context.detail}</div></td>
+                  <td style={{ padding: "9px 12px" }}><div style={{ fontWeight: 700 }}>{summary.title}</div><div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{summary.detail}</div></td>
+                  <td style={{ padding: "9px 12px" }}>
+                    <details>
+                      <summary style={{ cursor: "pointer", listStyle: "none", border: "1px solid #94a3b8", borderRadius: 5, padding: "5px 8px", fontWeight: 700, textAlign: "center", whiteSpace: "nowrap" }}>▶ View details</summary>
+                      <div style={{ marginTop: 7, padding: 8, minWidth: 250, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 5, fontSize: 10, lineHeight: 1.55 }}>
+                        <div><strong>Audit ID:</strong> <span style={{ fontFamily: "monospace" }}>{row.id}</span></div>
+                        <div><strong>Raw action:</strong> <span style={{ fontFamily: "monospace" }}>{row.action}</span></div>
+                        <div><strong>Raw entity:</strong> <span style={{ fontFamily: "monospace" }}>{row.entity}</span></div>
+                        {row.encounterId ? <div><strong>Encounter:</strong> <span style={{ fontFamily: "monospace" }}>{row.encounterId}</span></div> : null}
+                        {Object.entries(row.metadataSummary).map(([key, value]) => <div key={key}><strong>{key}:</strong> <span style={{ fontFamily: "monospace", wordBreak: "break-all" }}>{String(value)}</span></div>)}
+                      </div>
+                    </details>
                   </td>
                 </tr>
-                {rows.map((row) => {
-                  const context = contextForRow(row);
-                  return (
-                    <tr key={row.id} style={{ borderBottom: "1px solid #eee", background: hasHighlight(row) ? "rgba(153,27,27,0.06)" : undefined }}>
-                      <td style={{ padding: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
-                        {new Date(row.createdAt).toLocaleString(language === "en" ? "en-CA" : "fr-CA", { dateStyle: "short", timeStyle: "short" })}
-                      </td>
-                      <td style={{ padding: 10, verticalAlign: "top" }}>
-                        <div>{row.actor.displayName || "—"}</div>
-                        {row.actor.roleHint ? <div style={{ fontSize: 11, color: "#666" }}>{row.actor.roleHint}</div> : null}
-                      </td>
-                      <td style={{ padding: 10, verticalAlign: "top" }}>
-                        <div style={{ fontWeight: 600 }}>{auditActionLabel(t, row.action, row.entity, row.metadataSummary)}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.action}</div>
-                        {auditActorContextBlock(t, row.metadataSummary)}
-                      </td>
-                      <td style={{ padding: 10, verticalAlign: "top" }}>
-                        <div style={{ fontWeight: 600 }}>{auditEntityLabel(t, row.entity)}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{row.entity}</div>
-                        {row.entityId ? <div style={{ fontSize: 10, color: "#64748b", wordBreak: "break-all", fontFamily: "monospace" }}>{row.entityId}</div> : null}
-                      </td>
-                      <td style={{ padding: 10, verticalAlign: "top", minWidth: 180 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#334155" }}>{context.title}</div>
-                        <div style={{ marginTop: 3, fontSize: 11, color: "#475569", fontFamily: row.encounterId ? "monospace" : undefined, wordBreak: "break-all" }}>{context.value}</div>
-                      </td>
-                      <td style={{ padding: 10, verticalAlign: "top", color: "#333", maxWidth: 480 }}>
-                        {hasHighlight(row) ? <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: "#7f1d1d" }}>{row.highlightTags.map((tag) => highlightTagLabel(t, tag)).join(" · ")}</div> : null}
-                        <div style={{ wordBreak: "break-word" }}>{formatSummary(t, row.metadataSummary)}</div>
-                        <details style={{ marginTop: 6 }}>
-                          <summary style={{ cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#334155" }}>Evidence details</summary>
-                          <div style={{ marginTop: 6, fontSize: 11, lineHeight: 1.5 }}>
-                            <div><strong>Audit ID:</strong> <span style={{ fontFamily: "monospace" }}>{row.id}</span></div>
-                            <div><strong>Category:</strong> {row.auditCategory ?? "other"}</div>
-                            <div><strong>Raw action:</strong> <span style={{ fontFamily: "monospace" }}>{row.action}</span></div>
-                            <div><strong>Raw entity:</strong> <span style={{ fontFamily: "monospace" }}>{row.entity}</span></div>
-                          </div>
-                        </details>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </Fragment>
-            ))}
-            {items.length === 0 && !loading ? (
-              <tr><td colSpan={6} style={{ padding: 16, color: "#666" }}>{t("adminAudit.empty")}</td></tr>
-            ) : null}
+              );
+            })}
+            {items.length === 0 && !loading ? <tr><td colSpan={7} style={{ padding: 22, color: "#64748b", textAlign: "center" }}>{t("adminAudit.empty")}</td></tr> : null}
+            {loading ? <tr><td colSpan={7} style={{ padding: 22, color: "#64748b", textAlign: "center" }}>{t("adminAudit.loading")}</td></tr> : null}
           </tbody>
         </table>
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
-        {nextCursor ? (
-          <button type="button" disabled={loading} onClick={() => void loadPage(nextCursor, true)} style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #1a1a1a", background: "#fff", cursor: loading ? "wait" : "pointer" }}>
-            {t("adminAudit.loadMore")}
-          </button>
-        ) : null}
-        {loading ? <span style={{ color: "#666", fontSize: 13 }}>{t("adminAudit.loading")}</span> : null}
+      <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#475569" }}>
+        <div>Showing {shownStart}–{shownEnd} of {stats.totalCount} events</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span>Events per page:</span>
+            <select value={pageSize} onChange={(e) => { const next = Number(e.target.value); setPageSize(next); setPage(1); void loadPage(1, next); }} style={{ padding: "6px 28px 6px 9px", border: "1px solid #94a3b8", borderRadius: 5, background: "#fff", fontWeight: 700 }}>
+              {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+          <button type="button" disabled={page <= 1 || loading} onClick={() => void loadPage(page - 1, pageSize)} style={{ width: 32, height: 32, borderRadius: 5, border: "1px solid #cbd5e1", background: "#fff", cursor: page <= 1 ? "not-allowed" : "pointer" }}>‹</button>
+          {pageTokens.map((token, index) => token === "ellipsis" ? <span key={`e-${index}`} style={{ padding: "0 2px" }}>…</span> : <button key={token} type="button" disabled={loading} onClick={() => void loadPage(token, pageSize)} style={{ minWidth: 32, height: 32, padding: "0 8px", borderRadius: 5, border: token === page ? "1px solid #2563eb" : "1px solid #cbd5e1", background: token === page ? "#2563eb" : "#fff", color: token === page ? "#fff" : "#334155", fontWeight: token === page ? 800 : 600, cursor: "pointer" }}>{token}</button>)}
+          <button type="button" disabled={page >= totalPages || loading} onClick={() => void loadPage(page + 1, pageSize)} style={{ width: 32, height: 32, borderRadius: 5, border: "1px solid #cbd5e1", background: "#fff", cursor: page >= totalPages ? "not-allowed" : "pointer" }}>›</button>
+        </div>
       </div>
     </div>
   );
