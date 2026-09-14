@@ -5,6 +5,8 @@ on:
     paths:
       - "apps/api/src/fhir/**"
       - "apps/api/src/admin/admin-integrations.controller.ts"
+      - "apps/api/src/admin/admin-integrations.service.ts"
+      - "apps/api/src/admin/admin-integrations.service.spec.ts"
       - "apps/web/app/app/admin/integrations/**"
       - "apps/web/src/lib/adminIntegrationsApi.ts"
       - "apps/web/src/lib/adminIntegrationsFoundation.test.ts"
@@ -15,6 +17,8 @@ on:
     paths:
       - "apps/api/src/fhir/**"
       - "apps/api/src/admin/admin-integrations.controller.ts"
+      - "apps/api/src/admin/admin-integrations.service.ts"
+      - "apps/api/src/admin/admin-integrations.service.spec.ts"
       - "apps/web/app/app/admin/integrations/**"
       - "apps/web/src/lib/adminIntegrationsApi.ts"
       - "apps/web/src/lib/adminIntegrationsFoundation.test.ts"
@@ -72,6 +76,7 @@ jobs:
           fhir-clinical-reconciliation.spec.ts
           fhir-machine-security.spec.ts
           fhir-m2m-lifecycle.spec.ts
+          admin-integrations.service.spec.ts
           --runInBand
       - name: Integration manager lifecycle UI regression
         working-directory: apps/web
