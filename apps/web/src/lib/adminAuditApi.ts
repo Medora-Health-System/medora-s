@@ -48,6 +48,7 @@ async function adminApiFetch(
 
 export type AdminAuditPreset =
   | "critical_events"
+  | "security_interop"
   | "clinical_actions"
   | "billing_exports"
   | "access_views"
