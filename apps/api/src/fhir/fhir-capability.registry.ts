@@ -6,7 +6,7 @@ export const FHIR_MEDIA_TYPES = ["application/fhir+json", "application/json"] as
 export type FhirInteraction = "read" | "search-type" | "create" | "update" | "patch" | "delete" | "history-instance" | "history-type";
 
 export type FhirCapability = {
-  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "AllergyIntolerance" | "MedicationRequest" | "MedicationAdministration" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
+  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "AllergyIntolerance" | "MedicationRequest" | "MedicationAdministration" | "DocumentReference" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
   interaction: FhirInteraction;
   searchParameters: readonly string[];
   profiles: readonly string[];
@@ -21,7 +21,6 @@ export type FhirCapability = {
 const ADMIN_CLINICAL_ROLES = [RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN] as const;
 const REGISTRATION_READ_ROLES = [...ADMIN_CLINICAL_ROLES, RoleCode.FRONT_DESK] as const;
 
-/** One authoritative contract for route enforcement, metadata, and admin permission choices. */
 export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
   { resourceType: "Patient", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: REGISTRATION_READ_ROLES, futureM2mScope: "patient.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-001", "FHIR-010"] },
   { resourceType: "Patient", interaction: "search-type", searchParameters: ["_id", "identifier", "family", "given", "name", "birthdate", "gender", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: REGISTRATION_READ_ROLES, futureM2mScope: "patient.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-021", "FHIR-022"] },
@@ -41,6 +40,8 @@ export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
   { resourceType: "MedicationRequest", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "status", "intent", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "medicationRequest.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["P2B-MedicationRequest-SEARCH"] },
   { resourceType: "MedicationAdministration", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "medicationAdministration.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["P2B-MedicationAdministration-READ"] },
   { resourceType: "MedicationAdministration", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "request", "status", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "medicationAdministration.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["P2B-MedicationAdministration-SEARCH"] },
+  { resourceType: "DocumentReference", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "documentReference.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["P2C-DocumentReference-READ"] },
+  { resourceType: "DocumentReference", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "type", "category", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "documentReference.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["P2C-DocumentReference-SEARCH"] },
   { resourceType: "ServiceRequest", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "serviceRequest.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-ServiceRequest-READ"] },
   { resourceType: "ServiceRequest", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "code", "status", "authored", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "serviceRequest.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-ServiceRequest-SEARCH"] },
   { resourceType: "DiagnosticReport", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "diagnosticReport.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-DiagnosticReport-READ"] },
