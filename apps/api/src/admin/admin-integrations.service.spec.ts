@@ -10,6 +10,7 @@ describe("AdminIntegrationsService security contract", () => {
   const facilityId = "00000000-0000-0000-0000-000000000001";
   const authorizedUser = { id: "u", isActive: true, canCreateFacilities: true, userRoles: [{ id: "r" }] };
   const tx: any = {
+    $queryRaw: jest.fn(),
     $executeRaw: jest.fn(),
     integration: { create: jest.fn(), update: jest.fn() },
     integrationFacilityAuthorization: { deleteMany: jest.fn(), createMany: jest.fn() },
@@ -31,6 +32,7 @@ describe("AdminIntegrationsService security contract", () => {
     prisma.facility.findMany.mockResolvedValue([]);
     prisma.integration.findMany.mockResolvedValue([]);
     prisma.$transaction.mockImplementation(async (callback: (client: any) => Promise<unknown>) => callback(tx));
+    tx.$queryRaw.mockResolvedValue([]);
     tx.$executeRaw.mockResolvedValue(0);
     audit.log.mockResolvedValue(undefined);
   });
@@ -123,7 +125,7 @@ describe("AdminIntegrationsService security contract", () => {
     for (const call of audit.log.mock.calls) expect(call[2]).toEqual(expect.objectContaining({ tx, critical: true }));
   });
 
-  test("permission removal retires stored machine-client scopes before the permission set is replaced", async () => {
+  test("permission removal retires stored machine-client scopes under the integration write lock", async () => {
     prisma.integration.findUnique.mockResolvedValueOnce({
       id: "integration-1",
       protocol: "FHIR_R4",
@@ -142,6 +144,9 @@ describe("AdminIntegrationsService security contract", () => {
 
     await service.update("u", "integration-1", { permissionCodes: ["patient.read"] });
 
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    const lockSql = tx.$queryRaw.mock.calls[0]?.[0] as { strings?: readonly string[] };
+    expect(lockSql.strings?.join(" ")).toContain("FOR UPDATE");
     expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     const sql = tx.$executeRaw.mock.calls[0]?.[0] as { values?: unknown[] };
     expect(sql.values).toEqual(["integration-1", "condition.read"]);
@@ -168,6 +173,7 @@ describe("AdminIntegrationsService security contract", () => {
 
     await service.update("u", "integration-1", { permissionCodes: ["patient.read", "condition.read"] });
 
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
     expect(tx.$executeRaw).not.toHaveBeenCalled();
   });
 
