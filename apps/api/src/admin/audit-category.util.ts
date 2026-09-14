@@ -1,10 +1,14 @@
 import { AuditAction } from "@prisma/client";
 
-export type AuditUiCategory = "critical" | "clinical" | "billing" | "access" | "override" | "other";
+export type AuditUiCategory = "critical" | "security" | "clinical" | "billing" | "access" | "override" | "other";
 
 const BILLING_EXPORT_ENTITIES = new Set(["EXTERNAL_BILLING_EXPORT", "EXTERNAL_BILLING_AUTO_EXPORT"]);
+const SECURITY_INTEROP_ENTITIES = new Set(["FHIR_INTEGRATION_CLIENT", "FHIR_INTEGRATION_ACCESS"]);
 
 export function classifyAuditUiCategory(action: AuditAction, entityType: string): AuditUiCategory {
+  if (SECURITY_INTEROP_ENTITIES.has(entityType)) {
+    return "security";
+  }
   if (entityType === "ED_REPORT_EXPORT") {
     return "clinical";
   }
@@ -68,7 +72,13 @@ export function classifyAuditUiCategory(action: AuditAction, entityType: string)
   return "other";
 }
 
-export type AuditPreset = "critical_events" | "clinical_actions" | "billing_exports" | "access_views" | "overrides";
+export type AuditPreset =
+  | "critical_events"
+  | "security_interop"
+  | "clinical_actions"
+  | "billing_exports"
+  | "access_views"
+  | "overrides";
 
 export function auditPresetWhere(preset: AuditPreset): { OR: Array<Record<string, unknown>> } {
   switch (preset) {
@@ -79,6 +89,13 @@ export function auditPresetWhere(preset: AuditPreset): { OR: Array<Record<string
           { action: AuditAction.BREAK_GLASS_START },
           { action: AuditAction.BREAK_GLASS_ACCESS },
           { action: AuditAction.BREAK_GLASS_END },
+        ],
+      };
+    case "security_interop":
+      return {
+        OR: [
+          { entityType: "FHIR_INTEGRATION_CLIENT" },
+          { entityType: "FHIR_INTEGRATION_ACCESS" },
         ],
       };
     case "clinical_actions":
