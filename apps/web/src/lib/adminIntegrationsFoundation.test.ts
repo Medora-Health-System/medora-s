@@ -67,7 +67,7 @@ describe("Administration integrations foundation", () => {
     expect(provisioningSource).toContain("Credentials / Keys");
     expect(provisioningSource).toContain("Revoke Key");
     expect(provisioningSource).toContain("Sync Client Scopes");
-    expect(provisioningSource).toContain("scope update available");
+    expect(provisioningSource).toContain("Scope update available");
     expect(provisioningSource).toContain("fetchFhirCredentials");
     expect(provisioningSource).toContain("revokeFhirCredential");
     expect(provisioningSource).toContain("updateFhirClientScopes");
