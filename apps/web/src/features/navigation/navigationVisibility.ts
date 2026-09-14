@@ -1,5 +1,6 @@
 import {
   filterHrefListForFreestandingErRnProviderSidebar,
+  isHaitiPublicHealthJurisdiction,
   isNavigationAreaVisible,
   resolveCapabilityAwareNavigationAreas,
   resolveFacilityModuleCapabilitiesD4c1,
@@ -49,6 +50,24 @@ export function buildNavigationProfileFromSession(input: {
 }
 
 /**
+ * The generic facility Public Health section belongs to Haiti operations. Admins keep
+ * access for oversight regardless of the active facility country. MSPP national groups
+ * use separate sidebar groups and are intentionally unaffected by this filter.
+ */
+export function isFacilityPublicHealthSidebarVisible(
+  profile: CapabilityNavigationProfileInput
+): boolean {
+  const roleSet = new Set(
+    (profile.roleCodes ?? []).map((code) => String(code ?? "").trim().toUpperCase())
+  );
+  return (
+    roleSet.has("ADMIN") ||
+    roleSet.has("MEDORA_SUPER_ADMIN") ||
+    isHaitiPublicHealthJurisdiction(profile.facilityCountry)
+  );
+}
+
+/**
  * MEDUI.D4C.2A — filter sidebar by facility capabilities ∩ role areas.
  * Uses `resolveFacilityNavigation` (via capability resolver); Admin cannot restore absent care settings.
  */
@@ -79,8 +98,11 @@ export function filterSidebarNavItemsByNavigationAreas(
   profile: CapabilityNavigationProfileInput
 ): SidebarNavItem[] {
   const visibleAreas = resolveCapabilityAwareNavigationAreas(profile);
-  const areaFiltered = items.filter((item) =>
-    isNavigationAreaVisible(visibleAreas, item.navAreas)
+  const publicHealthSidebarVisible = isFacilityPublicHealthSidebarVisible(profile);
+  const areaFiltered = items.filter(
+    (item) =>
+      isNavigationAreaVisible(visibleAreas, item.navAreas) &&
+      (item.group !== "sante_publique" || publicHealthSidebarVisible)
   );
   const freestandingFiltered = filterHrefListForFreestandingErRnProviderSidebar(
     areaFiltered,
