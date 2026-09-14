@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SIDEBAR_NAV_ITEMS } from "@/components/app-shell/sidebarNavConfig";
-import { filterSidebarNavItemsForSession } from "@/features/navigation/navigationVisibility";
+import {
+  filterSidebarNavItemsByFacilityJurisdiction,
+  filterSidebarNavItemsForSession,
+} from "@/features/navigation/navigationVisibility";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 
 const featureDir = __dirname;
@@ -51,6 +54,25 @@ describe("Clinic Care navigation cleanup", () => {
     expect(hrefsFor(["PROVIDER"], "HT").some((href) => href.startsWith("/app/public-health"))).toBe(true);
     expect(hrefsFor(["ADMIN"], "US").some((href) => href.startsWith("/app/public-health"))).toBe(true);
     expect(hrefsFor(["ADMIN"], "DO").some((href) => href.startsWith("/app/public-health"))).toBe(true);
+  });
+
+  it("applies facility Public Health jurisdiction filtering even when national MSPP navigation is present", () => {
+    const mixedRoleItems = SIDEBAR_NAV_ITEMS.filter((item) =>
+      item.roles.some((role) => ["RN", "MSPP_PUBLIC_HEALTH"].includes(role))
+    );
+    const filtered = filterSidebarNavItemsByFacilityJurisdiction(mixedRoleItems, {
+      roleCodes: ["RN", "MSPP_PUBLIC_HEALTH"],
+      facilityType: "CLINIC",
+      facilityCountry: "US",
+    });
+    expect(filtered.some((item) => item.group === "sante_publique")).toBe(false);
+    expect(filtered.some((item) => item.group.startsWith("mspp_"))).toBe(true);
+
+    const layout = readFileSync(join(webRoot, "app/app/layout.tsx"), "utf8");
+    expect(layout).toContain("filterSidebarNavItemsByFacilityJurisdiction(navItems");
+    expect(layout.indexOf("filterSidebarNavItemsByFacilityJurisdiction(navItems")).toBeLessThan(
+      layout.indexOf("const hasNationalMsppRoles")
+    );
   });
 
   it("keeps Administration hidden and route-blocked for non-admin staff", () => {
