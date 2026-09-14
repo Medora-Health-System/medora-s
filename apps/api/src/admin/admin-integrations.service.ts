@@ -129,6 +129,23 @@ export class AdminIntegrationsService {
           await tx.integrationFacilityAuthorization.createMany({ data: input.facilityIds.map((facilityId: string) => ({ integrationId: id, facilityId, authorizedById: userId })) });
         }
         if (input.permissionCodes) {
+          await tx.$queryRaw(Prisma.sql`
+            SELECT "id"
+            FROM "Integration"
+            WHERE "id" = ${id}
+            FOR UPDATE
+          `);
+          const requestedPermissions = new Set<string>(input.permissionCodes);
+          const removedPermissions = [...previousPermissions].filter((capabilityCode) => !requestedPermissions.has(capabilityCode));
+          if (removedPermissions.length) {
+            await tx.$executeRaw(Prisma.sql`
+              DELETE FROM "interop"."IntegrationClientScope" scope
+              USING "interop"."IntegrationClient" client
+              WHERE scope."clientId" = client."id"
+                AND client."integrationId" = ${id}
+                AND scope."capabilityCode" IN (${Prisma.join(removedPermissions)})
+            `);
+          }
           await tx.integrationPermission.deleteMany({ where: { integrationId: id } });
           await tx.integrationPermission.createMany({ data: input.permissionCodes.map((capabilityCode: string) => ({ integrationId: id, capabilityCode })) });
         }

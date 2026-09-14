@@ -36,6 +36,15 @@ export type FhirClientRow = {
   credentialCount: number;
   lastUsedAt: string | null;
 };
+export type FhirCredentialRow = {
+  id: string;
+  keyId: string;
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
+};
 export type ProvisionedFhirCredential = FhirConnectionInfo & {
   clientId: string;
   facilityId: string;
@@ -70,9 +79,13 @@ export const fetchIntegrationPermissions = () => call("/permission-options") as 
 export const fetchIntegrationFacilities = () => call("/facility-options") as Promise<IntegrationFacilityOption[]>;
 export const fetchFhirConnectionInfo = () => call("/connection-info") as Promise<FhirConnectionInfo>;
 export const fetchFhirClients = (integrationId: string) => call(`/${integrationId}/clients`) as Promise<FhirClientRow[]>;
+export const fetchFhirCredentials = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials`) as Promise<FhirCredentialRow[]>;
 export const provisionFhirClient = (integrationId: string, body: unknown) => call(`/${integrationId}/clients`, { method: "POST", body: JSON.stringify(body) }) as Promise<ProvisionedFhirCredential>;
 export const rotateFhirCredential = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials/rotate`, { method: "POST", body: "{}" }) as Promise<RotatedFhirCredential>;
+export const revokeFhirCredential = (integrationId: string, clientId: string, credentialId: string) => call(`/${integrationId}/clients/${clientId}/credentials/${credentialId}/revoke`, { method: "POST" }) as Promise<{ revoked: true; credentialId: string; keyId: string; alreadyRevoked: boolean }>;
+export const updateFhirClientScopes = (integrationId: string, clientId: string, scopes: string[]) => call(`/${integrationId}/clients/${clientId}/scopes`, { method: "PATCH", body: JSON.stringify({ scopes }) }) as Promise<{ clientId: string; scopes: string[] }>;
 export const revokeFhirClient = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/revoke`, { method: "POST" }) as Promise<{ revoked: true; clientId: string }>;
 export const testFhirConnection = (integrationId: string, body: unknown) => call(`/${integrationId}/test-connection`, { method: "POST", body: JSON.stringify(body) }) as Promise<FhirConnectionInfo & { ok: true; tokenIssued: true; expiresIn: number; scopes: string[] }>;
 export const createIntegration = (body: unknown) => call("", { method: "POST", body: JSON.stringify(body) }) as Promise<IntegrationRow>;
+export const updateIntegrationPermissions = (id: string, permissionCodes: string[]) => call(`/${id}`, { method: "PATCH", body: JSON.stringify({ permissionCodes }) }) as Promise<IntegrationRow>;
 export const setIntegrationEnabled = (id: string, enabled: boolean) => call(`/${id}/${enabled ? "enable" : "disable"}`, { method: "POST" }) as Promise<IntegrationRow>;

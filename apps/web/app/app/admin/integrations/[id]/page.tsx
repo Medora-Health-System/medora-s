@@ -6,15 +6,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchFhirClients,
   fetchFhirConnectionInfo,
+  fetchFhirCredentials,
   fetchIntegration,
   fetchIntegrationFacilities,
+  fetchIntegrationPermissions,
   provisionFhirClient,
   revokeFhirClient,
+  revokeFhirCredential,
   rotateFhirCredential,
   testFhirConnection,
+  updateFhirClientScopes,
+  updateIntegrationPermissions,
   type FhirClientRow,
   type FhirConnectionInfo,
+  type FhirCredentialRow,
   type IntegrationFacilityOption,
+  type IntegrationPermissionOption,
   type IntegrationRow,
   type ProvisionedFhirCredential,
 } from "@/lib/adminIntegrationsApi";
@@ -27,27 +34,48 @@ export default function IntegrationDetailPage() {
   const integrationId = String(params?.id ?? "");
   const [integration, setIntegration] = useState<IntegrationRow | null>(null);
   const [clients, setClients] = useState<FhirClientRow[]>([]);
+  const [credentialsByClient, setCredentialsByClient] = useState<Record<string, FhirCredentialRow[]>>({});
   const [facilities, setFacilities] = useState<IntegrationFacilityOption[]>([]);
+  const [permissionOptions, setPermissionOptions] = useState<IntegrationPermissionOption[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [info, setInfo] = useState<FhirConnectionInfo | null>(null);
   const [credential, setCredential] = useState<ProvisionedFhirCredential | null>(null);
   const [testResult, setTestResult] = useState<string>("");
+  const [statusMessage, setStatusMessage] = useState<string>("");
+  const [credentialWarning, setCredentialWarning] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!integrationId) return;
     setError("");
+    setCredentialWarning("");
     try {
-      const [row, clientRows, facilityRows, connectionInfo] = await Promise.all([
+      const [row, clientRows, facilityRows, connectionInfo, permissionRows] = await Promise.all([
         fetchIntegration(integrationId),
         fetchFhirClients(integrationId),
         fetchIntegrationFacilities(),
         fetchFhirConnectionInfo(),
+        fetchIntegrationPermissions(),
       ]);
+
       setIntegration(row);
       setClients(clientRows);
       setFacilities(facilityRows);
       setInfo(connectionInfo);
+      setPermissionOptions(permissionRows);
+      setSelectedPermissions(row.permissions.map((permission) => permission.capabilityCode));
+      setCredentialsByClient({});
+
+      const credentialResults = await Promise.allSettled(
+        clientRows.map(async (client) => [client.id, await fetchFhirCredentials(integrationId, client.id)] as const),
+      );
+      const credentialEntries = credentialResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+      setCredentialsByClient(Object.fromEntries(credentialEntries));
+      const failedCredentialLoads = credentialResults.filter((result) => result.status === "rejected").length;
+      if (failedCredentialLoads) {
+        setCredentialWarning(`Integration loaded, but credential inventory is temporarily unavailable for ${failedCredentialLoads} machine client${failedCredentialLoads === 1 ? "" : "s"}. Other integration controls remain available.`);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load integration");
     }
@@ -64,7 +92,7 @@ export default function IntegrationDetailPage() {
   const facilityName = (id: string) => facilities.find((f) => f.id === id)?.name ?? id;
 
   async function provision(facilityId: string) {
-    setBusy(true); setError(""); setTestResult("");
+    setBusy(true); setError(""); setTestResult(""); setStatusMessage("");
     try {
       const result = await provisionFhirClient(integrationId, {
         facilityId,
@@ -72,6 +100,7 @@ export default function IntegrationDetailPage() {
         scopes: integration?.permissions.map((p) => p.capabilityCode) ?? [],
       });
       setCredential(result);
+      setStatusMessage("Machine client provisioned. Copy the one-time secret and test it before leaving this page.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to provision FHIR client");
@@ -79,30 +108,38 @@ export default function IntegrationDetailPage() {
   }
 
   async function rotate(client: FhirClientRow) {
-    if (!window.confirm("Rotate credentials? The new secret will be displayed only once.")) return;
-    setBusy(true); setError(""); setTestResult("");
+    if (!window.confirm("Rotate credentials? The new secret will be displayed only once. Existing active keys remain valid until you revoke them.")) return;
+    setBusy(true); setError(""); setTestResult(""); setStatusMessage("");
     try {
       const result = await rotateFhirCredential(integrationId, client.id);
-      // Rotation deliberately returns only the new secret material. Rehydrate the
-      // facility and effective scopes from the already-loaded machine client so
-      // the one-time credential panel and Test Credentials can render safely.
-      setCredential({
-        ...result,
-        facilityId: client.facilityId,
-        scopes: client.scopes,
-      });
+      setCredential({ ...result, facilityId: client.facilityId, scopes: client.scopes });
+      setStatusMessage("New credential created. Test the new key, then revoke the old key when the partner has completed cutover.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to rotate credential");
     } finally { setBusy(false); }
   }
 
+  async function revokeKey(client: FhirClientRow, key: FhirCredentialRow) {
+    if (!window.confirm(`Revoke key ${key.keyId}? Any token issued with this key will stop working immediately.`)) return;
+    setBusy(true); setError(""); setStatusMessage("");
+    try {
+      await revokeFhirCredential(integrationId, client.id, key.id);
+      if (credential?.clientId === client.id && credential.keyId === key.keyId) setCredential(null);
+      setStatusMessage(`Credential ${key.keyId} revoked.`);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to revoke credential");
+    } finally { setBusy(false); }
+  }
+
   async function revoke(client: FhirClientRow) {
-    if (!window.confirm("Revoke this FHIR client and all of its credentials? This immediately blocks future tokens.")) return;
-    setBusy(true); setError("");
+    if (!window.confirm("Revoke this FHIR client and all of its credentials? This immediately blocks current and future machine access.")) return;
+    setBusy(true); setError(""); setStatusMessage("");
     try {
       await revokeFhirClient(integrationId, client.id);
       if (credential?.clientId === client.id) setCredential(null);
+      setStatusMessage("FHIR client revoked.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to revoke client");
@@ -127,6 +164,39 @@ export default function IntegrationDetailPage() {
     } finally { setBusy(false); }
   }
 
+  function togglePermission(code: string) {
+    setSelectedPermissions((current) => current.includes(code) ? current.filter((item) => item !== code) : [...current, code]);
+  }
+
+  async function savePermissions() {
+    if (!selectedPermissions.length) {
+      setError("Select at least one FHIR permission.");
+      return;
+    }
+    setBusy(true); setError(""); setStatusMessage("");
+    try {
+      await updateIntegrationPermissions(integrationId, selectedPermissions);
+      setStatusMessage("Integration permissions updated. Revoked permissions take effect immediately; use Sync Client Scopes to grant newly-added permissions to an existing machine client.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update integration permissions");
+    } finally { setBusy(false); }
+  }
+
+  async function syncClientScopes(client: FhirClientRow) {
+    const scopes = integration?.permissions.map((permission) => permission.capabilityCode) ?? [];
+    if (!scopes.length) return;
+    if (!window.confirm("Replace this machine client's scopes with the integration's current granted permissions?")) return;
+    setBusy(true); setError(""); setStatusMessage("");
+    try {
+      await updateFhirClientScopes(integrationId, client.id, scopes);
+      setStatusMessage(`Machine client scopes synchronized (${scopes.length} scopes).`);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to synchronize client scopes");
+    } finally { setBusy(false); }
+  }
+
   const copy = (value: string) => navigator.clipboard?.writeText(value);
 
   if (!integration && !error) return <main style={{ padding: 24 }}>Loading integration…</main>;
@@ -136,6 +206,8 @@ export default function IntegrationDetailPage() {
     <h1 style={{ marginBottom: 4 }}>{integration?.displayName ?? "FHIR Integration"}</h1>
     {integration && <p style={{ color: "#475569" }}>{integration.partnerName} · {integration.protocol} · {integration.environment} · {integration.status} · {integration.provisioningState}</p>}
     {error && <p role="alert" style={{ color: "#991b1b", background: "#fee2e2", padding: 12, borderRadius: 6 }}>{error}</p>}
+    {credentialWarning && <p role="status" style={{ color: "#92400e", background: "#fef3c7", padding: 12, borderRadius: 6 }}>{credentialWarning}</p>}
+    {statusMessage && <p role="status" style={{ color: "#166534", background: "#dcfce7", padding: 12, borderRadius: 6 }}>{statusMessage}</p>}
 
     <section style={panel}>
       <h2>FHIR Connection</h2>
@@ -179,19 +251,49 @@ export default function IntegrationDetailPage() {
 
     <section style={panel}>
       <h2>Machine Clients</h2>
-      {!clients.length ? <p>No machine client has been provisioned yet.</p> : clients.map((client) => <article key={client.id} style={{ borderTop: "1px solid #e2e8f0", padding: "14px 0" }}>
-        <strong>{client.displayName}</strong> — {client.active ? "ACTIVE" : "REVOKED"}<br />
-        <small>Facility: {facilityName(client.facilityId)} · Client ID: <code>{client.id}</code></small>
-        <p>Scopes: {client.scopes.join(", ") || "none"}</p>
-        <p>Active credentials: {client.credentialCount} · Last used: {client.lastUsedAt ? new Date(client.lastUsedAt).toLocaleString() : "Never"}</p>
-        {client.active && <><button disabled={busy} onClick={() => void rotate(client)}>Rotate Secret</button> <button disabled={busy} onClick={() => void revoke(client)}>Revoke Client</button></>}
-      </article>)}
+      {!clients.length ? <p>No machine client has been provisioned yet.</p> : clients.map((client) => {
+        const keys = credentialsByClient[client.id] ?? [];
+        const activeKeyCount = keys.filter((key) => key.status === "ACTIVE").length;
+        const scopeDrift = [...(integration?.permissions.map((p) => p.capabilityCode) ?? [])].sort().join("|") !== [...client.scopes].sort().join("|");
+        return <article key={client.id} style={{ borderTop: "1px solid #e2e8f0", padding: "14px 0" }}>
+          <strong>{client.displayName}</strong> — {client.active ? "ACTIVE" : "REVOKED"}<br />
+          <small>Facility: {facilityName(client.facilityId)} · Client ID: <code>{client.id}</code></small>
+          <p>Scopes: {client.scopes.join(", ") || "none"}</p>
+          <p>Active credentials: {activeKeyCount} · Last used: {client.lastUsedAt ? new Date(client.lastUsedAt).toLocaleString() : "Never"}</p>
+          {scopeDrift && client.active && <p style={{ color: "#92400e" }}><strong>Scope update available.</strong> Integration grants and machine-client scopes differ.</p>}
+          <div style={{ marginBottom: 12 }}>
+            {client.active && <><button disabled={busy} onClick={() => void rotate(client)}>Rotate Secret</button>{" "}<button disabled={busy || !scopeDrift} onClick={() => void syncClientScopes(client)}>Sync Client Scopes</button>{" "}<button disabled={busy} onClick={() => void revoke(client)}>Revoke Client</button></>}
+          </div>
+          <details open>
+            <summary><strong>Credentials / Keys ({keys.length})</strong></summary>
+            {!keys.length ? <p>No credentials.</p> : <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+              <thead><tr><th align="left">Key ID</th><th align="left">Status</th><th align="left">Created</th><th align="left">Expires</th><th align="left">Last used</th><th /></tr></thead>
+              <tbody>{keys.map((key) => <tr key={key.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                <td><code>{key.keyId}</code></td>
+                <td>{key.status}</td>
+                <td>{new Date(key.createdAt).toLocaleString()}</td>
+                <td>{key.expiresAt ? new Date(key.expiresAt).toLocaleString() : "No expiry"}</td>
+                <td>{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "Never"}</td>
+                <td>{client.active && key.status === "ACTIVE" ? <button disabled={busy} onClick={() => void revokeKey(client, key)}>Revoke Key</button> : null}</td>
+              </tr>)}</tbody>
+            </table></div>}
+          </details>
+        </article>;
+      })}
     </section>
 
     <section style={panel}>
-      <h2>Granted FHIR Permissions</h2>
+      <h2>FHIR Permissions</h2>
+      <p>Integration permissions are the maximum scopes a machine client may use. Removing a permission takes effect on machine requests immediately. Newly added permissions require <strong>Sync Client Scopes</strong> for an existing client.</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 8, marginBottom: 14 }}>
+        {permissionOptions.map((permission) => <label key={permission.code} style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: 8 }}>
+          <input type="checkbox" checked={selectedPermissions.includes(permission.code)} onChange={() => togglePermission(permission.code)} />{" "}
+          <code>{permission.code}</code> <small style={{ color: "#64748b" }}>({permission.resourceType} {permission.interaction})</small>
+        </label>)}
+      </div>
+      <button disabled={busy || !selectedPermissions.length} onClick={() => void savePermissions()}>Save FHIR Permissions</button>
+      <h3 style={{ marginTop: 18 }}>Currently Granted</h3>
       <ul>{integration?.permissions.map((permission) => <li key={permission.capabilityCode}><code>{permission.capabilityCode}</code></li>)}</ul>
-      <p style={{ color: "#64748b" }}>The machine client can only receive scopes that are already granted to this integration, and every request remains bound to the authorized facility.</p>
     </section>
   </main>;
 }
