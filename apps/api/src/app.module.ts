@@ -61,6 +61,7 @@ import { RecentHttpErrorMetricsModule } from "./common/metrics/recent-http-error
 import { PlatformAuditModule } from "./platform-audit/platform-audit.module";
 import { PlatformStaffModule } from "./platform-staff/platform-staff.module";
 import { PatientPortalModule } from "./patient-portal/patient-portal.module";
+import { DigitalCareModule } from "./digital-care/digital-care.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -128,6 +129,7 @@ const imports = [
   AiModule,
   PlatformAuditModule,
   PlatformStaffModule,
+  DigitalCareModule,
   ...(process.env.PATIENT_PORTAL_ENABLED === "true" ? [PatientPortalModule] : []),
 ];
 
