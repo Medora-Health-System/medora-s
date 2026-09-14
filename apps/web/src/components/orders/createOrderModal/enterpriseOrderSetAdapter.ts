@@ -27,11 +27,7 @@ import {
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemRef,
 } from "@medora/shared";
-import {
-  parseProductUiLanguage,
-  type SupportedLanguage,
-} from "@/i18n/config";
-import { CLINICAL_CATALOG_ES_ORDER_SET_WARNING } from "@medora/shared";
+import type { SupportedLanguage } from "@/i18n/config";
 
 export type OrderSetKey = EnterpriseOrderSetCode;
 
@@ -150,18 +146,16 @@ export function isRequiredOrderSetItem(orderSetCode: OrderSetKey, itemKey: strin
   return item?.required === true;
 }
 
+/**
+ * Create Order is intentionally compact: informational order-set notes remain
+ * available on the governed set definition but are not rendered in the composer.
+ * Required structured parameters and validation remain unchanged.
+ */
 export function orderSetWarningsForLocale(
-  set: EnterpriseOrderSetDefinition,
-  locale: SupportedLanguage
+  _set: EnterpriseOrderSetDefinition,
+  _locale: SupportedLanguage
 ): string[] {
-  const parsed = parseProductUiLanguage(locale);
-  return set.warnings
-    .map((warning) => {
-      if (parsed === "fr") return warning.fr;
-      if (parsed === "es") return CLINICAL_CATALOG_ES_ORDER_SET_WARNING[warning.en] ?? "";
-      return warning.en;
-    })
-    .filter((line) => line.trim().length > 0);
+  return [];
 }
 
 /** Legacy imaging audit mapping for retirement constants sync. */
