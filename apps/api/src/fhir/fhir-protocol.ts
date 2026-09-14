@@ -9,6 +9,7 @@ export const FHIR_RESOURCE_TYPES = [
   "AllergyIntolerance",
   "MedicationRequest",
   "MedicationAdministration",
+  "DocumentReference",
   "ServiceRequest",
   "DiagnosticReport",
   "CarePlan",
