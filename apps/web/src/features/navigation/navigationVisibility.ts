@@ -50,6 +50,27 @@ export function buildNavigationProfileFromSession(input: {
 }
 
 /**
+ * Facility-level Public Health is exposed to Haiti clinical staff and to Admin / Medora
+ * Super Admin oversight. National MSPP entries use distinct `mspp_*` groups and are
+ * intentionally unaffected by this jurisdiction filter.
+ */
+export function filterSidebarNavItemsByFacilityJurisdiction(
+  items: SidebarNavItem[],
+  profile: CapabilityNavigationProfileInput
+): SidebarNavItem[] {
+  const normalizedRoles = new Set(
+    (profile.roleCodes ?? []).map((code) => String(code ?? "").trim().toUpperCase())
+  );
+  const isAdmin =
+    normalizedRoles.has("ADMIN") || normalizedRoles.has("MEDORA_SUPER_ADMIN");
+  const isHaiti = isHaitiPublicHealthJurisdiction(profile.facilityCountry);
+
+  return items.filter(
+    (item) => item.group !== "sante_publique" || isHaiti || isAdmin
+  );
+}
+
+/**
  * MEDUI.D4C.2A — filter sidebar by facility capabilities ∩ role areas.
  * Uses `resolveFacilityNavigation` (via capability resolver); Admin cannot restore absent care settings.
  */
@@ -83,13 +104,9 @@ export function filterSidebarNavItemsByNavigationAreas(
   const areaFiltered = items.filter((item) =>
     isNavigationAreaVisible(visibleAreas, item.navAreas)
   );
-
-  // Facility-level Public Health belongs to the Haiti jurisdiction only. National
-  // MSPP navigation uses separate `mspp_*` groups and is intentionally unaffected.
-  const jurisdictionFiltered = areaFiltered.filter(
-    (item) =>
-      item.group !== "sante_publique" ||
-      isHaitiPublicHealthJurisdiction(profile.facilityCountry)
+  const jurisdictionFiltered = filterSidebarNavItemsByFacilityJurisdiction(
+    areaFiltered,
+    profile
   );
 
   const freestandingFiltered = filterHrefListForFreestandingErRnProviderSidebar(
