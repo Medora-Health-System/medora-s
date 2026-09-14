@@ -11,16 +11,22 @@ import { FHIR_CAPABILITY_METADATA } from "./fhir-capability.guard";
 import { FhirPatientController } from "./fhir-patient.controller";
 import { FhirEncounterController } from "./fhir-encounter.controller";
 import { FhirObservationController } from "./fhir-observation.controller";
+import { FhirAllergyIntoleranceController } from "./fhir-allergy-intolerance.controller";
 
 describe("MEDORA.RD.P0.3A FHIR foundation", () => {
   beforeAll(() => { process.env.MEDORA_INTEROP_ENABLED = "true"; });
   afterAll(() => { delete process.env.MEDORA_INTEROP_ENABLED; });
   const capabilities = new FhirCapabilityRegistry();
   test("FHIR-001–004 capability registry exposes only evidenced read/search", () => {
-    expect(FHIR_CAPABILITIES).toHaveLength(14);
+    expect(FHIR_CAPABILITIES).toHaveLength(16);
     expect(capabilities.enabled().every((c) => ["read", "search-type"].includes(c.interaction) && c.evidenceTestIds.length > 0)).toBe(true);
     expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([{ code: "patient.read", resourceType: "Patient", interaction: "read" }]));
+    expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([
+      { code: "allergyIntolerance.read", resourceType: "AllergyIntolerance", interaction: "read" },
+      { code: "allergyIntolerance.search", resourceType: "AllergyIntolerance", interaction: "search-type" },
+    ]));
     expect(capabilities.enabled().find((c) => c.resourceType === "Observation" && c.interaction === "read")?.humanRoles).not.toContain(RoleCode.FRONT_DESK);
+    expect(capabilities.enabled().find((c) => c.resourceType === "AllergyIntolerance" && c.interaction === "read")?.humanRoles).not.toContain(RoleCode.FRONT_DESK);
   });
   test("admin onboarding can stage evidenced scopes while runtime FHIR exposure remains fail-closed", () => {
     process.env.MEDORA_INTEROP_ENABLED = "false";
@@ -80,6 +86,8 @@ describe("MEDORA.RD.P0.3A FHIR foundation", () => {
       [FhirEncounterController.prototype.read, "Encounter", "read"],
       [FhirObservationController.prototype.read, "Observation", "read"],
       [FhirObservationController.prototype.search, "Observation", "search-type"],
+      [FhirAllergyIntoleranceController.prototype.read, "AllergyIntolerance", "read"],
+      [FhirAllergyIntoleranceController.prototype.find, "AllergyIntolerance", "search-type"],
     ] as const;
     for (const [handler, resourceType, interaction] of routes) {
       expect(Reflect.getMetadata(FHIR_CAPABILITY_METADATA, handler)).toEqual({ resourceType, interaction });
