@@ -5,6 +5,7 @@ import { FhirMachineCredentialAdminService } from "../fhir/fhir-machine-credenti
 import { FhirMachineIdentityService } from "../fhir/fhir-machine-identity.service";
 import { AdminIntegrationsService } from "./admin-integrations.service";
 import { integrationInputSchema, integrationPatchSchema } from "./dto/admin-integration.dto";
+import { FhirMachineProvisioningService } from "./fhir-machine-provisioning.service";
 import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guard";
 
 const clientProvisionSchema = z.object({
@@ -25,6 +26,7 @@ export class AdminIntegrationsController {
     private readonly service: AdminIntegrationsService,
     private readonly machines: FhirMachineIdentityService,
     private readonly credentialAdmin: FhirMachineCredentialAdminService,
+    private readonly provisioning: FhirMachineProvisioningService,
   ) {}
   @Get("permission-options") permissions(@Req() req: any) { return this.service.authorize(req.user.userId).then(() => this.service.permissions()); }
   @Get("facility-options") facilities(@Req() req: any) { return this.service.facilityOptions(req.user.userId); }
@@ -41,7 +43,7 @@ export class AdminIntegrationsController {
     await this.service.authorize(req.user.userId);
     const parsed = clientProvisionSchema.safeParse(body);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    return this.machines.provisionClient(req.user.userId, id, parsed.data);
+    return this.provisioning.provision(req.user.userId, id, parsed.data);
   }
   @Get(":id/clients/:clientId/credentials") async credentials(@Req() req: any, @Param("id") id: string, @Param("clientId") clientId: string) {
     await this.service.authorize(req.user.userId);
