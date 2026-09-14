@@ -73,6 +73,13 @@ describe("Administration integrations foundation", () => {
     expect(provisioningSource).toContain("updateFhirClientScopes");
   });
 
+  test("credential inventory fan-out cannot block the base integration manager", () => {
+    expect(provisioningSource).toContain("Promise.allSettled");
+    expect(provisioningSource).toContain("failedCredentialLoads");
+    expect(provisioningSource).toContain("Other integration controls remain available");
+    expect(provisioningSource.indexOf("setIntegration(row)")).toBeLessThan(provisioningSource.indexOf("Promise.allSettled"));
+  });
+
   test("FHIR permission manager can grant newly reconciled capabilities without reprovisioning an integration", () => {
     expect(provisioningSource).toContain("FHIR Permissions");
     expect(provisioningSource).toContain("Save FHIR Permissions");
