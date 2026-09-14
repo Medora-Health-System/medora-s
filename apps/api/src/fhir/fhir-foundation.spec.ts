@@ -13,13 +13,14 @@ import { FhirEncounterController } from "./fhir-encounter.controller";
 import { FhirObservationController } from "./fhir-observation.controller";
 import { FhirAllergyIntoleranceController } from "./fhir-allergy-intolerance.controller";
 import { FhirMedicationAdministrationController, FhirMedicationRequestController } from "./fhir-medication.controller";
+import { FhirDocumentReferenceController } from "./fhir-document-reference.controller";
 
 describe("MEDORA.RD.P0.3A FHIR foundation", () => {
   beforeAll(() => { process.env.MEDORA_INTEROP_ENABLED = "true"; });
   afterAll(() => { delete process.env.MEDORA_INTEROP_ENABLED; });
   const capabilities = new FhirCapabilityRegistry();
   test("FHIR capability registry exposes only evidenced read/search", () => {
-    expect(FHIR_CAPABILITIES).toHaveLength(20);
+    expect(FHIR_CAPABILITIES).toHaveLength(22);
     expect(capabilities.enabled().every((c) => ["read", "search-type"].includes(c.interaction) && c.evidenceTestIds.length > 0)).toBe(true);
     expect(capabilities.permissionOptions()).toEqual(expect.arrayContaining([
       { code: "patient.read", resourceType: "Patient", interaction: "read" },
@@ -29,8 +30,10 @@ describe("MEDORA.RD.P0.3A FHIR foundation", () => {
       { code: "medicationRequest.search", resourceType: "MedicationRequest", interaction: "search-type" },
       { code: "medicationAdministration.read", resourceType: "MedicationAdministration", interaction: "read" },
       { code: "medicationAdministration.search", resourceType: "MedicationAdministration", interaction: "search-type" },
+      { code: "documentReference.read", resourceType: "DocumentReference", interaction: "read" },
+      { code: "documentReference.search", resourceType: "DocumentReference", interaction: "search-type" },
     ]));
-    for (const resourceType of ["Observation", "AllergyIntolerance", "MedicationRequest", "MedicationAdministration"] as const) {
+    for (const resourceType of ["Observation", "AllergyIntolerance", "MedicationRequest", "MedicationAdministration", "DocumentReference"] as const) {
       expect(capabilities.enabled().find((c) => c.resourceType === resourceType && c.interaction === "read")?.humanRoles).not.toContain(RoleCode.FRONT_DESK);
     }
   });
@@ -98,6 +101,8 @@ describe("MEDORA.RD.P0.3A FHIR foundation", () => {
       [FhirMedicationRequestController.prototype.find, "MedicationRequest", "search-type"],
       [FhirMedicationAdministrationController.prototype.read, "MedicationAdministration", "read"],
       [FhirMedicationAdministrationController.prototype.find, "MedicationAdministration", "search-type"],
+      [FhirDocumentReferenceController.prototype.read, "DocumentReference", "read"],
+      [FhirDocumentReferenceController.prototype.find, "DocumentReference", "search-type"],
     ] as const;
     for (const [handler, resourceType, interaction] of routes) {
       expect(Reflect.getMetadata(FHIR_CAPABILITY_METADATA, handler)).toEqual({ resourceType, interaction });
