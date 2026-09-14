@@ -35,6 +35,7 @@ import { OrganizationDataExportService } from "./organization-data-export.servic
 import { DocumentSecureExportStorage } from "./organization-data-export.storage";
 import { AdminIntegrationsController } from "./admin-integrations.controller";
 import { AdminIntegrationsService } from "./admin-integrations.service";
+import { FhirMachineProvisioningService } from "./fhir-machine-provisioning.service";
 import { FhirModule } from "../fhir/fhir.module";
 import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guard";
 
@@ -73,6 +74,7 @@ import { PlatformIntegrationAdminGuard } from "./platform-integration-admin.guar
     DocumentSecureExportStorage,
     AuditService,
     AdminIntegrationsService,
+    FhirMachineProvisioningService,
     PlatformIntegrationAdminGuard,
   ],
   exports: [QueuesModule, MfaModule, AdminFacilitiesService, GoLiveReadinessService, BackupReadinessService, SystemHealthService, AdminComplianceService, AdminExportMonitoringService, AdminBillingGovernanceService, AdminCatalogAuditService],
