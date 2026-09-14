@@ -6,6 +6,7 @@ export const FHIR_RESOURCE_TYPES = [
   "Encounter",
   "Observation",
   "Condition",
+  "AllergyIntolerance",
   "ServiceRequest",
   "DiagnosticReport",
   "CarePlan",
