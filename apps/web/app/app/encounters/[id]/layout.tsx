@@ -41,7 +41,7 @@ const CLINIC_AMBULATORY_PRESENTATION_CSS = `
   display: none !important;
 }
 
-[data-testid="clinic-care-ambulatory-intake"] details:first-of-type > div > div:last-child {
+[data-testid="clinic-care-ambulatory-intake"] details[open]:has(textarea[maxlength="8000"]) > div > div:last-child {
   display: none !important;
 }
 
