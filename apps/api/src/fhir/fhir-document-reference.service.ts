@@ -35,7 +35,6 @@ export type FhirDocumentReferenceResource = {
 
 export function mapDocumentReference(row: DocumentRow): FhirDocumentReferenceResource {
   if (!row.patientId || !row.facilityId) throw new Error("DocumentReference source requires patient and facility");
-  const title = row.title?.trim() || row.fileName;
   return {
     resourceType: "DocumentReference",
     id: row.id,
@@ -46,7 +45,7 @@ export function mapDocumentReference(row: DocumentRow): FhirDocumentReferenceRes
     date: row.uploadedAt.toISOString(),
     custodian: { reference: `Organization/${row.facilityId}` },
     ...(row.encounterId ? { context: { encounter: [{ reference: `Encounter/${row.encounterId}` }] } } : {}),
-    content: [{ attachment: { contentType: row.mimeType, title, size: row.fileSize } }],
+    content: [{ attachment: { contentType: row.mimeType, title: row.title?.trim() || row.fileName, size: row.fileSize } }],
   };
 }
 
@@ -64,13 +63,7 @@ export class FhirDocumentReferenceService {
   async read(facilityId: string, rawId: string): Promise<FhirDocumentReferenceResource> {
     const id = parseLogicalId(rawId);
     const row = await this.prisma.enterpriseDocument.findFirst({
-      where: {
-        id,
-        facilityId,
-        patientId: { not: null },
-        status: "ACTIVE",
-        category: { in: [...EXPOSED_DOCUMENT_CATEGORIES] },
-      },
+      where: { id, facilityId, patientId: { not: null }, status: "ACTIVE", category: { in: [...EXPOSED_DOCUMENT_CATEGORIES] } },
       select: this.select(),
     }) as DocumentRow | null;
     if (!row) throw new NotFoundException("DocumentReference not found");
@@ -78,38 +71,26 @@ export class FhirDocumentReferenceService {
   }
 
   async find(facilityId: string, query: Record<string, unknown>) {
-    const parsed = this.search.parse(query, [
-      "_id",
-      "patient",
-      "subject",
-      "encounter",
-      "type",
-      "category",
-      "status",
-      "date",
-      "_count",
-      "_cursor",
-    ]);
+    const parsed = this.search.parse(query, ["_id", "patient", "subject", "encounter", "type", "category", "status", "date", "_count", "_cursor"]);
     const v = parsed.values;
     const patientA = v.patient ? parseFhirReference(v.patient, "Patient").id : undefined;
     const patientB = v.subject ? parseFhirReference(v.subject, "Patient").id : undefined;
-    if (patientA && patientB && patientA !== patientB) {
-      return searchBundle(this.search.baseUrl(), "DocumentReference", query, [], false);
-    }
+    if (patientA && patientB && patientA !== patientB) return searchBundle(this.search.baseUrl(), "DocumentReference", query, [], false);
     if (v.status && v.status !== "current") throw new BadRequestException("Unsupported DocumentReference status");
+    if (v.category && !EXPOSED_DOCUMENT_CATEGORIES.includes(v.category as typeof EXPOSED_DOCUMENT_CATEGORIES[number])) {
+      throw new BadRequestException("Unsupported DocumentReference category");
+    }
     const encounterId = v.encounter ? parseFhirReference(v.encounter, "Encounter").id : undefined;
     const date = v.date ? exactDayBounds(v.date) : undefined;
     const rows = await this.prisma.enterpriseDocument.findMany({
       where: {
         facilityId,
-        patientId: { not: null },
+        patientId: patientA ?? patientB ?? { not: null },
         status: "ACTIVE",
-        category: { in: [...EXPOSED_DOCUMENT_CATEGORIES] },
+        category: v.category ?? { in: [...EXPOSED_DOCUMENT_CATEGORIES] },
         ...(v._id ? { id: parseLogicalId(v._id) } : {}),
-        ...(patientA || patientB ? { patientId: patientA ?? patientB } : {}),
         ...(encounterId ? { encounterId } : {}),
         ...(v.type ? { type: v.type } : {}),
-        ...(v.category ? { category: v.category } : {}),
         ...(date ? { uploadedAt: date } : {}),
         ...(parsed.cursor ? { AND: { id: { gt: parsed.cursor } } } : {}),
       },
@@ -122,19 +103,6 @@ export class FhirDocumentReferenceService {
   }
 
   private select() {
-    return {
-      id: true,
-      patientId: true,
-      encounterId: true,
-      facilityId: true,
-      category: true,
-      type: true,
-      status: true,
-      title: true,
-      fileName: true,
-      mimeType: true,
-      fileSize: true,
-      uploadedAt: true,
-    } as const;
+    return { id: true, patientId: true, encounterId: true, facilityId: true, category: true, type: true, status: true, title: true, fileName: true, mimeType: true, fileSize: true, uploadedAt: true } as const;
   }
 }
