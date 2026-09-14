@@ -40,21 +40,39 @@ describe("FHIR P0.3H credential lifecycle", () => {
     }));
   });
 
-  test("scope replacement rejects anything outside current integration permissions", async () => {
-    const prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([{ id: "client-1", facilityId: "facility-1", active: true, revokedAt: null }]),
+  test("scope replacement validates the grant while holding the integration write lock", async () => {
+    const queryRaw = jest
+      .fn()
+      .mockResolvedValueOnce([{ id: "integration-1" }])
+      .mockResolvedValueOnce([{ id: "client-1", facilityId: "facility-1", active: true, revokedAt: null }]);
+    const tx = {
+      $queryRaw: queryRaw,
+      $executeRaw: jest.fn(),
       integration: { findUnique: jest.fn().mockResolvedValue({ permissions: [{ capabilityCode: "patient.read" }] }) },
-    } as any;
+    };
+    const prisma = { $transaction: jest.fn(async (callback: any) => callback(tx)) } as any;
     const service = new FhirMachineCredentialAdminService(prisma, {} as any);
+
     await expect(service.replaceScopes("admin-1", "integration-1", "client-1", ["patient.read", "condition.read"]))
       .rejects.toBeInstanceOf(BadRequestException);
+
+    expect(queryRaw).toHaveBeenCalledTimes(2);
+    const lockSql = queryRaw.mock.calls[0]?.[0] as { strings?: readonly string[] };
+    expect(lockSql.strings?.join(" ")).toContain("FOR UPDATE");
+    expect(tx.integration.findUnique).toHaveBeenCalledWith({ where: { id: "integration-1" }, include: { permissions: true } });
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
   });
 
   test("scope replacement can adopt newly granted clinical permissions without reprovisioning the client", async () => {
     const executeRaw = jest.fn().mockResolvedValue(1);
+    const queryRaw = jest
+      .fn()
+      .mockResolvedValueOnce([{ id: "integration-1" }])
+      .mockResolvedValueOnce([{ id: "client-1", facilityId: "facility-1", active: true, revokedAt: null }]);
     const audit = { log: jest.fn().mockResolvedValue(undefined) } as any;
-    const prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([{ id: "client-1", facilityId: "facility-1", active: true, revokedAt: null }]),
+    const tx = {
+      $queryRaw: queryRaw,
+      $executeRaw: executeRaw,
       integration: { findUnique: jest.fn().mockResolvedValue({ permissions: [
         { capabilityCode: "patient.read" },
         { capabilityCode: "condition.read" },
@@ -62,12 +80,13 @@ describe("FHIR P0.3H credential lifecycle", () => {
         { capabilityCode: "diagnosticReport.read" },
         { capabilityCode: "carePlan.search" },
       ] }) },
-      $transaction: jest.fn(async (callback: any) => callback({ $executeRaw: executeRaw })),
-    } as any;
+    };
+    const prisma = { $transaction: jest.fn(async (callback: any) => callback(tx)) } as any;
     const service = new FhirMachineCredentialAdminService(prisma, audit);
     const scopes = ["patient.read", "condition.read", "serviceRequest.search", "diagnosticReport.read", "carePlan.search"];
     const result = await service.replaceScopes("admin-1", "integration-1", "client-1", scopes);
     expect(result.scopes).toEqual([...scopes].sort());
+    expect(queryRaw).toHaveBeenCalledTimes(2);
     expect(executeRaw).toHaveBeenCalledTimes(scopes.length + 2);
     expect(audit.log).toHaveBeenCalledWith(expect.anything(), "FHIR_INTEGRATION_CLIENT", expect.objectContaining({
       critical: true,
