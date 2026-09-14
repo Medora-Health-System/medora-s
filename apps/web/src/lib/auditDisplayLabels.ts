@@ -9,9 +9,49 @@ function tryTranslate(t: AuditDisplayTranslate, key: string): string | null {
   return out === key ? null : out;
 }
 
+function humanizeAuditCode(raw: string | undefined): string {
+  const code = raw?.trim();
+  if (!code) return "—";
+  return code
+    .split("_")
+    .filter(Boolean)
+    .map((part) => {
+      if (/^(FHIR|M2M|API|ID|UUID|ED|MAR|MFA|ROI)$/i.test(part)) return part.toUpperCase();
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function fhirLifecycleEventLabel(
+  t: AuditDisplayTranslate,
+  meta: Record<string, string | number | boolean>
+): string | null {
+  const event = typeof meta.event === "string" ? meta.event.trim() : "";
+  if (!event.startsWith("FHIR_M2M_")) return null;
+
+  const translated = tryTranslate(t, `auditLabels.events.${event}`);
+  if (translated) return translated;
+
+  switch (event) {
+    case "FHIR_M2M_CLIENT_PROVISIONED":
+      return "FHIR M2M client provisioned";
+    case "FHIR_M2M_CREDENTIAL_ROTATED":
+      return "FHIR M2M credential rotated";
+    case "FHIR_M2M_CREDENTIAL_REVOKED":
+      return "FHIR M2M credential revoked";
+    case "FHIR_M2M_CLIENT_REVOKED":
+      return "FHIR M2M client revoked";
+    case "FHIR_M2M_TOKEN_ISSUED":
+      return "FHIR M2M token issued";
+    default:
+      return humanizeAuditCode(event);
+  }
+}
+
 /**
- * Primary line for the Action column. Uses composite keys `auditLabels.actions.{ACTION}_{ENTITY}` when needed,
- * then `auditLabels.actions.{ACTION}`, then a raw-code fallback.
+ * Primary line for the Action column. Uses event-specific labels first for security/interoperability
+ * lifecycle evidence, then composite keys `auditLabels.actions.{ACTION}_{ENTITY}`, then
+ * `auditLabels.actions.{ACTION}`, then a stable humanized-code fallback.
  */
 export function auditActionLabel(
   t: AuditDisplayTranslate,
@@ -20,6 +60,10 @@ export function auditActionLabel(
   metadataSummary?: Record<string, string | number | boolean>
 ): string {
   const meta = metadataSummary ?? {};
+
+  const lifecycle = fhirLifecycleEventLabel(t, meta);
+  if (lifecycle) return lifecycle;
+
   if (
     action === "ENCOUNTER_UPDATE" &&
     (entity === "ENCOUNTER" || entity === undefined || entity === "") &&
@@ -39,16 +83,16 @@ export function auditActionLabel(
   const single = tryTranslate(t, actionKey);
   if (single) return single;
 
-  return t("auditLabels.fallbackCode").replace("{code}", action);
+  return humanizeAuditCode(action);
 }
 
 /** Entity column primary line (raw code still shown underneath). */
 export function auditEntityLabel(t: AuditDisplayTranslate, entity: string): string {
-  if (!entity?.trim()) return t("auditLabels.fallbackCode").replace("{code}", "—");
+  if (!entity?.trim()) return "—";
   const key = `auditLabels.entities.${entity.trim()}`;
   const out = tryTranslate(t, key);
   if (out) return out;
-  return t("auditLabels.fallbackCode").replace("{code}", entity.trim());
+  return humanizeAuditCode(entity);
 }
 
 /** Table section headers — matches `AuditUiCategory` from the API (`critical`, `clinical`, …). */
@@ -56,12 +100,13 @@ export function auditCategoryLabel(t: AuditDisplayTranslate, category: string): 
   const key = `auditLabels.categories.${category}`;
   const out = tryTranslate(t, key);
   if (out) return out;
-  return t("auditLabels.fallbackCode").replace("{code}", category);
+  return humanizeAuditCode(category);
 }
 
 /** Summary cell when `metadataSummary` is empty. */
 export function auditSummaryEmptyText(t: AuditDisplayTranslate): string {
-  return t("auditLabels.summaryEmpty");
+  const translated = tryTranslate(t, "auditLabels.summaryEmpty");
+  return translated ?? "No additional details";
 }
 
 /** Keys shown separately under the action line — omit from the generic summary line. */
