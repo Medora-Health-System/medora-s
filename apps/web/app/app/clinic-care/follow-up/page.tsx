@@ -1,6 +1,6 @@
 "use client";
 
-import FollowUpsPage from "../../../follow-ups/page";
+import FollowUpsPage from "../../follow-ups/page";
 
 /**
  * Clinic Care follow-up view stays inside the nested Clinic Care layout.
