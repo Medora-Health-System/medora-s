@@ -67,16 +67,31 @@ export class FhirMachineCredentialAdminService {
   }
 
   async replaceScopes(adminUserId: string, integrationId: string, clientId: string, requestedScopes: string[]) {
-    const client = await this.requireClient(integrationId, clientId);
-    if (!client.active || client.revokedAt) throw new BadRequestException("FHIR client is revoked or inactive");
-    const integration = await this.prisma.integration.findUnique({ where: { id: integrationId }, include: { permissions: true } });
-    if (!integration) throw new NotFoundException("Integration not found");
-    const allowed = new Set(integration.permissions.map((permission) => permission.capabilityCode));
     const scopes = [...new Set(requestedScopes)].sort();
     if (!scopes.length) throw new BadRequestException("Select at least one machine scope");
-    if (scopes.some((scope) => !allowed.has(scope))) throw new BadRequestException("Client scopes exceed integration permissions");
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id"
+        FROM "Integration"
+        WHERE "id" = ${integrationId}
+        FOR UPDATE
+      `);
+
+      const [client] = await tx.$queryRaw<Array<{ id: string; facilityId: string; active: boolean; revokedAt: Date | null }>>(Prisma.sql`
+        SELECT "id", "facilityId", "active", "revokedAt"
+        FROM "interop"."IntegrationClient"
+        WHERE "id" = ${clientId} AND "integrationId" = ${integrationId}
+        LIMIT 1
+      `);
+      if (!client) throw new NotFoundException("FHIR client not found");
+      if (!client.active || client.revokedAt) throw new BadRequestException("FHIR client is revoked or inactive");
+
+      const integration = await tx.integration.findUnique({ where: { id: integrationId }, include: { permissions: true } });
+      if (!integration) throw new NotFoundException("Integration not found");
+      const allowed = new Set(integration.permissions.map((permission) => permission.capabilityCode));
+      if (scopes.some((scope) => !allowed.has(scope))) throw new BadRequestException("Client scopes exceed integration permissions");
+
       await tx.$executeRaw(Prisma.sql`DELETE FROM "interop"."IntegrationClientScope" WHERE "clientId" = ${clientId}`);
       for (const scope of scopes) {
         await tx.$executeRaw(Prisma.sql`
@@ -95,8 +110,8 @@ export class FhirMachineCredentialAdminService {
         critical: true,
         metadata: { event: "FHIR_M2M_SCOPES_REPLACED", integrationId, scopeCount: scopes.length },
       });
+      return { clientId, scopes };
     });
-    return { clientId, scopes };
   }
 
   private async requireClient(integrationId: string, clientId: string) {
