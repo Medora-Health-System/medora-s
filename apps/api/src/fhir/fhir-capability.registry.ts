@@ -6,7 +6,7 @@ export const FHIR_MEDIA_TYPES = ["application/fhir+json", "application/json"] as
 export type FhirInteraction = "read" | "search-type" | "create" | "update" | "patch" | "delete" | "history-instance" | "history-type";
 
 export type FhirCapability = {
-  resourceType: "Patient" | "Encounter" | "Observation" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
+  resourceType: "Patient" | "Encounter" | "Observation" | "Condition" | "ServiceRequest" | "DiagnosticReport" | "CarePlan" | "Practitioner" | "PractitionerRole" | "Organization" | "Location";
   interaction: FhirInteraction;
   searchParameters: readonly string[];
   profiles: readonly string[];
@@ -33,6 +33,14 @@ export const FHIR_CAPABILITIES: readonly FhirCapability[] = Object.freeze([
   ]),
   { resourceType: "Observation", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-003", "FHIR-012"] },
   { resourceType: "Observation", interaction: "search-type", searchParameters: ["subject", "encounter", "_count"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "observation.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["FHIR-004", "FHIR-013"] },
+  { resourceType: "Condition", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "condition.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-Condition-READ"] },
+  { resourceType: "Condition", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "code", "clinical-status", "verification-status", "recorded-date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "condition.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-Condition-SEARCH"] },
+  { resourceType: "ServiceRequest", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "serviceRequest.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-ServiceRequest-READ"] },
+  { resourceType: "ServiceRequest", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "code", "status", "authored", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "serviceRequest.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-ServiceRequest-SEARCH"] },
+  { resourceType: "DiagnosticReport", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "diagnosticReport.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-DiagnosticReport-READ"] },
+  { resourceType: "DiagnosticReport", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "based-on", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "diagnosticReport.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-DiagnosticReport-SEARCH"] },
+  { resourceType: "CarePlan", interaction: "read", searchParameters: [], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "carePlan.read", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-CarePlan-READ"] },
+  { resourceType: "CarePlan", interaction: "search-type", searchParameters: ["_id", "patient", "subject", "encounter", "status", "date", "_count", "_cursor"], profiles: [], jurisdictions: ["*"], humanRoles: ADMIN_CLINICAL_ROLES, futureM2mScope: "carePlan.search", deploymentEnabled: true, productionEnabled: true, evidenceTestIds: ["C-CarePlan-SEARCH"] },
 ]);
 
 @Injectable()
@@ -60,11 +68,7 @@ export class FhirCapabilityRegistry {
 
   /** Admin onboarding choices come from the same implemented/evidenced capability registry. */
   permissionOptions() {
-    return this.grantable().map(({ resourceType, interaction, futureM2mScope }) => ({
-      code: futureM2mScope,
-      resourceType,
-      interaction,
-    }));
+    return this.grantable().map(({ resourceType, interaction, futureM2mScope }) => ({ code: futureM2mScope, resourceType, interaction }));
   }
 
   assertPermissionCodes(codes: readonly string[]): void {
