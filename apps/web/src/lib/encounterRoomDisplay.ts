@@ -5,7 +5,7 @@ import {
 } from "@medora/shared";
 
 /** Default room value for new encounter forms (canonical storage). */
-export const DEFAULT_ENCOUNTER_ROOM_LABEL = ED_CANONICAL_WAITING_ROOM_LABEL;
+export const DEFAULT_ENCOUNTER_ROOM_LABEL: string = ED_CANONICAL_WAITING_ROOM_LABEL;
 
 export const ENCOUNTER_ROOM_OPTIONS: string[] = [
   ED_CANONICAL_WAITING_ROOM_LABEL,
