@@ -14,13 +14,19 @@ import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
  * Keep the Clinic home navigation intentionally compact. These routes still exist and
  * remain protected by the normal capability/role guards; they are only removed from
  * the top shortcut strip to reduce visual duplication inside the Clinic workspace.
+ *
+ * Registration and Administration already live in the global left navigation. Public
+ * Health remains available only from the jurisdiction-aware global navigation.
  */
 const CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS = new Set<ClinicWorkspaceNavId>([
+  "registration",
   "provider",
   "orders",
   "results",
   "patients",
   "encounters",
+  "publicHealth",
+  "administration",
 ]);
 
 export function ClinicCareTopNav({ active }: { active: ClinicWorkspaceNavId }) {
