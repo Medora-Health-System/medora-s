@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AdminAuditEventsQueryDto } from "./dto/admin-audit-events-query.dto";
 import { auditHighlightTags, summarizeAuditMetadata } from "./audit-metadata-summary.util";
@@ -9,6 +10,7 @@ import { resolvePlatformAuthority } from "../auth/platform-principal";
 const PLATFORM_ACTOR_DISPLAY_NAME = "Medora Platform Administration";
 const SYSTEM_ACTOR_DISPLAY_NAME = "System";
 const FACILITY_ACTOR_DISPLAY_NAME = "Facility user";
+const SECURITY_INTEROP_ENTITIES = ["FHIR_INTEGRATION_CLIENT", "FHIR_INTEGRATION_ACCESS"];
 
 function parseTimeBoundary(raw: string | undefined, endOfDay: boolean): Date | undefined {
   if (!raw?.trim()) return undefined;
@@ -70,10 +72,11 @@ export class AdminAuditService {
     }
 
     const take = query.limit ?? 50;
-    const cursorDecoded = query.cursor ? decodeCursor(query.cursor) : null;
-
+    const requestedPage = query.page ?? 1;
+    const cursorDecoded = !query.page && query.cursor ? decodeCursor(query.cursor) : null;
     const preset = query.preset as AuditPreset | undefined;
-    const where = {
+
+    const baseWhere: Prisma.AuditLogWhereInput = {
       facilityId,
       createdAt: { gte: from, lte: to },
       ...(query.actorUserId ? { userId: query.actorUserId } : {}),
@@ -81,20 +84,38 @@ export class AdminAuditService {
       ...(preset ? auditPresetWhere(preset) : {}),
       ...(!preset && query.entity ? { entityType: query.entity } : {}),
       ...(!preset && query.action ? { action: query.action } : {}),
-      ...(cursorDecoded
-        ? {
-            OR: [
-              { createdAt: { lt: cursorDecoded.createdAt } },
-              { AND: [{ createdAt: cursorDecoded.createdAt }, { id: { lt: cursorDecoded.id } }] },
-            ],
-          }
-        : {}),
     };
 
+    const where: Prisma.AuditLogWhereInput = cursorDecoded
+      ? {
+          AND: [
+            baseWhere,
+            {
+              OR: [
+                { createdAt: { lt: cursorDecoded.createdAt } },
+                { AND: [{ createdAt: cursorDecoded.createdAt }, { id: { lt: cursorDecoded.id } }] },
+              ],
+            },
+          ],
+        }
+      : baseWhere;
+
+    const [totalCount, encounterLinkedCount, securityInteropCount] = await Promise.all([
+      this.prisma.auditLog.count({ where: baseWhere }),
+      this.prisma.auditLog.count({ where: { AND: [baseWhere, { encounterId: { not: null } }] } }),
+      this.prisma.auditLog.count({
+        where: { AND: [baseWhere, { entityType: { in: SECURITY_INTEROP_ENTITIES } }] },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / take));
+    const pageNumber = Math.min(requestedPage, totalPages);
+    const useNumberedPagination = Boolean(query.page);
+
     const rows = await this.prisma.auditLog.findMany({
-      where,
+      where: useNumberedPagination ? baseWhere : where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: take + 1,
+      ...(useNumberedPagination ? { skip: (pageNumber - 1) * take, take } : { take: take + 1 }),
       select: {
         id: true,
         createdAt: true,
@@ -109,8 +130,8 @@ export class AdminAuditService {
       },
     });
 
-    const hasNext = rows.length > take;
-    const page = hasNext ? rows.slice(0, take) : rows;
+    const hasNext = useNumberedPagination ? pageNumber < totalPages : rows.length > take;
+    const page = !useNumberedPagination && hasNext ? rows.slice(0, take) : rows;
     const userIds = [...new Set(page.map((r) => r.userId).filter((x): x is string => Boolean(x)))];
     const [roleByUser, platformActorIds] = await Promise.all([
       this.loadRoleHints(facilityId, userIds),
@@ -151,9 +172,24 @@ export class AdminAuditService {
     });
 
     const last = page[page.length - 1];
-    const nextCursor = hasNext && last ? encodeCursor(last.createdAt, last.id) : null;
+    const nextCursor = !useNumberedPagination && hasNext && last ? encodeCursor(last.createdAt, last.id) : null;
 
-    return { events, nextCursor };
+    return {
+      events,
+      nextCursor,
+      pagination: {
+        page: pageNumber,
+        pageSize: take,
+        totalCount,
+        totalPages,
+      },
+      stats: {
+        totalCount,
+        securityInteropCount,
+        encounterLinkedCount,
+        facilitySystemCount: Math.max(0, totalCount - encounterLinkedCount),
+      },
+    };
   }
 
   private async loadPlatformActorIds(userIds: string[]): Promise<Set<string>> {
