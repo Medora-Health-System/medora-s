@@ -74,6 +74,18 @@ export type AdminAuditEventRow = {
 export type AdminAuditEventsResponse = {
   events: AdminAuditEventRow[];
   nextCursor: string | null;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+  stats: {
+    totalCount: number;
+    securityInteropCount: number;
+    encounterLinkedCount: number;
+    facilitySystemCount: number;
+  };
 };
 
 export type AdminAuditEventsQuery = {
@@ -86,6 +98,7 @@ export type AdminAuditEventsQuery = {
   encounterId?: string;
   preset?: AdminAuditPreset;
   limit?: number;
+  page?: number;
   cursor?: string;
 };
 
@@ -102,6 +115,7 @@ export async function fetchAdminAuditEvents(
   if (query.encounterId?.trim()) sp.set("encounterId", query.encounterId.trim());
   if (query.preset) sp.set("preset", query.preset);
   if (query.limit != null) sp.set("limit", String(query.limit));
+  if (query.page != null) sp.set("page", String(query.page));
   if (query.cursor) sp.set("cursor", query.cursor);
   const qs = sp.toString();
   const path = `/audit/events${qs ? `?${qs}` : ""}`;
