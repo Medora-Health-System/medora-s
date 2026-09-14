@@ -1,5 +1,6 @@
 import {
   filterHrefListForFreestandingErRnProviderSidebar,
+  isHaitiPublicHealthJurisdiction,
   isNavigationAreaVisible,
   resolveCapabilityAwareNavigationAreas,
   resolveFacilityModuleCapabilitiesD4c1,
@@ -82,8 +83,17 @@ export function filterSidebarNavItemsByNavigationAreas(
   const areaFiltered = items.filter((item) =>
     isNavigationAreaVisible(visibleAreas, item.navAreas)
   );
+
+  // Facility-level Public Health belongs to the Haiti jurisdiction only. National
+  // MSPP navigation uses separate `mspp_*` groups and is intentionally unaffected.
+  const jurisdictionFiltered = areaFiltered.filter(
+    (item) =>
+      item.group !== "sante_publique" ||
+      isHaitiPublicHealthJurisdiction(profile.facilityCountry)
+  );
+
   const freestandingFiltered = filterHrefListForFreestandingErRnProviderSidebar(
-    areaFiltered,
+    jurisdictionFiltered,
     {
       roleCodes: profile.roleCodes,
       facilityType: profile.facilityType,
