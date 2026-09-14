@@ -1,0 +1,82 @@
+name: FHIR Certification
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/src/fhir/**"
+      - "apps/api/src/admin/admin-integrations.controller.ts"
+      - "apps/web/app/app/admin/integrations/**"
+      - "apps/web/src/lib/adminIntegrationsApi.ts"
+      - "apps/web/src/lib/adminIntegrationsFoundation.test.ts"
+      - "docs/interop/**"
+      - ".github/workflows/fhir-certification.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/src/fhir/**"
+      - "apps/api/src/admin/admin-integrations.controller.ts"
+      - "apps/web/app/app/admin/integrations/**"
+      - "apps/web/src/lib/adminIntegrationsApi.ts"
+      - "apps/web/src/lib/adminIntegrationsFoundation.test.ts"
+      - "docs/interop/**"
+      - ".github/workflows/fhir-certification.yml"
+
+jobs:
+  fhir-security:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medora_fhir_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d medora_fhir_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medora_fhir_ci
+      NODE_ENV: test
+      MEDORA_INTEROP_ENABLED: "true"
+      FHIR_PUBLIC_BASE_URL: https://fhir-ci.medoras.test/fhir
+      FHIR_M2M_ACCESS_SECRET: ci_fhir_m2m_access_secret_at_least_32_characters
+      JWT_ACCESS_SECRET: ci_access_secret
+      JWT_REFRESH_SECRET: ci_refresh_secret
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+      - name: Prisma migrate deploy
+        run: pnpm --filter @medora/api exec prisma migrate deploy
+      - name: FHIR clinical and M2M security tests
+        working-directory: apps/api
+        run: >-
+          pnpm exec jest --config jest.config.cjs
+          fhir-clinical-reconciliation.spec.ts
+          fhir-machine-security.spec.ts
+          fhir-m2m-lifecycle.spec.ts
+          --runInBand
+      - name: Integration manager lifecycle UI regression
+        working-directory: apps/web
+        run: pnpm exec vitest run src/lib/adminIntegrationsFoundation.test.ts
+      - name: API typecheck
+        run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit
