@@ -42,12 +42,14 @@ export default function IntegrationDetailPage() {
   const [credential, setCredential] = useState<ProvisionedFhirCredential | null>(null);
   const [testResult, setTestResult] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string>("");
+  const [credentialWarning, setCredentialWarning] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!integrationId) return;
     setError("");
+    setCredentialWarning("");
     try {
       const [row, clientRows, facilityRows, connectionInfo, permissionRows] = await Promise.all([
         fetchIntegration(integrationId),
@@ -56,14 +58,24 @@ export default function IntegrationDetailPage() {
         fetchFhirConnectionInfo(),
         fetchIntegrationPermissions(),
       ]);
-      const credentialEntries = await Promise.all(clientRows.map(async (client) => [client.id, await fetchFhirCredentials(integrationId, client.id)] as const));
+
       setIntegration(row);
       setClients(clientRows);
-      setCredentialsByClient(Object.fromEntries(credentialEntries));
       setFacilities(facilityRows);
       setInfo(connectionInfo);
       setPermissionOptions(permissionRows);
       setSelectedPermissions(row.permissions.map((permission) => permission.capabilityCode));
+      setCredentialsByClient({});
+
+      const credentialResults = await Promise.allSettled(
+        clientRows.map(async (client) => [client.id, await fetchFhirCredentials(integrationId, client.id)] as const),
+      );
+      const credentialEntries = credentialResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+      setCredentialsByClient(Object.fromEntries(credentialEntries));
+      const failedCredentialLoads = credentialResults.filter((result) => result.status === "rejected").length;
+      if (failedCredentialLoads) {
+        setCredentialWarning(`Integration loaded, but credential inventory is temporarily unavailable for ${failedCredentialLoads} machine client${failedCredentialLoads === 1 ? "" : "s"}. Other integration controls remain available.`);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load integration");
     }
@@ -194,6 +206,7 @@ export default function IntegrationDetailPage() {
     <h1 style={{ marginBottom: 4 }}>{integration?.displayName ?? "FHIR Integration"}</h1>
     {integration && <p style={{ color: "#475569" }}>{integration.partnerName} · {integration.protocol} · {integration.environment} · {integration.status} · {integration.provisioningState}</p>}
     {error && <p role="alert" style={{ color: "#991b1b", background: "#fee2e2", padding: 12, borderRadius: 6 }}>{error}</p>}
+    {credentialWarning && <p role="status" style={{ color: "#92400e", background: "#fef3c7", padding: 12, borderRadius: 6 }}>{credentialWarning}</p>}
     {statusMessage && <p role="status" style={{ color: "#166534", background: "#dcfce7", padding: 12, borderRadius: 6 }}>{statusMessage}</p>}
 
     <section style={panel}>
