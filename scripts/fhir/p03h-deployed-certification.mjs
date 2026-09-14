@@ -9,13 +9,14 @@
  * steps documented in MEDORA_RD_P0_3H_FHIR_M2M_CERTIFICATION.md.
  */
 
+import { randomUUID } from "node:crypto";
+
 const required = [
   "FHIR_CERT_BASE_URL",
   "FHIR_CERT_CLIENT_ID",
   "FHIR_CERT_KEY_ID",
   "FHIR_CERT_CLIENT_SECRET",
   "FHIR_CERT_FACILITY_ID",
-  "FHIR_CERT_WRONG_FACILITY_ID",
 ];
 
 for (const name of required) {
@@ -31,7 +32,7 @@ const clientId = process.env.FHIR_CERT_CLIENT_ID.trim();
 const keyId = process.env.FHIR_CERT_KEY_ID.trim();
 const clientSecret = process.env.FHIR_CERT_CLIENT_SECRET;
 const facilityId = process.env.FHIR_CERT_FACILITY_ID.trim();
-const wrongFacilityId = process.env.FHIR_CERT_WRONG_FACILITY_ID.trim();
+const wrongFacilityId = process.env.FHIR_CERT_WRONG_FACILITY_ID?.trim() || randomUUID();
 const allowedScope = (process.env.FHIR_CERT_ALLOWED_SCOPE || "patient.search").trim();
 const resourceType = (process.env.FHIR_CERT_RESOURCE_TYPE || "Patient").trim();
 const deniedResourceType = (process.env.FHIR_CERT_DENIED_RESOURCE_TYPE || "Observation").trim();
@@ -114,7 +115,6 @@ async function main() {
   console.log(`Target: ${baseUrl}`);
   console.log(`Positive resource: ${resourceType}; requested scope: ${allowedScope}`);
 
-  // A/B — positive client-credential issuance.
   const issued = await requestToken();
   if (!issued.response.ok || !issued.body || typeof issued.body !== "object") {
     fail("token issuance", `HTTP ${issued.response.status}`);
@@ -131,7 +131,6 @@ async function main() {
   }
   pass("token issuance", `Bearer token issued; TTL ${issued.body.expires_in}s`);
 
-  // C — actual bearer-token FHIR search.
   const positive = await fhirGet(resourceType, accessToken);
   if (!positive.response.ok) {
     fail("authorized FHIR search", `HTTP ${positive.response.status}`);
@@ -144,19 +143,15 @@ async function main() {
   }
   pass("authorized FHIR search", `${resourceType} returned a FHIR searchset`);
 
-  // D1 — wrong facility at token issuance.
   const wrongFacilityToken = await requestToken({ facility: wrongFacilityId });
   assertRejected("wrong facility token rejection", wrongFacilityToken.response, wrongFacilityToken.body, [401, 403]);
 
-  // D2 — ungranted scope at token issuance.
   const wrongScopeToken = await requestToken({ scope: ungrantedScope });
   assertRejected("ungranted scope token rejection", wrongScopeToken.response, wrongScopeToken.body, [403]);
 
-  // D3 — conflicting facility header on an otherwise valid machine request.
   const conflictingFacility = await fhirGet(resourceType, accessToken, { "x-facility-id": wrongFacilityId });
   assertRejected("conflicting facility header rejection", conflictingFacility.response, conflictingFacility.body, [401, 403]);
 
-  // D4 — token constrained to one granted scope cannot use a different resource interaction.
   if (deniedResourceType.toLowerCase() !== resourceType.toLowerCase()) {
     const missingTokenScope = await fhirGet(deniedResourceType, accessToken);
     assertRejected("missing token scope resource rejection", missingTokenScope.response, missingTokenScope.body, [403]);
