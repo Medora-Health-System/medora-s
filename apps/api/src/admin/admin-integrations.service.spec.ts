@@ -10,6 +10,7 @@ describe("AdminIntegrationsService security contract", () => {
   const facilityId = "00000000-0000-0000-0000-000000000001";
   const authorizedUser = { id: "u", isActive: true, canCreateFacilities: true, userRoles: [{ id: "r" }] };
   const tx: any = {
+    $executeRaw: jest.fn(),
     integration: { create: jest.fn(), update: jest.fn() },
     integrationFacilityAuthorization: { deleteMany: jest.fn(), createMany: jest.fn() },
     integrationPermission: { deleteMany: jest.fn(), createMany: jest.fn() },
@@ -30,6 +31,7 @@ describe("AdminIntegrationsService security contract", () => {
     prisma.facility.findMany.mockResolvedValue([]);
     prisma.integration.findMany.mockResolvedValue([]);
     prisma.$transaction.mockImplementation(async (callback: (client: any) => Promise<unknown>) => callback(tx));
+    tx.$executeRaw.mockResolvedValue(0);
     audit.log.mockResolvedValue(undefined);
   });
 
@@ -119,6 +121,54 @@ describe("AdminIntegrationsService security contract", () => {
     expect(result.id).toBe("integration-1");
     expect(audit.log).toHaveBeenCalledTimes(3);
     for (const call of audit.log.mock.calls) expect(call[2]).toEqual(expect.objectContaining({ tx, critical: true }));
+  });
+
+  test("permission removal retires stored machine-client scopes before the permission set is replaced", async () => {
+    prisma.integration.findUnique.mockResolvedValueOnce({
+      id: "integration-1",
+      protocol: "FHIR_R4",
+      technicalContactSameAsPrimary: false,
+      endpointConfig: null,
+      facilities: [],
+      permissions: [{ capabilityCode: "patient.read" }, { capabilityCode: "condition.read" }],
+    });
+    tx.integration.update.mockResolvedValueOnce({
+      id: "integration-1",
+      protocol: "FHIR_R4",
+      endpointConfig: null,
+      facilities: [],
+      permissions: [{ capabilityCode: "patient.read" }],
+    });
+
+    await service.update("u", "integration-1", { permissionCodes: ["patient.read"] });
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    const sql = tx.$executeRaw.mock.calls[0]?.[0] as { values?: unknown[] };
+    expect(sql.values).toEqual(["integration-1", "condition.read"]);
+    expect(tx.integrationPermission.deleteMany).toHaveBeenCalledWith({ where: { integrationId: "integration-1" } });
+    expect(tx.integrationPermission.createMany).toHaveBeenCalledWith({ data: [{ integrationId: "integration-1", capabilityCode: "patient.read" }] });
+  });
+
+  test("newly granted permissions do not silently expand existing machine-client scopes", async () => {
+    prisma.integration.findUnique.mockResolvedValueOnce({
+      id: "integration-1",
+      protocol: "FHIR_R4",
+      technicalContactSameAsPrimary: false,
+      endpointConfig: null,
+      facilities: [],
+      permissions: [{ capabilityCode: "patient.read" }],
+    });
+    tx.integration.update.mockResolvedValueOnce({
+      id: "integration-1",
+      protocol: "FHIR_R4",
+      endpointConfig: null,
+      facilities: [],
+      permissions: [{ capabilityCode: "patient.read" }, { capabilityCode: "condition.read" }],
+    });
+
+    await service.update("u", "integration-1", { permissionCodes: ["patient.read", "condition.read"] });
+
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
   });
 
   test("audit failure inside create transaction rejects the save instead of reporting a partial success", async () => {

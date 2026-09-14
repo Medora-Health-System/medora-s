@@ -22,6 +22,7 @@ import { FhirSearchService } from "./fhir-search";
 import { FhirClinicalService } from "./fhir-clinical.service";
 import { FhirCarePlanController, FhirConditionController, FhirDiagnosticReportController, FhirServiceRequestController } from "./fhir-clinical.controller";
 import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
+import { FhirMachineCredentialAdminService } from "./fhir-machine-credential-admin.service";
 import { FhirMachineStrategy } from "./fhir-machine.strategy";
 import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
 import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
@@ -52,6 +53,7 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirDeploymentGuard,
     FhirMediaInterceptor,
     FhirMachineIdentityService,
+    FhirMachineCredentialAdminService,
     FhirMachineStrategy,
     FhirMachineAuditInterceptor,
     { provide: FHIR_JURISDICTION_PROFILES, useValue: Object.freeze([BASE_PROFILE]) },
@@ -66,6 +68,6 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirSearchService,
     FhirClinicalService,
   ],
-  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService],
+  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService, FhirMachineCredentialAdminService],
 })
 export class FhirModule {}

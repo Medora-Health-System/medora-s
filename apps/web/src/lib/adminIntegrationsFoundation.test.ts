@@ -63,6 +63,23 @@ describe("Administration integrations foundation", () => {
     expect(provisioningSource).toContain("Revoke Client");
   });
 
+  test("P0.3H exposes credential inventory, per-key revocation, and client scope synchronization", () => {
+    expect(provisioningSource).toContain("Credentials / Keys");
+    expect(provisioningSource).toContain("Revoke Key");
+    expect(provisioningSource).toContain("Sync Client Scopes");
+    expect(provisioningSource).toContain("Scope update available");
+    expect(provisioningSource).toContain("fetchFhirCredentials");
+    expect(provisioningSource).toContain("revokeFhirCredential");
+    expect(provisioningSource).toContain("updateFhirClientScopes");
+  });
+
+  test("FHIR permission manager can grant newly reconciled capabilities without reprovisioning an integration", () => {
+    expect(provisioningSource).toContain("FHIR Permissions");
+    expect(provisioningSource).toContain("Save FHIR Permissions");
+    expect(provisioningSource).toContain("updateIntegrationPermissions");
+    expect(provisioningSource).toContain("Removing a permission takes effect on machine requests immediately");
+  });
+
   test("partner connection screen exposes machine endpoints and a token request example", () => {
     expect(provisioningSource).toContain("FHIR Base URL");
     expect(provisioningSource).toContain("Token URL");
