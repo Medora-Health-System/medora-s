@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { z } from "zod";
+import { FhirMachineCredentialAdminService } from "../fhir/fhir-machine-credential-admin.service";
 import { FhirMachineIdentityService } from "../fhir/fhir-machine-identity.service";
 import { AdminIntegrationsService } from "./admin-integrations.service";
 import { integrationInputSchema, integrationPatchSchema } from "./dto/admin-integration.dto";
@@ -15,11 +16,16 @@ const clientProvisionSchema = z.object({
 }).strict();
 const credentialRotateSchema = z.object({ expiresAt: z.string().datetime().optional() }).strict();
 const credentialTestSchema = z.object({ clientId: z.string().uuid(), keyId: z.string().min(4).max(96), clientSecret: z.string().min(32).max(512), facilityId: z.string().uuid() }).strict();
+const clientScopesSchema = z.object({ scopes: z.array(z.string().min(1).max(100)).min(1).max(100) }).strict();
 
 @Controller("admin/integrations")
 @UseGuards(AuthGuard("jwt"), PlatformIntegrationAdminGuard)
 export class AdminIntegrationsController {
-  constructor(private readonly service: AdminIntegrationsService, private readonly machines: FhirMachineIdentityService) {}
+  constructor(
+    private readonly service: AdminIntegrationsService,
+    private readonly machines: FhirMachineIdentityService,
+    private readonly credentialAdmin: FhirMachineCredentialAdminService,
+  ) {}
   @Get("permission-options") permissions(@Req() req: any) { return this.service.authorize(req.user.userId).then(() => this.service.permissions()); }
   @Get("facility-options") facilities(@Req() req: any) { return this.service.facilityOptions(req.user.userId); }
   @Get("connection-info") async connectionInfo(@Req() req: any) { await this.service.authorize(req.user.userId); return this.machines.connectionInfo(); }
@@ -37,11 +43,30 @@ export class AdminIntegrationsController {
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     return this.machines.provisionClient(req.user.userId, id, parsed.data);
   }
+  @Get(":id/clients/:clientId/credentials") async credentials(@Req() req: any, @Param("id") id: string, @Param("clientId") clientId: string) {
+    await this.service.authorize(req.user.userId);
+    return this.credentialAdmin.listCredentials(id, clientId);
+  }
   @Post(":id/clients/:clientId/credentials/rotate") async rotateCredential(@Req() req: any, @Param("id") id: string, @Param("clientId") clientId: string, @Body() body: unknown) {
     await this.service.authorize(req.user.userId);
     const parsed = credentialRotateSchema.safeParse(body ?? {});
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     return this.machines.rotateCredential(req.user.userId, id, clientId, parsed.data);
+  }
+  @Post(":id/clients/:clientId/credentials/:credentialId/revoke") async revokeCredential(
+    @Req() req: any,
+    @Param("id") id: string,
+    @Param("clientId") clientId: string,
+    @Param("credentialId") credentialId: string,
+  ) {
+    await this.service.authorize(req.user.userId);
+    return this.credentialAdmin.revokeCredential(req.user.userId, id, clientId, credentialId);
+  }
+  @Patch(":id/clients/:clientId/scopes") async replaceClientScopes(@Req() req: any, @Param("id") id: string, @Param("clientId") clientId: string, @Body() body: unknown) {
+    await this.service.authorize(req.user.userId);
+    const parsed = clientScopesSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    return this.credentialAdmin.replaceScopes(req.user.userId, id, clientId, parsed.data.scopes);
   }
   @Post(":id/clients/:clientId/revoke") async revokeClient(@Req() req: any, @Param("id") id: string, @Param("clientId") clientId: string) {
     await this.service.authorize(req.user.userId);
