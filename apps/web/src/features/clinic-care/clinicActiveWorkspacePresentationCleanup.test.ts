@@ -35,9 +35,10 @@ describe("Clinic active ambulatory workspace presentation cleanup", () => {
   });
 
   it("hides only the Clinic expected-profile exception authoring row and full-triage escape link", () => {
-    expect(encounterLayout).toContain('details:first-of-type > div > div:last-child');
+    expect(encounterLayout).toContain('details[open]:has(textarea[maxlength="8000"]) > div > div:last-child');
     expect(encounterLayout).toContain('a[href*="workspace=ambulatory"][href*="section=intake"]');
     expect(triageSections).toContain("triageExceptionsNote");
+    expect(triageSections).toContain('maxLength={8000}');
     expect(triage).toContain("encounterTriageTabHref");
   });
 
