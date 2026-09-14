@@ -1,10 +1,14 @@
 import { AuditAction } from "@prisma/client";
 
-export type AuditUiCategory = "critical" | "clinical" | "billing" | "access" | "override" | "other";
+export type AuditUiCategory = "critical" | "security" | "clinical" | "billing" | "access" | "override" | "other";
 
 const BILLING_EXPORT_ENTITIES = new Set(["EXTERNAL_BILLING_EXPORT", "EXTERNAL_BILLING_AUTO_EXPORT"]);
+const SECURITY_INTEROP_ENTITIES = new Set(["FHIR_INTEGRATION_CLIENT", "FHIR_INTEGRATION_ACCESS"]);
 
 export function classifyAuditUiCategory(action: AuditAction, entityType: string): AuditUiCategory {
+  if (SECURITY_INTEROP_ENTITIES.has(entityType)) {
+    return "security";
+  }
   if (entityType === "ED_REPORT_EXPORT") {
     return "clinical";
   }
