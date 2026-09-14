@@ -1,5 +1,7 @@
 import { Controller, Get, Header, Param, Query, Req, UseFilters, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { RoleCode } from "@prisma/client";
+import { RequireRoles } from "../common/guards/roles.guard";
 import { FhirCapabilityGuard, RequireFhirCapability } from "./fhir-capability.guard";
 import { FhirContextGuard, FhirDeploymentGuard, FhirRequestContext } from "./fhir-context.guard";
 import { FhirMediaInterceptor } from "./fhir-media.interceptor";
@@ -18,6 +20,8 @@ export class FhirAllergyIntoleranceController {
 
   @Get()
   @Header("Content-Type", "application/fhir+json; charset=utf-8")
+  @Header("Cache-Control", "no-store")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   @RequireFhirCapability("AllergyIntolerance", "search-type")
   find(@Query() query: Record<string, unknown>, @Req() request: Request) {
     return this.allergies.find(request.fhirContext.facilityId, query);
@@ -25,6 +29,8 @@ export class FhirAllergyIntoleranceController {
 
   @Get(":id")
   @Header("Content-Type", "application/fhir+json; charset=utf-8")
+  @Header("Cache-Control", "no-store")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   @RequireFhirCapability("AllergyIntolerance", "read")
   read(@Param("id") id: string, @Req() request: Request) {
     return this.allergies.read(request.fhirContext.facilityId, id);
