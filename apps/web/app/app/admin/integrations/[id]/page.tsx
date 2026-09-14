@@ -83,7 +83,14 @@ export default function IntegrationDetailPage() {
     setBusy(true); setError(""); setTestResult("");
     try {
       const result = await rotateFhirCredential(integrationId, client.id);
-      setCredential(result);
+      // Rotation deliberately returns only the new secret material. Rehydrate the
+      // facility and effective scopes from the already-loaded machine client so
+      // the one-time credential panel and Test Credentials can render safely.
+      setCredential({
+        ...result,
+        facilityId: client.facilityId,
+        scopes: client.scopes,
+      });
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to rotate credential");
