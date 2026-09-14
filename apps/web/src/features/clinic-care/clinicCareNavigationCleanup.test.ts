@@ -6,7 +6,7 @@ import { filterSidebarNavItemsForSession } from "@/features/navigation/navigatio
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 
 const featureDir = __dirname;
-const webRoot = join(featureDir, "../..");
+const webRoot = join(featureDir, "../../..");
 
 function hrefsFor(roleCodes: string[], facilityCountry: string) {
   return filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
@@ -33,20 +33,24 @@ describe("Clinic Care navigation cleanup", () => {
       join(webRoot, "app/app/clinic-care/follow-up/page.tsx"),
       "utf8"
     );
-    expect(page).toContain('import FollowUpsPage from "../../../follow-ups/page"');
+    expect(page).toContain('import FollowUpsPage from "../../follow-ups/page"');
     expect(page).toContain("<FollowUpsPage />");
     expect(page).not.toContain("ClinicCareDirectCanonicalRedirect");
     expect(page).not.toContain('href={href}');
   });
 
-  it("hides facility Public Health in the USA and Dominican Republic but preserves Haiti", () => {
+  it("hides facility Public Health in the USA and Dominican Republic for non-admin clinical staff", () => {
     for (const country of ["US", "USA", "DO", "DOMINICAN REPUBLIC"]) {
-      expect(hrefsFor(["ADMIN"], country).some((href) => href.startsWith("/app/public-health"))).toBe(false);
       expect(hrefsFor(["RN"], country).some((href) => href.startsWith("/app/public-health"))).toBe(false);
+      expect(hrefsFor(["PROVIDER"], country).some((href) => href.startsWith("/app/public-health"))).toBe(false);
     }
+  });
 
-    expect(hrefsFor(["ADMIN"], "HT").some((href) => href.startsWith("/app/public-health"))).toBe(true);
+  it("preserves facility Public Health for Haiti clinical staff and Admin oversight", () => {
     expect(hrefsFor(["RN"], "Haiti").some((href) => href.startsWith("/app/public-health"))).toBe(true);
+    expect(hrefsFor(["PROVIDER"], "HT").some((href) => href.startsWith("/app/public-health"))).toBe(true);
+    expect(hrefsFor(["ADMIN"], "US").some((href) => href.startsWith("/app/public-health"))).toBe(true);
+    expect(hrefsFor(["ADMIN"], "DO").some((href) => href.startsWith("/app/public-health"))).toBe(true);
   });
 
   it("keeps Administration hidden and route-blocked for non-admin staff", () => {
