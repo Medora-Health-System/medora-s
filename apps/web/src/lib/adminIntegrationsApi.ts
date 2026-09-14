@@ -45,6 +45,13 @@ export type ProvisionedFhirCredential = FhirConnectionInfo & {
   expiresAt: string | null;
   secretDisplayPolicy: string;
 };
+export type RotatedFhirCredential = FhirConnectionInfo & {
+  clientId: string;
+  keyId: string;
+  clientSecret: string;
+  expiresAt: string | null;
+  secretDisplayPolicy: string;
+};
 
 async function call(path: string, init?: RequestInit) {
   const res = await fetch(`/api/admin/integrations${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...init });
@@ -64,7 +71,7 @@ export const fetchIntegrationFacilities = () => call("/facility-options") as Pro
 export const fetchFhirConnectionInfo = () => call("/connection-info") as Promise<FhirConnectionInfo>;
 export const fetchFhirClients = (integrationId: string) => call(`/${integrationId}/clients`) as Promise<FhirClientRow[]>;
 export const provisionFhirClient = (integrationId: string, body: unknown) => call(`/${integrationId}/clients`, { method: "POST", body: JSON.stringify(body) }) as Promise<ProvisionedFhirCredential>;
-export const rotateFhirCredential = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials/rotate`, { method: "POST", body: "{}" }) as Promise<ProvisionedFhirCredential>;
+export const rotateFhirCredential = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials/rotate`, { method: "POST", body: "{}" }) as Promise<RotatedFhirCredential>;
 export const revokeFhirClient = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/revoke`, { method: "POST" }) as Promise<{ revoked: true; clientId: string }>;
 export const testFhirConnection = (integrationId: string, body: unknown) => call(`/${integrationId}/test-connection`, { method: "POST", body: JSON.stringify(body) }) as Promise<FhirConnectionInfo & { ok: true; tokenIssued: true; expiresIn: number; scopes: string[] }>;
 export const createIntegration = (body: unknown) => call("", { method: "POST", body: JSON.stringify(body) }) as Promise<IntegrationRow>;
