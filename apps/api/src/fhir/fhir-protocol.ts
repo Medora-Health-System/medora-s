@@ -10,6 +10,7 @@ export const FHIR_RESOURCE_TYPES = [
   "MedicationRequest",
   "MedicationAdministration",
   "DocumentReference",
+  "Provenance",
   "ServiceRequest",
   "DiagnosticReport",
   "CarePlan",
