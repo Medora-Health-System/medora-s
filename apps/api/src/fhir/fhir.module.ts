@@ -25,6 +25,8 @@ import { FhirAllergyIntoleranceController } from "./fhir-allergy-intolerance.con
 import { FhirAllergyIntoleranceService } from "./fhir-allergy-intolerance.service";
 import { FhirMedicationAdministrationController, FhirMedicationRequestController } from "./fhir-medication.controller";
 import { FhirMedicationService } from "./fhir-medication.service";
+import { FhirDocumentReferenceController } from "./fhir-document-reference.controller";
+import { FhirDocumentReferenceService } from "./fhir-document-reference.service";
 import { FhirMachineIdentityService } from "./fhir-machine-identity.service";
 import { FhirMachineCredentialAdminService } from "./fhir-machine-credential-admin.service";
 import { FhirMachineStrategy } from "./fhir-machine.strategy";
@@ -39,6 +41,7 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirAllergyIntoleranceController,
     FhirMedicationRequestController,
     FhirMedicationAdministrationController,
+    FhirDocumentReferenceController,
     FhirConditionController,
     FhirServiceRequestController,
     FhirDiagnosticReportController,
@@ -76,6 +79,7 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirClinicalService,
     FhirAllergyIntoleranceService,
     FhirMedicationService,
+    FhirDocumentReferenceService,
   ],
   exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService, FhirMachineCredentialAdminService],
 })
