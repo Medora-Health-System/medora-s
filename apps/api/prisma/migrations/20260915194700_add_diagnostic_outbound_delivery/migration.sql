@@ -1,10 +1,11 @@
 -- Phase 3B: durable, facility-scoped outbound diagnostic delivery state.
 -- Raw FHIR payloads are intentionally not stored in this operational table.
+-- Existing Medora identifiers are TEXT, so all FK columns intentionally match that type.
 CREATE TABLE "DiagnosticOutboundDelivery" (
-  "id" UUID NOT NULL,
-  "integrationId" UUID NOT NULL,
-  "facilityId" UUID NOT NULL,
-  "orderItemId" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "integrationId" TEXT NOT NULL,
+  "facilityId" TEXT NOT NULL,
+  "orderItemId" TEXT NOT NULL,
   "idempotencyKey" VARCHAR(96) NOT NULL,
   "domain" VARCHAR(16) NOT NULL,
   "state" VARCHAR(32) NOT NULL DEFAULT 'prepared',
