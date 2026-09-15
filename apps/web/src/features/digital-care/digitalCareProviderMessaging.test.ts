@@ -3,12 +3,17 @@ import { SIDEBAR_NAV_ITEMS } from "@/components/app-shell/sidebarNavConfig";
 import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
 
 describe("Digital Care provider messaging workspace", () => {
-  it("exposes one dedicated provider/RN sidebar destination", () => {
+  it("exposes one dedicated ADMIN/provider/RN sidebar destination", () => {
     const item = SIDEBAR_NAV_ITEMS.find((candidate) => candidate.href === "/app/digital-care");
     expect(item).toBeDefined();
     expect(item?.label).toBe("nav.digitalCare");
-    expect(item?.roles).toEqual(["RN", "PROVIDER"]);
+    expect(item?.roles).toEqual(["ADMIN", "RN", "PROVIDER"]);
     expect(item?.navAreas).toEqual(["EMERGENCY", "HOSPITAL", "CLINIC_CARE"]);
+  });
+
+  it("keeps FRONT_DESK excluded from Digital Care", () => {
+    const item = SIDEBAR_NAV_ITEMS.find((candidate) => candidate.href === "/app/digital-care");
+    expect(item?.roles).not.toContain("FRONT_DESK");
   });
 
   it("localizes the Digital Care label in all supported UI languages", () => {
