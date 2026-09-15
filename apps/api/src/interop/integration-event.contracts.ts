@@ -1,11 +1,12 @@
 /**
- * Phase 11B — interoperability **contracts only** (no persistence, no inbound adapters).
+ * Medora interoperability contracts.
  *
- * Future inbound services (HL7, FHIR, device gateways) should map external payloads
- * into these shapes before human review / acceptance workflows exist.
+ * External clinical content remains a proposal until the governed Medora
+ * workflow accepts it. These contracts intentionally contain correlation and
+ * lifecycle metadata only; raw PHI payloads and narrative belong in governed
+ * clinical storage, never audit metadata.
  */
 
-/** Identifies the external technical family (not a vendor trademark in code). */
 export type ExternalIntegrationSource =
   | "HL7_V2"
   | "FHIR_R4"
@@ -16,10 +17,6 @@ export type ExternalIntegrationSource =
   | "MANUAL_ATTESTATION"
   | "UNKNOWN";
 
-/**
- * Lifecycle for a single inbound integration artifact (message, bundle, device batch).
- * Does not imply DB storage — UI/workflow may persist under a future schema.
- */
 export type IntegrationIngestionStatus =
   | "received"
   | "parsed"
@@ -29,34 +26,77 @@ export type IntegrationIngestionStatus =
   | "duplicate_suppressed"
   | "failed_technical";
 
-/** Non-PHI hints for matching vitals/Observation payloads to an encounter (future). */
 export type ExternalObservationDraft = {
   source: ExternalIntegrationSource;
-  /** When true, data originated from a device stream — never auto-file to legal chart without policy. */
   deviceSourced: boolean;
-  /** LOINC or vendor code system + code (no free text). */
   coding?: { system: string; code: string };
-  /** ISO-8601 instant if known from payload. */
   effectiveAt?: string;
 };
 
-/** Structured hints for lab/imaging result correlation — no narrative text in this contract. */
 export type ExternalResultDraft = {
   source: ExternalIntegrationSource;
-  /** Filler / placer / accession style identifiers (non-PHI preferred). */
   correlationIds?: Record<string, string>;
-  /** Whether the payload included unstructured narrative (must force human review if true). */
   hasNarrativeContent: boolean;
 };
 
-/**
- * Patient matching hint only — **must not** drive automatic merge or create.
- * Used for UI “possible match” lists under future integration UX.
- */
 export type ExternalPatientIdentityHint = {
   source: ExternalIntegrationSource;
-  /** External system patient id (opaque string; still treat as sensitive in logs). */
   externalPatientId?: string;
-  /** Last 4 of MRN-style identifiers only if policy allows; prefer omit from audit metadata. */
   mrnSuffix?: string;
 };
+
+/** Phase 3A: domains eligible for bidirectional diagnostic exchange. */
+export type DiagnosticExchangeDomain = "LAB" | "RADIOLOGY";
+
+/**
+ * Correlation identity carried across the outbound order and inbound result.
+ * facilityId is mandatory: an accession or vendor identifier is never globally
+ * trusted and can never authorize cross-facility correlation.
+ */
+export type DiagnosticExchangeCorrelation = {
+  facilityId: string;
+  orderId: string;
+  orderItemId: string;
+  /** Medora-generated opaque placer identifier; no patient demographics. */
+  placerOrderId: string;
+  /** Partner-assigned identifier after acknowledgement, when available. */
+  fillerOrderId?: string;
+  accessionNumber?: string;
+};
+
+/** Outbound diagnostic order envelope before partner-specific serialization. */
+export type OutboundDiagnosticOrder = {
+  source: "FHIR_R4";
+  domain: DiagnosticExchangeDomain;
+  correlation: DiagnosticExchangeCorrelation;
+  /** Stable idempotency key for safe retry of the same logical order version. */
+  idempotencyKey: string;
+  /** ISO-8601 time at which this exchange version was produced. */
+  generatedAt: string;
+  /** FHIR ServiceRequest is the canonical Phase 3 FHIR order resource. */
+  resourceType: "ServiceRequest";
+};
+
+/** Inbound status/result identity after authentication and parsing, pre-chart. */
+export type InboundDiagnosticArtifact = {
+  source: "FHIR_R4" | "EXTERNAL_LAB" | "EXTERNAL_RADIOLOGY";
+  domain: DiagnosticExchangeDomain;
+  facilityId: string;
+  /** Partner message/event identity used with source + facility for replay suppression. */
+  externalMessageId: string;
+  correlation: Partial<Omit<DiagnosticExchangeCorrelation, "facilityId">>;
+  resourceType: "ServiceRequest" | "DiagnosticReport" | "Observation";
+  status: IntegrationIngestionStatus;
+  receivedAt: string;
+  /** Narrative content, when present, forces governed human review. */
+  hasNarrativeContent: boolean;
+};
+
+export const DIAGNOSTIC_EXCHANGE_INVARIANTS = Object.freeze({
+  facilityScopeRequired: true,
+  patientAutoMergeAllowed: false,
+  resultAutoFileAllowed: false,
+  rawPayloadAllowedInAuditMetadata: false,
+  duplicateKey: "source+facilityId+externalMessageId",
+  inboundLegalChartState: "pending_clinical_review",
+} as const);
