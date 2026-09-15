@@ -33,7 +33,7 @@ const RULES: Record<SupportedLanguage, readonly Rule[]> = {
   ],
 };
 
-const PROTECTED = /\b(denies?|denied|no|not|without|sin|niega|niegan|sans|nie|nient|allerg(?:y|ic|ies)|alerg(?:ia|ias)|allergie|mg|mcg|µg|g|ml|mmhg|left|right|gauche|droite|izquierd[oa]|derech[oa])\b/i;
+const PROTECTED = /\b(denies?|denied|no|not|without|negative|positive|abnormal|normal|sin|niega|niegan|negativo|negativa|positivo|positiva|sans|nie|nient|négatif|négative|positif|positive|allerg(?:y|ic|ies)|alerg(?:ia|ias)|allergie|mg|mcg|µg|g|ml|mmhg|left|right|gauche|droite|izquierd[oa]|derech[oa])\b/i;
 
 function preserveInitialCase(source: string, replacement: string): string {
   if (!source || source[0] !== source[0].toUpperCase()) return replacement;
@@ -42,11 +42,14 @@ function preserveInitialCase(source: string, replacement: string): string {
 
 export function suggestClinicalGrammar(value: string, language: SupportedLanguage): ClinicalGrammarSuggestion | null {
   if (!value.trim()) return null;
+  // If a note contains meaning-sensitive content, do not run sentence grammar rules on it.
+  // This conservative boundary prevents a future broader rule from touching clinical polarity,
+  // negation, dose/unit, allergy, laterality, or numeric-result statements.
+  if (PROTECTED.test(value) || /\d/.test(value)) return null;
   for (const rule of RULES[language]) {
     const match = rule.pattern.exec(value);
     if (!match || match.index == null) continue;
     const original = match[0];
-    if (PROTECTED.test(original) || /\d/.test(original)) continue;
     const rawReplacement = original.replace(rule.pattern, rule.replacement);
     const replacement = preserveInitialCase(original, rawReplacement);
     if (replacement === original) continue;
