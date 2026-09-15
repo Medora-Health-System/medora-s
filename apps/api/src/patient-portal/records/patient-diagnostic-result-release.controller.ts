@@ -6,7 +6,7 @@ import { PatientDiagnosticResultReleaseService, type DiagnosticResultStaffActor 
 
 @Controller("patient-portal/v1/staff/results")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
-@RequireRoles(RoleCode.PROVIDER, RoleCode.RN)
+@RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
 export class PatientDiagnosticResultReleaseController {
   constructor(private readonly releases: PatientDiagnosticResultReleaseService) {}
   private actor(req: any): DiagnosticResultStaffActor {
