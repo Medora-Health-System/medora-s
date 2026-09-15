@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
 
 const featureDir = __dirname;
 const webRoot = join(featureDir, "../../..");
@@ -56,19 +57,23 @@ describe("Clinic active ambulatory workspace presentation cleanup", () => {
     expect(providerWorkspace).toContain("provider-documentation-template-picker");
   });
 
-  it("simplifies the Clinic medication empty state without changing MAR authority or data flow", () => {
+  it("keeps the compact medication empty state on the locale registry instead of English CSS", () => {
     expect(encounterLayout).toContain('[data-testid="mar-ambulatory-pending-fallback-hint"]');
-    expect(encounterLayout).toContain('[data-testid="mar-ambulatory-empty-tasks"]');
-    expect(encounterLayout).toContain('content: "No medication scheduled."');
+    expect(encounterLayout).not.toContain('content: "No medication scheduled."');
     expect(medicationTab).toContain('data-testid="mar-ambulatory-empty-tasks"');
     expect(medicationTab).toContain("medication-administrations");
+    expect(resolveClinicalUiMessage("en", "clinicCareD4c7e.mar.emptyFacility")).toBe("No medication scheduled.");
+    expect(resolveClinicalUiMessage("fr", "clinicCareD4c7e.mar.emptyFacility")).toBe("Aucun médicament programmé.");
+    expect(resolveClinicalUiMessage("es", "clinicCareD4c7e.mar.emptyFacility")).toBe("No hay medicamentos programados.");
   });
 
-  it("removes only presentation sublines from Notes, Rx, and Summary", () => {
+  it("removes only presentation sublines from Nursing, Notes, Rx, and Summary", () => {
+    expect(encounterLayout).toContain('[data-testid="clinic-care-ambulatory-nursing"] > h3 + p');
     expect(encounterLayout).toContain(':has([data-testid="encounter-notes-editor"]) h2 + div');
     expect(encounterLayout).toContain('[data-testid="clinic-care-ambulatory-prescriptions"] > h3 + p');
     expect(encounterLayout).toContain('[data-testid="clinic-care-ambulatory-clinical-summary"] > h3 + p');
     expect(encounterLayout).toContain('[data-testid="encounter-clinical-record-summary"] > div:first-child h2 + div');
+    expect(clinicPanels).toContain('t("clinicCareD4c5b2.nursing.subtitle")');
     expect(notes).toContain('t("encounterNotes.subline")');
     expect(rx).toContain('t("clinicCareD4c5b3.rx.hint")');
     expect(summary).toContain("encounterClinicalRecordSummary.readOnlySubline");

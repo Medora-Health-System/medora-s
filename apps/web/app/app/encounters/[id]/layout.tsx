@@ -73,15 +73,11 @@ const CLINIC_AMBULATORY_PRESENTATION_CSS = `
   display: none !important;
 }
 
-[data-testid="clinic-care-active-ambulatory-workspace"] [data-testid="mar-ambulatory-empty-tasks"] {
-  font-size: 0 !important;
-  color: transparent !important;
-}
+/* Keep the MAR empty state itself visible. Its copy comes from the normal EN/FR/ES
+   i18n key (clinicCareD4c7e.mar.emptyFacility); never replace it with CSS content. */
 
-[data-testid="clinic-care-active-ambulatory-workspace"] [data-testid="mar-ambulatory-empty-tasks"]::after {
-  content: "No medication scheduled.";
-  font-size: 14px;
-  color: #666;
+[data-testid="clinic-care-ambulatory-nursing"] > h3 + p {
+  display: none !important;
 }
 
 [data-testid="clinic-care-active-ambulatory-workspace"]:has([data-testid="encounter-notes-editor"]) h2 + div[style*="margin-top: 6px"] {
