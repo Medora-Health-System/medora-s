@@ -1,5 +1,21 @@
 import type { DigitalCareEvent } from "./digital-care-event";
 
+export const DIGITAL_CARE_SHARED_EVENT_NAMES = [
+  "PatientRegistered",
+  "PatientActivated",
+  "PatientDisabled",
+  "LabReleased",
+  "ConversationCreated",
+  "ConversationReplied",
+  "VideoStarted",
+  "NotificationSent",
+  "EducationAssigned",
+  "ConsentSigned",
+] as const;
+
+export type DigitalCareSharedEventName =
+  (typeof DIGITAL_CARE_SHARED_EVENT_NAMES)[number];
+
 export type PatientRegisteredEvent = DigitalCareEvent<
   "PatientRegistered",
   { patientId: string }
@@ -61,5 +77,3 @@ export type DigitalCareSharedEvent =
   | NotificationSentEvent
   | EducationAssignedEvent
   | ConsentSignedEvent;
-
-export type DigitalCareSharedEventName = DigitalCareSharedEvent["name"];
