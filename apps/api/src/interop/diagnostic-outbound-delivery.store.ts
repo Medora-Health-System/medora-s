@@ -34,7 +34,7 @@ export class DiagnosticOutboundDeliveryStore {
       INSERT INTO "DiagnosticOutboundDelivery"
         ("id", "integrationId", "facilityId", "orderItemId", "idempotencyKey", "domain", "state", "attemptCount", "createdAt", "updatedAt")
       VALUES
-        (${id}::uuid, ${input.integrationId}::uuid, ${input.facilityId}::uuid, ${input.orderItemId}::uuid,
+        (${id}, ${input.integrationId}, ${input.facilityId}, ${input.orderItemId},
          ${input.idempotencyKey}, ${input.domain}, 'prepared', 0, NOW(), NOW())
       ON CONFLICT ("integrationId", "facilityId", "orderItemId") DO UPDATE
         SET "updatedAt" = "DiagnosticOutboundDelivery"."updatedAt"
@@ -49,11 +49,40 @@ export class DiagnosticOutboundDeliveryStore {
     return row;
   }
 
-  async recordAttempt(input: {
+  /**
+   * Claims exactly one real network attempt. This is the only transition that increments attemptCount.
+   * Terminal states can never be resurrected and an already-dispatched row cannot be claimed twice.
+   */
+  async beginAttempt(input: {
     id: string;
     integrationId: string;
     facilityId: string;
-    state: Exclude<DiagnosticOutboundDeliveryState, "prepared" | "acknowledged">;
+  }): Promise<boolean> {
+    const updated = await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE "DiagnosticOutboundDelivery"
+      SET "state" = 'dispatched',
+          "attemptCount" = "attemptCount" + 1,
+          "lastAttemptAt" = NOW(),
+          "nextAttemptAt" = NULL,
+          "partnerStatusCode" = NULL,
+          "failureClass" = NULL,
+          "updatedAt" = NOW()
+      WHERE "id" = ${input.id}
+        AND "integrationId" = ${input.integrationId}
+        AND "facilityId" = ${input.facilityId}
+        AND "state" IN ('prepared', 'retryable_failure')
+        AND "attemptCount" < 5
+        AND ("nextAttemptAt" IS NULL OR "nextAttemptAt" <= NOW())
+    `);
+    return updated === 1;
+  }
+
+  /** Records the outcome of an attempt already claimed by beginAttempt; never increments the counter. */
+  async recordAttemptOutcome(input: {
+    id: string;
+    integrationId: string;
+    facilityId: string;
+    state: "retryable_failure" | "dead_lettered" | "permanent_failure";
     nextAttemptAt?: Date;
     partnerStatusCode?: number;
     failureClass?: string;
@@ -61,17 +90,16 @@ export class DiagnosticOutboundDeliveryStore {
     const updated = await this.prisma.$executeRaw(Prisma.sql`
       UPDATE "DiagnosticOutboundDelivery"
       SET "state" = ${input.state},
-          "attemptCount" = "attemptCount" + 1,
-          "lastAttemptAt" = NOW(),
-          "nextAttemptAt" = ${input.nextAttemptAt ?? null},
+          "nextAttemptAt" = ${input.state === "retryable_failure" ? input.nextAttemptAt ?? null : null},
           "partnerStatusCode" = ${input.partnerStatusCode ?? null},
           "failureClass" = ${input.failureClass ?? null},
           "updatedAt" = NOW()
-      WHERE "id" = ${input.id}::uuid
-        AND "integrationId" = ${input.integrationId}::uuid
-        AND "facilityId" = ${input.facilityId}::uuid
-        AND "state" <> 'acknowledged'
-        AND "attemptCount" < 5
+      WHERE "id" = ${input.id}
+        AND "integrationId" = ${input.integrationId}
+        AND "facilityId" = ${input.facilityId}
+        AND "state" = 'dispatched'
+        AND "attemptCount" > 0
+        AND "attemptCount" <= 5
     `);
     return updated === 1;
   }
@@ -89,10 +117,12 @@ export class DiagnosticOutboundDeliveryStore {
       SET "state" = 'acknowledged', "acknowledgedAt" = NOW(), "nextAttemptAt" = NULL,
           "partnerStatusCode" = ${input.partnerStatusCode},
           "partnerMessageId" = ${input.partnerMessageId ?? null}, "updatedAt" = NOW()
-      WHERE "id" = ${input.id}::uuid
-        AND "integrationId" = ${input.integrationId}::uuid
-        AND "facilityId" = ${input.facilityId}::uuid
-        AND "state" NOT IN ('acknowledged', 'dead_lettered', 'permanent_failure')
+      WHERE "id" = ${input.id}
+        AND "integrationId" = ${input.integrationId}
+        AND "facilityId" = ${input.facilityId}
+        AND "state" = 'dispatched'
+        AND "attemptCount" > 0
+        AND "attemptCount" <= 5
     `);
     return updated === 1;
   }
