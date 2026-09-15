@@ -1,0 +1,39 @@
+name: Digital Care Provider Messaging
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/app/app/digital-care/**"
+      - "apps/web/src/lib/digitalCareStaffMessagingApi.ts"
+      - "apps/web/src/components/app-shell/sidebarNavConfig.ts"
+      - "apps/web/src/i18n/messages/digitalCareNavOverrides.ts"
+      - "apps/web/src/i18n/messages/registry.ts"
+      - "apps/web/src/features/digital-care/**"
+      - ".github/workflows/digital-care-provider-messaging.yml"
+
+jobs:
+  digital-care-provider-messaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit
+
+      - name: Digital Care navigation test
+        run: pnpm --filter @medora/web exec vitest run src/features/digital-care/digitalCareProviderMessaging.test.ts
