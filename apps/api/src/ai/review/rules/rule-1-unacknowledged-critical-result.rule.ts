@@ -1,56 +1,38 @@
 import type { EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
-import { buildAiSuggestion } from "../review.utils.js";
+import { resultStudyLabel } from "../clinical-facts.js";
+import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
- * Rule 1 — Unacknowledged critical result.
+ * Rule 1 — Critical result without documented reconciliation.
  *
- * Flags any result in the snapshot whose criticalValue is true and whose
- * acknowledgedByProviderAt timestamp is absent. Uses only structured result
- * facts; never infers clinical meaning from free-text result text.
+ * Uses only the snapshot criticalValue flag and acknowledgement timestamp.
+ * Never infers abnormality from free text or invented reference ranges.
  */
 export function rule1UnacknowledgedCriticalResult(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
   const suggestions = [];
-  const criticalResults = snapshot.diagnostics.criticalResults ?? [];
 
-  for (const result of criticalResults) {
-    if (result.acknowledgedByProviderAt) {
-      continue;
-    }
+  for (const result of snapshot.diagnostics.criticalResults ?? []) {
+    if (result.acknowledgedByProviderAt) continue;
+    if (result.criticalValue !== true) continue;
 
+    const study = resultStudyLabel(snapshot, result);
     suggestions.push(
-      buildAiSuggestion(ctx, {
+      buildCopiedSuggestion(ctx, {
         category: "CLINICAL_SAFETY",
         priority: "CRITICAL",
-        title: "Unacknowledged critical result",
-        summary: `Critical result ${result.id} has not been acknowledged by a provider.`,
-        reasoningSummary:
-          "The snapshot marks the result as critical and the acknowledgement timestamp is absent.",
+        copyKey: study ? "criticalResultNamed" : "criticalResultUnacknowledged",
+        vars: study ? { study } : undefined,
         evidence: [
           {
             sourceType: "RESULT",
             sourceId: result.id,
             label: "Critical result",
-            value: "present",
+            value: study ?? "present",
           },
-          {
-            sourceType: "RESULT",
-            sourceId: result.id,
-            label: "Acknowledged by provider at",
-            value: result.acknowledgedByProviderAt ?? null,
-          },
-          {
-            sourceType: "RESULT",
-            sourceId: result.id,
-            label: "Result verified at",
-            value: result.verifiedAt ?? null,
-          },
-        ],
-        recommendedActions: [
-          { actionType: "ACKNOWLEDGE", label: "Acknowledge critical result" },
         ],
       })
     );

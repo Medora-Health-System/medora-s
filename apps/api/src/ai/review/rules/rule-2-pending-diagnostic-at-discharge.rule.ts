@@ -1,73 +1,40 @@
 import type { EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
-import { buildAiSuggestion } from "../review.utils.js";
+import {
+  isDischargeInProgress,
+  pendingDiagnosticItems,
+  resultStudyLabel,
+  studyLabel,
+} from "../clinical-facts.js";
+import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
- * Rule 2 — Critical/pending diagnostic test at discharge.
- *
- * Flags pending diagnostic order items and unacknowledged critical results when
- * the encounter appears to be discharged. Uses only the encounter status,
- * discharge status, disposition value, pendingTests list, and critical result
- * flags already present in the snapshot.
+ * Rule 2 — Pending diagnostic or unreconciled critical result while discharge
+ * is being prepared. Clinic checkout, ED disposition, and inpatient discharge
+ * are detected from structured snapshot fields only.
  */
 export function rule2PendingDiagnosticAtDischarge(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
-  const isDischarged =
-    snapshot.encounterContext.status === "CLOSED" ||
-    Boolean(snapshot.disposition.dischargeStatus) ||
-    Boolean(snapshot.disposition.disposition);
-
-  if (!isDischarged) {
-    return [];
-  }
+  if (!isDischargeInProgress(snapshot)) return [];
 
   const suggestions = [];
 
-  const orderItemMap = new Map<
-    string,
-    { displayLabel?: string | null; status?: string | null; lifecycleState?: string | null }
-  >();
-  for (const order of snapshot.diagnostics.orders ?? []) {
-    for (const item of order.items ?? []) {
-      orderItemMap.set(item.id, item);
-    }
-  }
-
-  for (const itemId of snapshot.diagnostics.pendingTests ?? []) {
-    const item = orderItemMap.get(itemId);
+  for (const item of pendingDiagnosticItems(snapshot)) {
+    const study = studyLabel(item);
     suggestions.push(
-      buildAiSuggestion(ctx, {
+      buildCopiedSuggestion(ctx, {
         category: "DISCHARGE_SAFETY",
         priority: "HIGH",
-        title: "Pending diagnostic test at discharge",
-        summary: `Order item ${itemId} is still pending at discharge.`,
-        reasoningSummary:
-          "The encounter is discharged and the snapshot lists this order item as a pending test.",
+        copyKey: "pendingDiagnosticAtDischarge",
+        vars: { study },
         evidence: [
           {
             sourceType: "ORDER",
-            sourceId: itemId,
-            label: "Pending test display label",
-            value: item?.displayLabel ?? null,
-          },
-          {
-            sourceType: "ORDER",
-            sourceId: itemId,
-            label: "Order item status",
-            value: item?.status ?? null,
-          },
-          {
-            sourceType: "ORDER",
-            sourceId: itemId,
-            label: "Order item lifecycle state",
-            value: item?.lifecycleState ?? null,
-          },
-          {
-            sourceType: "DISPOSITION",
-            label: "Encounter status",
-            value: snapshot.encounterContext.status,
+            sourceId: item.id,
+            label: "Pending diagnostic study",
+            value: study,
           },
         ],
       })
@@ -75,39 +42,23 @@ export function rule2PendingDiagnosticAtDischarge(
   }
 
   for (const result of snapshot.diagnostics.criticalResults ?? []) {
-    if (result.acknowledgedByProviderAt) {
-      continue;
-    }
+    if (result.acknowledgedByProviderAt) continue;
+    if (result.criticalValue !== true) continue;
 
+    const study = resultStudyLabel(snapshot, result);
     suggestions.push(
-      buildAiSuggestion(ctx, {
+      buildCopiedSuggestion(ctx, {
         category: "DISCHARGE_SAFETY",
         priority: "CRITICAL",
-        title: "Unacknowledged critical result at discharge",
-        summary: `Critical result ${result.id} is unacknowledged at discharge.`,
-        reasoningSummary:
-          "The encounter is discharged and a critical result lacks provider acknowledgement.",
+        copyKey: study ? "criticalResultNamedAtDischarge" : "criticalResultAtDischarge",
+        vars: study ? { study } : undefined,
         evidence: [
           {
             sourceType: "RESULT",
             sourceId: result.id,
-            label: "Critical result",
-            value: "present",
+            label: "Critical result before discharge",
+            value: study ?? "present",
           },
-          {
-            sourceType: "RESULT",
-            sourceId: result.id,
-            label: "Acknowledged by provider at",
-            value: result.acknowledgedByProviderAt ?? null,
-          },
-          {
-            sourceType: "DISPOSITION",
-            label: "Encounter status",
-            value: snapshot.encounterContext.status,
-          },
-        ],
-        recommendedActions: [
-          { actionType: "ACKNOWLEDGE", label: "Acknowledge critical result" },
         ],
       })
     );

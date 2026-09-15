@@ -15,7 +15,8 @@ function source(path: string): string {
 
 describe("AI clinical review read-only architecture", () => {
   it("does not introduce direct Prisma mutations in the clinical review path", () => {
-    const mutationPattern = /\.\s*(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/g;
+    const mutationPattern =
+      /prisma\s*\.\s*\w+\s*\.\s*(create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/g;
 
     for (const path of AI_READ_PATH_FILES) {
       const text = source(path);

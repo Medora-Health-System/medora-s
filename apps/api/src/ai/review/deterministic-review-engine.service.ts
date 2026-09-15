@@ -8,6 +8,18 @@ import { rule4UnsignedProviderDocumentation } from "./rules/rule-4-unsigned-prov
 import { rule5OpenFollowUp } from "./rules/rule-5-open-follow-up.rule.js";
 import { rule6OrderMarMismatch } from "./rules/rule-6-order-mar-mismatch.rule.js";
 import { rule7TransitionReassessment } from "./rules/rule-7-transition-reassessment.rule.js";
+import { rule8AbnormalVitalWithoutReassessment } from "./rules/rule-8-abnormal-vital-without-reassessment.rule.js";
+import { rule9DuplicateActiveMedication } from "./rules/rule-9-duplicate-active-medication.rule.js";
+import { rule10TreatmentWithoutReassessment } from "./rules/rule-10-treatment-without-reassessment.rule.js";
+import { rule11MissingFollowUpAtDischarge } from "./rules/rule-11-missing-follow-up-at-discharge.rule.js";
+import { rule12ClinicTransferIncomplete } from "./rules/rule-12-clinic-transfer-incomplete.rule.js";
+
+const PRIORITY_RANK: Record<AiSuggestion["priority"], number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+};
 
 /**
  * Deterministic clinical review engine.
@@ -31,6 +43,11 @@ export class DeterministicReviewEngine {
     rule5OpenFollowUp,
     rule6OrderMarMismatch,
     rule7TransitionReassessment,
+    rule8AbnormalVitalWithoutReassessment,
+    rule9DuplicateActiveMedication,
+    rule10TreatmentWithoutReassessment,
+    rule11MissingFollowUpAtDischarge,
+    rule12ClinicTransferIncomplete,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
@@ -55,7 +72,20 @@ export class DeterministicReviewEngine {
     }
 
     return {
-      suggestions,
+      suggestions: this.finalize(suggestions),
     };
+  }
+
+  private finalize(suggestions: AiSuggestion[]): AiSuggestion[] {
+    const seen = new Set<string>();
+    const unique: AiSuggestion[] = [];
+    for (const suggestion of suggestions) {
+      const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}:${suggestion.summary.trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(suggestion);
+    }
+    unique.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
+    return unique;
   }
 }

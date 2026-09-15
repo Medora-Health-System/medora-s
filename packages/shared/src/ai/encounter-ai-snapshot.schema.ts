@@ -210,6 +210,11 @@ export const aiDispositionSchema = z.object({
   disposition: z.string().nullable().optional(),
   dischargeStatus: z.string().nullable().optional(),
   dischargeSummary: aiBoundedTextSchema.nullable().optional(),
+  checkoutState: z.string().nullable().optional(),
+  transferReason: z.string().nullable().optional(),
+  transferDestination: z.string().nullable().optional(),
+  transferTransport: z.string().nullable().optional(),
+  dischargeFollowUpDocumented: z.boolean().nullable().optional(),
   followUps: z.array(aiFollowUpSchema).max(50).optional(),
   appointments: z.array(aiAppointmentSchema).max(50).optional(),
 });

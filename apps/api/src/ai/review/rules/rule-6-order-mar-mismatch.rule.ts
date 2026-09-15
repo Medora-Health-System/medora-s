@@ -1,13 +1,18 @@
 import type { EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
-import { buildAiSuggestion } from "../review.utils.js";
+import {
+  isActiveMedicationOrder,
+  isDischargeInProgress,
+  isPrnMedicationOrder,
+} from "../clinical-facts.js";
+import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
- * Rule 6 — Order/MAR mismatch supported by structured snapshot data.
+ * Rule 6 — Medication order / MAR reconciliation.
  *
- * Detects mismatches using only medication order IDs, orderItemId references,
- * order status/lifecycleState, and administration action. Does not invent or
- * compare dose timing, scheduled administrations, or infusion schedules.
+ * Does not assume every active order must be administered. Unresolved active
+ * orders are surfaced only when discharge/finalization is in progress and the
+ * order is not PRN.
  */
 export function rule6OrderMarMismatch(
   snapshot: EncounterAiSnapshot,
@@ -16,89 +21,75 @@ export function rule6OrderMarMismatch(
   const suggestions = [];
   const medicationOrders = snapshot.treatments.medicationOrders ?? [];
   const administrations = snapshot.treatments.medicationAdministrations ?? [];
-
   const orderMap = new Map(medicationOrders.map((order) => [order.id, order]));
+  const discharging = isDischargeInProgress(snapshot);
 
-  // Orphan MAR rows: administration references an order item id that is not
-  // present in the snapshot medication orders.
   for (const admin of administrations) {
-    if (!admin.orderItemId) {
-      continue;
-    }
-    if (!orderMap.has(admin.orderItemId)) {
+    if (!admin.orderItemId) continue;
+    if (orderMap.has(admin.orderItemId)) continue;
+    suggestions.push(
+      buildCopiedSuggestion(ctx, {
+        category: "CONTRADICTION",
+        priority: "MEDIUM",
+        copyKey: "marUnknownOrder",
+        evidence: [
+          {
+            sourceType: "MEDICATION",
+            sourceId: admin.id,
+            label: "Administration without matching order",
+            value: admin.action ?? null,
+          },
+        ],
+      })
+    );
+  }
+
+  for (const order of medicationOrders) {
+    if (!isActiveMedicationOrder(order)) continue;
+    const relatedAdmins = administrations.filter((admin) => admin.orderItemId === order.id);
+    const hasMismatch = relatedAdmins.some(
+      (admin) => admin.action && admin.action !== "administered"
+    );
+    if (hasMismatch) {
       suggestions.push(
-        buildAiSuggestion(ctx, {
+        buildCopiedSuggestion(ctx, {
           category: "CONTRADICTION",
           priority: "MEDIUM",
-          title: "Medication administration references unknown order",
-          summary: `Administration ${admin.id} references order item ${admin.orderItemId} not present in medication orders.`,
-          reasoningSummary:
-            "The snapshot medicationAdministrations contains an orderItemId that does not match any medicationOrders.id.",
+          copyKey: "marActionMismatch",
           evidence: [
             {
               sourceType: "MEDICATION",
-              sourceId: admin.id,
-              label: "Administration action",
-              value: admin.action ?? null,
-            },
-            {
-              sourceType: "MEDICATION",
-              sourceId: admin.orderItemId,
-              label: "Referenced order item",
-              value: admin.orderItemId,
+              sourceId: order.id,
+              label: "Active order with non-administered MAR action",
+              value: order.displayLabel ?? order.id,
             },
           ],
         })
       );
-    }
-  }
-
-  // Active order with a non-administered action. We treat CANCELLED as the
-  // only terminal state we can rely on from the snapshot without timing data.
-  for (const order of medicationOrders) {
-    const isCancelled =
-      order.status === "CANCELLED" || order.lifecycleState === "CANCELLED";
-    if (isCancelled) {
       continue;
     }
 
-    const relatedAdmins = administrations.filter(
-      (admin) => admin.orderItemId === order.id
+    if (!discharging || isPrnMedicationOrder(order)) continue;
+    const hasAdministered = relatedAdmins.some((admin) => admin.action === "administered");
+    if (hasAdministered || relatedAdmins.length > 0) continue;
+
+    const medication = order.displayLabel?.trim();
+    suggestions.push(
+      buildCopiedSuggestion(ctx, {
+        category: "MEDICATION_CONSIDERATION",
+        priority: "MEDIUM",
+        copyKey: medication ? "marUnresolvedNamed" : "marUnresolvedOrder",
+        vars: medication ? { medication } : undefined,
+        evidence: [
+          {
+            sourceType: "MEDICATION",
+            sourceId: order.id,
+            label: "Active medication order",
+            value: medication ?? order.id,
+          },
+        ],
+      })
     );
-    for (const admin of relatedAdmins) {
-      if (admin.action && admin.action !== "administered") {
-        suggestions.push(
-          buildAiSuggestion(ctx, {
-            category: "CONTRADICTION",
-            priority: "MEDIUM",
-            title: "Medication administration action does not match active order",
-            summary: `Order ${order.id} is active but administration ${admin.id} records action ${admin.action}.`,
-            reasoningSummary:
-              "The medication order status/lifecycleState is not CANCELLED and the MAR action is not administered.",
-            evidence: [
-              {
-                sourceType: "MEDICATION",
-                sourceId: order.id,
-                label: "Order status",
-                value: order.status ?? null,
-              },
-              {
-                sourceType: "MEDICATION",
-                sourceId: order.id,
-                label: "Order lifecycle state",
-                value: order.lifecycleState ?? null,
-              },
-              {
-                sourceType: "MEDICATION",
-                sourceId: admin.id,
-                label: "Administration action",
-                value: admin.action,
-              },
-            ],
-          })
-        );
-      }
-    }
   }
 
   return suggestions;

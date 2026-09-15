@@ -103,15 +103,17 @@ export class ClinicalReviewOrchestratorService {
   private mergeSuggestions(deterministic: AiSuggestion[], external: AiSuggestion[]): AiSuggestion[] {
     const seen = new Set<string>();
     const merged: AiSuggestion[] = [];
+    const rank: Record<AiSuggestion["priority"], number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 
     for (const suggestion of [...deterministic, ...external]) {
-      const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}`;
+      const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}:${suggestion.summary.trim().toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       merged.push(suggestion);
       if (merged.length >= 200) break;
     }
 
+    merged.sort((a, b) => rank[a.priority] - rank[b.priority]);
     return merged;
   }
 }

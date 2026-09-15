@@ -24,7 +24,7 @@ describe("Medora AI Phase 1F chart review", () => {
   it("keeps the panel read-only and coding intelligence inactive", () => {
     expect(panel).toContain('data-read-only="true"');
     expect(panel).toContain("Medora AI does not modify the chart or place orders");
-    expect(panel).toContain("Coding & Medical Necessity intelligence is not active in Phase 1D");
+    expect(panel).toContain("Coding intelligence is not active");
     expect(panel).not.toContain('actionType === "ACKNOWLEDGE"');
     expect(panel).not.toContain('actionType === "DISMISS"');
   });

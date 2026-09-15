@@ -10,6 +10,7 @@ import {
   resolveFacilityJurisdiction,
 } from "./resolve-encounter-care-setting.js";
 import type { EncounterAiSnapshotBuildInput } from "./encounter-ai-snapshot.types.js";
+import { extractDispositionFacts } from "./extract-disposition-facts.js";
 
 const MAX_PROVIDER_NOTE_CHARS = 50_000;
 const MAX_TREATMENT_PLAN_CHARS = 50_000;
@@ -460,6 +461,8 @@ export class EncounterAiSnapshotBuilder {
       .flatMap((order) => order.items)
       .filter(
         (item) =>
+          item.catalogItemType !== "MEDICATION" &&
+          item.medicationLifecycleStatus === null &&
           item.status !== "COMPLETED" &&
           item.status !== "CANCELLED" &&
           item.lifecycleState !== "REVIEWED" &&
@@ -555,11 +558,17 @@ export class EncounterAiSnapshotBuilder {
     const dischargeSummary = encounter?.dischargeSummaryJson
       ? toAiBoundedText(JSON.stringify(encounter.dischargeSummaryJson), MAX_DISCHARGE_SUMMARY_CHARS)
       : null;
+    const dispositionFacts = extractDispositionFacts(encounter?.dischargeSummaryJson);
 
     return {
       disposition: encounter?.disposition ?? null,
       dischargeStatus: encounter?.dischargeStatus ?? null,
       dischargeSummary,
+      checkoutState: dispositionFacts.checkoutState,
+      transferReason: dispositionFacts.transferReason,
+      transferDestination: dispositionFacts.transferDestination,
+      transferTransport: dispositionFacts.transferTransport,
+      dischargeFollowUpDocumented: dispositionFacts.dischargeFollowUpDocumented,
       followUps: followUps.map((followUp) => ({
         id: followUp.id,
         type: followUp.reason,

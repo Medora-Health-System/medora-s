@@ -81,8 +81,8 @@ describe("AiSuggestion schema", () => {
   it("accepts REVIEW and NAVIGATE action types", () => {
     expect(AiSuggestionActionType.safeParse("REVIEW").success).toBe(true);
     expect(AiSuggestionActionType.safeParse("NAVIGATE").success).toBe(true);
-    expect(AiSuggestionActionType.safeParse("ACKNOWLEDGE").success).toBe(true);
-    expect(AiSuggestionActionType.safeParse("DISMISS").success).toBe(true);
+    expect(AiSuggestionActionType.safeParse("ACKNOWLEDGE").success).toBe(false);
+    expect(AiSuggestionActionType.safeParse("DISMISS").success).toBe(false);
   });
 
   it("accepts all defined clinical categories", () => {
