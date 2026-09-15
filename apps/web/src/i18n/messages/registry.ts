@@ -9,6 +9,7 @@ import enMessages from "@/i18n/messages/en";
 import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
 import { resolveClinicPresentationOverride } from "@/i18n/messages/clinicPresentationOverrides";
+import { resolveDigitalCareNavOverride } from "@/i18n/messages/digitalCareNavOverrides";
 import { resolveRegistrationPacketSpanishOverride } from "@/i18n/messages/registrationPacketSpanishOverrides";
 
 /**
@@ -42,6 +43,9 @@ export function getMessageByPath(obj: unknown, path: string): unknown {
 export function resolveClinicalUiMessage(language: string, key: string): string {
   const presentationOverride = resolveClinicPresentationOverride(language, key);
   if (presentationOverride !== undefined) return presentationOverride;
+
+  const digitalCareNavOverride = resolveDigitalCareNavOverride(language, key);
+  if (digitalCareNavOverride !== undefined) return digitalCareNavOverride;
 
   const registrationPacketOverride = resolveRegistrationPacketSpanishOverride(language, key);
   if (registrationPacketOverride !== undefined) return registrationPacketOverride;

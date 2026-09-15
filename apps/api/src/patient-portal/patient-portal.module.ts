@@ -26,6 +26,7 @@ import { PatientPortalActivationRepository } from "./persistence/patient-portal-
 import { PatientPortalRepository } from "./persistence/patient-portal.repository";
 import { PatientProfileController } from "./profile/patient-profile.controller";
 import { PatientProfileService } from "./profile/patient-profile.service";
+import { PatientPortalMessagingFacade } from "./public/patient-portal-messaging.facade";
 import { PatientDiagnosticResultsController } from "./records/patient-diagnostic-results.controller";
 import { PatientDiagnosticResultsService } from "./records/patient-diagnostic-results.service";
 import { PatientDocumentReleaseController } from "./records/patient-document-release.controller";
@@ -82,6 +83,7 @@ import { PatientSessionSecurityService } from "./security/patient-session-securi
     PatientAppointmentsService,
     PatientProfileService,
     PatientMessagesService,
+    PatientPortalMessagingFacade,
     PatientServiceRequestsService,
     PatientSessionSecurityService,
     AuditService,
@@ -90,6 +92,7 @@ import { PatientSessionSecurityService } from "./security/patient-session-securi
     PatientPortalRepository,
     PatientPortalAuthGuard,
     PatientPortalFacilityGuard,
+    PatientPortalMessagingFacade,
   ],
 })
 export class PatientPortalModule {}
