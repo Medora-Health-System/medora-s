@@ -15,6 +15,10 @@ export type DiagnosticOutboundDeliveryTarget = {
   authMethod: "NONE" | "PRIVATE_KEY_JWT" | "MTLS";
 };
 
+/**
+ * Governed Phase 3B ServiceRequest prepared for the durable delivery layer.
+ * The FHIR body can contain PHI and must never be copied into audit metadata.
+ */
 export type PreparedDiagnosticServiceRequest = {
   integrationId: string;
   facilityId: string;
