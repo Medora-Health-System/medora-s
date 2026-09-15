@@ -7,7 +7,7 @@ import {
 
 describe("ClinicalWritingLexicon", () => {
   it("suggests common English clinical spelling corrections", () => {
-    const suggestion = suggestClinicalWritingTerm("patient with tachicardia", 23, "en");
+    const suggestion = suggestClinicalWritingTerm("patient with tachicardia", 24, "en");
     expect(suggestion?.replacement).toBe("tachycardia");
     expect(suggestion?.original).toBe("tachicardia");
   });
@@ -24,7 +24,7 @@ describe("ClinicalWritingLexicon", () => {
   });
 
   it("only mutates text through the explicit replacement helper", () => {
-    const suggestion = suggestClinicalWritingTerm("tachicardia noted", 10, "en");
+    const suggestion = suggestClinicalWritingTerm("tachicardia noted", 11, "en");
     expect(suggestion).not.toBeNull();
     if (!suggestion) return;
     expect(replaceClinicalWritingSuggestion("tachicardia noted", suggestion)).toBe("tachycardia noted");
