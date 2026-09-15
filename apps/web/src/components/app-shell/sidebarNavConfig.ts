@@ -46,7 +46,7 @@ export const NAV_ACCENT: Record<
   },
   green: {
     border: "#16a34a",
-    icon: "#15803c",
+    icon: "#15803d",
     pillBg: "rgba(22,163,74,0.14)",
     hoverBg: "rgba(22,163,74,0.1)",
     activeBg: "rgba(22,163,74,0.22)",
