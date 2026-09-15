@@ -1,0 +1,43 @@
+name: FHIR Phase 2 Final Deployed Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed Medora FHIR R4 base URL
+        required: true
+        default: https://api.medoras.com/fhir
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    name: Certify Phase 2 deployed read surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate certification secrets
+        env:
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+        run: |
+          test -n "$FHIR_CERT_CLIENT_ID"
+          test -n "$FHIR_CERT_KEY_ID"
+          test -n "$FHIR_CERT_CLIENT_SECRET"
+          test -n "$FHIR_CERT_FACILITY_ID"
+      - name: Run Phase 2 final deployed certification
+        env:
+          FHIR_CERT_BASE_URL: ${{ inputs.base_url }}
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+        run: node scripts/fhir/phase2-final-deployed-certification.mjs
