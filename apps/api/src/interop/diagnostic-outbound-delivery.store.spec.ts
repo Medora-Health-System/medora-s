@@ -42,4 +42,41 @@ describe("DiagnosticOutboundDeliveryStore", () => {
       id: "delivery-1", integrationId: "integration-1", facilityId: "wrong-facility", partnerStatusCode: 202,
     })).resolves.toBe(false);
   });
+
+  it("increments the durable attempt only when a network attempt is claimed", async () => {
+    const prisma = { $executeRaw: jest.fn().mockResolvedValue(1) } as any;
+    const store = new DiagnosticOutboundDeliveryStore(prisma);
+    await expect(store.beginAttempt({
+      id: "delivery-1", integrationId: "integration-1", facilityId: "facility-1",
+    })).resolves.toBe(true);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it("records a failed outcome separately from attempt initiation", async () => {
+    const prisma = { $executeRaw: jest.fn().mockResolvedValue(1) } as any;
+    const store = new DiagnosticOutboundDeliveryStore(prisma);
+    await expect(store.recordAttemptOutcome({
+      id: "delivery-1",
+      integrationId: "integration-1",
+      facilityId: "facility-1",
+      state: "retryable_failure",
+      nextAttemptAt: new Date("2026-09-15T20:30:00Z"),
+      partnerStatusCode: 503,
+      failureClass: "partner_unavailable",
+    })).resolves.toBe(true);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it("cannot persist an outcome when the scoped dispatched row is absent or terminal", async () => {
+    const prisma = { $executeRaw: jest.fn().mockResolvedValue(0) } as any;
+    const store = new DiagnosticOutboundDeliveryStore(prisma);
+    await expect(store.recordAttemptOutcome({
+      id: "delivery-1",
+      integrationId: "integration-1",
+      facilityId: "facility-1",
+      state: "permanent_failure",
+      partnerStatusCode: 400,
+      failureClass: "partner_rejected",
+    })).resolves.toBe(false);
+  });
 });
