@@ -21,7 +21,7 @@ const CORE: PacketSectionContent[] = [
   { key: "consent", titleKey: "packetWizard.sectionConsent", summaryKey: "packetWizard.consentSummary", fullKey: "packetWizard.consentFull", acknowledgmentRequired: true },
   { key: "aob", titleKey: "packetWizard.sectionAob", summaryKey: "packetWizard.aobSummary", fullKey: "packetWizard.aobFull", acknowledgmentRequired: true },
   { key: "facilityDisclosure", titleKey: "packetWizard.sectionFacilityDisclosure", summaryKey: "packetWizard.facilityDisclosureSummary", fullKey: "packetWizard.facilityDisclosureFull" },
-  { key: "privacy", titleKey: "packetWizard.sectionPrivacy", summaryKey: "packetWizard.privacySummary", fullKey: "packetWizard.privacyFull", acknowledgmentRequired: true, sourceLabel: "HHS Model Notice of Privacy Practices", sourceUrl: "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/privacy-practices-health-care-provider/" },
+  { key: "privacy", titleKey: "packetWizard.sectionPrivacy", summaryKey: "packetWizard.privacySummary", fullKey: "packetWizard.privacyFull", acknowledgmentRequired: true, sourceLabel: "HHS", sourceUrl: "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/privacy-practices-health-care-provider/" },
   { key: "rights", titleKey: "packetWizard.sectionRights", summaryKey: "packetWizard.rightsSummary", fullKey: "packetWizard.rightsFull", acknowledgmentRequired: true },
   { key: "advanceDirectives", titleKey: "packetWizard.sectionAdvanceDirectives", summaryKey: "packetWizard.advanceDirectivesSummary", fullKey: "packetWizard.advanceDirectivesFull" },
   { key: "personalBelongings", titleKey: "packetWizard.sectionPersonalBelongings", summaryKey: "packetWizard.personalBelongingsSummary", fullKey: "packetWizard.personalBelongingsFull" },
