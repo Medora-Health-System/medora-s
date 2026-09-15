@@ -1,0 +1,83 @@
+import type { DigitalCarePermission } from "./digital-care.permissions";
+import type { DigitalCareRole } from "./digital-care.roles";
+
+export const DIGITAL_CARE_ROLE_PERMISSIONS = {
+  PATIENT: [
+    "portal.self.read",
+    "portal.self.manage",
+    "communication.self.read",
+    "communication.self.write",
+    "notifications.self.read",
+    "notifications.self.manage",
+    "telemedicine.self.join",
+    "education.self.read",
+    "questionnaires.self.read",
+    "questionnaires.self.submit",
+    "monitoring.self.read",
+    "consent.self.read",
+    "consent.self.sign",
+    "proxy.self.read",
+    "proxy.self.manage",
+    "ai.self.use",
+  ],
+  PROVIDER: [
+    "communication.assigned.read",
+    "communication.assigned.write",
+    "telemedicine.assigned.manage",
+    "education.assigned.manage",
+    "questionnaires.assigned.manage",
+    "monitoring.assigned.read",
+    "monitoring.assigned.manage",
+    "consent.assigned.manage",
+    "ai.assigned.assist",
+  ],
+  NURSE: [
+    "communication.assigned.read",
+    "communication.assigned.write",
+    "telemedicine.assigned.manage",
+    "education.assigned.manage",
+    "questionnaires.assigned.manage",
+    "monitoring.assigned.read",
+    "monitoring.assigned.manage",
+    "consent.assigned.manage",
+  ],
+  FACILITY_ADMIN: [
+    "portal.operational.read",
+    "quality.metadata.read",
+    "digital-care.configure",
+  ],
+  BILLING: ["portal.operational.read"],
+  QA: ["quality.metadata.read"],
+  SUPER_ADMIN: [
+    "portal.operational.read",
+    "quality.metadata.read",
+    "digital-care.configure",
+    "digital-care.cross-scope",
+  ],
+  FAMILY_PROXY: ["proxy.patient.act"],
+  INTERPRETER: [
+    "communication.assigned.read",
+    "communication.assigned.write",
+  ],
+  CARE_COORDINATOR: [
+    "communication.assigned.read",
+    "communication.assigned.write",
+    "telemedicine.assigned.manage",
+    "education.assigned.manage",
+    "questionnaires.assigned.manage",
+    "monitoring.assigned.read",
+    "monitoring.assigned.manage",
+    "consent.assigned.manage",
+  ],
+} as const satisfies Record<DigitalCareRole, readonly DigitalCarePermission[]>;
+
+export const DIGITAL_CARE_AUTHORIZATION_INVARIANTS = [
+  "Central Medora authentication and authorization remain authoritative.",
+  "A Digital Care role never bypasses tenant, organization, facility, or country scope.",
+  "Patient self permissions apply only to the authenticated patient's own Digital Care resources.",
+  "Assigned-care permissions require an independently validated patient-care assignment or equivalent central authorization decision.",
+  "Family proxy access requires an explicit active delegation for the specific patient and never implies unrestricted chart access.",
+  "Interpreter access is assignment-bound and does not grant default clinical-record access.",
+  "Facility administrators, billing users, QA users, and super administrators do not receive patient message content merely because of their administrative role.",
+  "Cross-scope access is reserved for centrally authorized super-admin operations and is not a substitute for patient-content permission.",
+] as const;
