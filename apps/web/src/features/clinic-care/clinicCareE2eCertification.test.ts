@@ -23,7 +23,7 @@ describe("Clinic Care end-to-end certification", () => {
       "orders",
       "medications",
       "results",
-      "diagnosis",
+      "diagnoses",
       "nursing",
       "notes",
       "prescriptions",
@@ -42,15 +42,15 @@ describe("Clinic Care end-to-end certification", () => {
 
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["FRONT_DESK"])).not.toContain("medical-evaluation");
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["RN"])).toContain("nursing");
-    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).toContain("diagnosis");
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).toContain("diagnoses");
   });
 
-  it("certifies the enterprise encounter lifecycle through finalization", () => {
+  it("certifies the enterprise encounter lifecycle through authoritative close", () => {
     expect(resolveClinicCareAmbulatoryWorkflowTarget("READY_FOR_PROVIDER", "TRIAGE")).toBe("IN_TREATMENT");
     expect(resolveClinicCareAmbulatoryWorkflowTarget("START_CONSULTATION", "TRIAGE")).toBe("IN_TREATMENT");
     expect(resolveClinicCareAmbulatoryWorkflowTarget("READY_FOR_CHECKOUT", "IN_TREATMENT")).toBe("DISPOSITION");
     expect(resolveClinicCareAmbulatoryWorkflowTarget("READY_FOR_CHECKOUT", "RESULTS_PENDING")).toBe("DISPOSITION");
-    expect(resolveClinicCareAmbulatoryWorkflowTarget("COMPLETE_VISIT", "DISCHARGE_READY")).toBe("FINALIZED");
+    expect(resolveClinicCareAmbulatoryWorkflowTarget("COMPLETE_VISIT", "DISCHARGE_READY")).toBe("ENTERPRISE_CLOSE");
   });
 
   it("keeps the shared clinical engines wired into the Clinic workspace", () => {
