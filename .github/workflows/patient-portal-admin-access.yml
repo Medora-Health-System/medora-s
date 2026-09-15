@@ -1,0 +1,41 @@
+name: Patient Portal Admin Access
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/src/patient-portal/organizations/**"
+      - "apps/api/src/patient-portal/persistence/patient-portal-activation.repository.ts"
+      - "apps/web/app/app/admin/patient-portal/**"
+      - "apps/web/src/lib/patientPortalAdminApi.ts"
+      - ".github/workflows/patient-portal-admin-access.yml"
+
+jobs:
+  patient-portal-admin-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @medora/shared build
+
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+
+      - name: Patient portal admin access tests
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs patient-portal-activation.service.spec.ts --runInBand
+
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit

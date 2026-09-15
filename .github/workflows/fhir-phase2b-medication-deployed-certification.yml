@@ -1,0 +1,50 @@
+name: FHIR Phase 2B Medication Deployed Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed FHIR base URL"
+        required: true
+        default: "https://api.medoras.com/fhir"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-phase2b-medications:
+    name: deployed-phase2b-medications
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate certification secrets are configured
+        env:
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+        run: |
+          missing=0
+          for name in FHIR_CERT_CLIENT_ID FHIR_CERT_KEY_ID FHIR_CERT_CLIENT_SECRET FHIR_CERT_FACILITY_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured as a repository/environment secret"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Run Phase 2B deployed medication certification
+        env:
+          FHIR_CERT_BASE_URL: ${{ inputs.base_url }}
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+        run: node scripts/fhir/phase2b-medication-deployed-certification.mjs

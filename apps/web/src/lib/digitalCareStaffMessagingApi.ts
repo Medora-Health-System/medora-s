@@ -1,0 +1,12 @@
+import { apiFetch } from "@/lib/apiClient";
+export type DigitalCareStaffThreadSummary={id:string;patientId:string;category:string;subject:string;status:string;lastMessageAt:string;closedAt:string|null;createdAt:string;updatedAt:string};
+export type DigitalCareStaffMessage={id:string;senderType:"PATIENT"|"STAFF";senderUserId:string|null;body:string;createdAt:string};
+export type DigitalCareStaffThread=DigitalCareStaffThreadSummary&{messages:DigitalCareStaffMessage[];messagesTruncated:boolean};
+export type DigitalCareStaffResult={id:string;orderId:string;patientId:string;encounterId:string|null;kind:"LAB_TEST"|"IMAGING_STUDY";title:string;criticalValue:boolean;resultText:string|null;verifiedAt:string;clinicalAt:string;released:boolean;releasedAt:string|null};
+export async function fetchDigitalCareStaffThreads(facilityId:string){const data=await apiFetch("/patient-portal/v1/staff/messages/threads",{facilityId});return (Array.isArray(data)?data:[]) as DigitalCareStaffThreadSummary[];}
+export async function fetchDigitalCareStaffThread(facilityId:string,threadId:string){return apiFetch(`/patient-portal/v1/staff/messages/threads/${encodeURIComponent(threadId)}`,{facilityId}) as Promise<DigitalCareStaffThread>;}
+export async function replyDigitalCareStaffThread(facilityId:string,threadId:string,message:string){return apiFetch(`/patient-portal/v1/staff/messages/threads/${encodeURIComponent(threadId)}/messages`,{facilityId,method:"POST",body:JSON.stringify({message})}) as Promise<DigitalCareStaffMessage>;}
+export async function closeDigitalCareStaffThread(facilityId:string,threadId:string){return apiFetch(`/patient-portal/v1/staff/messages/threads/${encodeURIComponent(threadId)}/close`,{facilityId,method:"POST"}) as Promise<DigitalCareStaffThreadSummary>;}
+export async function fetchDigitalCareStaffResults(facilityId:string){const data=await apiFetch("/patient-portal/v1/staff/results",{facilityId});return (Array.isArray(data)?data:[]) as DigitalCareStaffResult[];}
+export async function releaseDigitalCareResult(facilityId:string,orderItemId:string){return apiFetch(`/patient-portal/v1/staff/results/${encodeURIComponent(orderItemId)}/release`,{facilityId,method:"POST"});}
+export async function revokeDigitalCareResult(facilityId:string,orderItemId:string){return apiFetch(`/patient-portal/v1/staff/results/${encodeURIComponent(orderItemId)}/release`,{facilityId,method:"DELETE"});}

@@ -66,18 +66,28 @@ export type AiSuggestionEvidence = z.infer<typeof AiSuggestionEvidence>;
 /**
  * Recommended actions are informational / navigation only.
  *
- * The enum intentionally excludes autonomous clinical mutations such as
- * placing orders, signing documentation, or modifying the chart.
+ * Medora Assist suggestions may ask the clinician to review information or
+ * navigate to a chart section. They may not acknowledge clinical results,
+ * dismiss clinical obligations, place orders, sign documentation, or mutate
+ * the chart on the clinician's behalf.
  */
 export const AiSuggestionActionType = z.enum(["REVIEW", "NAVIGATE"]);
 
 export type AiSuggestionActionType = z.infer<typeof AiSuggestionActionType>;
 
+const safeInternalDeepLink = z
+  .string()
+  .max(500)
+  .regex(
+    /^\/(?!\/)[A-Za-z0-9/_-]*$/,
+    "AI deepLink must be a query-free internal relative path"
+  );
+
 export const AiSuggestionRecommendedAction = z.object({
   actionType: AiSuggestionActionType,
   targetSection: z.string().max(100).optional(),
   label: z.string().max(500),
-  deepLink: z.string().max(500).optional(),
+  deepLink: safeInternalDeepLink.optional(),
 });
 
 export type AiSuggestionRecommendedAction = z.infer<typeof AiSuggestionRecommendedAction>;

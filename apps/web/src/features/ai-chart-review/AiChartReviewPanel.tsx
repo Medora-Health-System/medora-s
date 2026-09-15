@@ -9,7 +9,6 @@ import {
   type ClinicCareAmbulatoryWorkspaceSection,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
-import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
 import { medoraAssistRequestIdentity, shouldAcceptMedoraAssistResponse } from "./medoraAssistRequestIdentity";
 
 type TabId = "safety" | "diagnostics" | "treatment" | "documentation" | "discharge" | "coding";
@@ -18,14 +17,11 @@ type Locale = "en" | "fr" | "es";
 
 type Copy = {
   title: string;
-  subtitle: string;
-  live: string;
   refresh: string;
   loading: string;
   empty: string;
   unavailable: string;
   retry: string;
-  readOnly: string;
   helpful: string;
   notHelpful: string;
   feedbackThanks: string;
@@ -38,54 +34,45 @@ type Copy = {
 const COPY: Record<Locale, Copy> = {
   en: {
     title: "Medora Assist",
-    subtitle: "Clinical decision support for clinician review",
-    live: "Auto-refreshes while this chart is active",
-    refresh: "Refresh review",
-    loading: "Reviewing the current chart snapshot…",
+    refresh: "Refresh",
+    loading: "Reviewing chart…",
     empty: "No findings in this section.",
-    unavailable: "Medora Assist is unavailable right now. Clinical care can continue normally.",
+    unavailable: "Medora Assist is temporarily unavailable. Clinical care can continue normally.",
     retry: "Retry",
-    readOnly: "Read-only clinical decision support. Review every finding before acting. Medora AI does not modify the chart or place orders.",
     helpful: "Helpful",
     notHelpful: "Not helpful",
     feedbackThanks: "Feedback recorded",
-    feedbackFailed: "Feedback could not be recorded. Refresh and try again.",
+    feedbackFailed: "Feedback could not be recorded. Try again.",
     codingInactive: "Coding intelligence is not active. No coding, payer, E/M, or reimbursement recommendations are being generated.",
     tabs: { safety: "Safety", diagnostics: "Diagnosis", treatment: "Treatment", documentation: "Documentation", discharge: "Discharge", coding: "Coding" },
     priorities: { CRITICAL: "Critical", HIGH: "High", MEDIUM: "Medium", LOW: "Low" },
   },
   fr: {
     title: "Medora Assistance",
-    subtitle: "Aide à la décision clinique à revoir par le clinicien",
-    live: "S’actualise automatiquement lorsque ce dossier est actif",
-    refresh: "Actualiser la revue",
-    loading: "Analyse de l’instantané actuel du dossier…",
+    refresh: "Actualiser",
+    loading: "Analyse du dossier…",
     empty: "Aucun constat dans cette section.",
-    unavailable: "Medora Assistance est indisponible pour le moment. Les soins cliniques peuvent continuer normalement.",
+    unavailable: "Medora Assistance est temporairement indisponible. Les soins peuvent continuer normalement.",
     retry: "Réessayer",
-    readOnly: "Aide à la décision clinique en lecture seule. Vérifiez chaque constat avant d’agir. Medora AI ne modifie pas le dossier et ne passe aucune ordonnance.",
     helpful: "Utile",
     notHelpful: "Pas utile",
     feedbackThanks: "Avis enregistré",
-    feedbackFailed: "L’avis n’a pas pu être enregistré. Actualisez puis réessayez.",
+    feedbackFailed: "L’avis n’a pas pu être enregistré. Réessayez.",
     codingInactive: "L’intelligence de codage n’est pas active. Aucune recommandation de codage, payeur, E/M ou remboursement n’est générée.",
     tabs: { safety: "Sécurité", diagnostics: "Diagnostic", treatment: "Traitement", documentation: "Documentation", discharge: "Sortie", coding: "Codage" },
     priorities: { CRITICAL: "Critique", HIGH: "Élevée", MEDIUM: "Moyenne", LOW: "Faible" },
   },
   es: {
     title: "Medora Asistente",
-    subtitle: "Apoyo a la decisión clínica para revisión del clínico",
-    live: "Se actualiza automáticamente mientras esta historia está activa",
-    refresh: "Actualizar revisión",
-    loading: "Revisando la instantánea actual de la historia…",
+    refresh: "Actualizar",
+    loading: "Revisando historia…",
     empty: "No hay hallazgos en esta sección.",
-    unavailable: "Medora Asistente no está disponible en este momento. La atención clínica puede continuar normalmente.",
+    unavailable: "Medora Asistente no está disponible temporalmente. La atención clínica puede continuar normalmente.",
     retry: "Reintentar",
-    readOnly: "Soporte de decisión clínica de solo lectura. Revise cada hallazgo antes de actuar. Medora AI no modifica la historia ni coloca órdenes.",
     helpful: "Útil",
     notHelpful: "No útil",
     feedbackThanks: "Comentario registrado",
-    feedbackFailed: "No se pudo registrar el comentario. Actualice e inténtelo de nuevo.",
+    feedbackFailed: "No se pudo registrar el comentario. Inténtelo de nuevo.",
     codingInactive: "La inteligencia de codificación no está activa. No se generan recomendaciones de codificación, pagador, E/M ni reembolso.",
     tabs: { safety: "Seguridad", diagnostics: "Diagnóstico", treatment: "Tratamiento", documentation: "Documentación", discharge: "Alta", coding: "Codificación" },
     priorities: { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" },
@@ -93,6 +80,22 @@ const COPY: Record<Locale, Copy> = {
 };
 
 const TAB_ORDER: TabId[] = ["safety", "diagnostics", "treatment", "documentation", "discharge", "coding"];
+const TAB_ICON: Record<TabId, string> = {
+  safety: "🛡️",
+  diagnostics: "🩺",
+  treatment: "💊",
+  documentation: "📋",
+  discharge: "🏠",
+  coding: "🧾",
+};
+const TAB_TONE: Record<TabId, { bg: string; border: string; color: string }> = {
+  safety: { bg: "#fff1f2", border: "#fecdd3", color: "#be123c" },
+  diagnostics: { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
+  treatment: { bg: "#ecfdf5", border: "#a7f3d0", color: "#047857" },
+  documentation: { bg: "#faf5ff", border: "#e9d5ff", color: "#7e22ce" },
+  discharge: { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
+  coding: { bg: "#f8fafc", border: "#cbd5e1", color: "#475569" },
+};
 const AUTO_REFRESH_MS = 30_000;
 const TAB_BY_CATEGORY: Record<AiSuggestionCategory, TabId> = {
   CLINICAL_SAFETY: "safety",
@@ -118,19 +121,25 @@ function localeKey(language: string): Locale {
   return "en";
 }
 
-function priorityStyle(priority: AiSuggestion["priority"]): React.CSSProperties {
-  if (priority === "CRITICAL") return { background: "#fee2e2", color: "#991b1b", borderColor: "#fecaca" };
-  if (priority === "HIGH") return { background: "#ffedd5", color: "#9a3412", borderColor: "#fed7aa" };
-  if (priority === "MEDIUM") return { background: "#fef3c7", color: "#92400e", borderColor: "#fde68a" };
-  return { background: "#f1f5f9", color: "#475569", borderColor: "#e2e8f0" };
+function priorityTone(priority: AiSuggestion["priority"]) {
+  if (priority === "CRITICAL") return { bg: "#fff1f2", border: "#fecdd3", color: "#be123c", icon: "🚨" };
+  if (priority === "HIGH") return { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c", icon: "⚠️" };
+  if (priority === "MEDIUM") return { bg: "#fffbeb", border: "#fde68a", color: "#a16207", icon: "💡" };
+  return { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8", icon: "ℹ️" };
 }
 
-export function AiChartReviewPanel({ encounterId, facilityId, language }: {
+export function AiChartReviewPanel({
+  encounterId,
+  facilityId,
+  language,
+  onNavigate,
+}: {
   encounterId: string;
   facilityId: string;
   language: string;
   onNavigate?: (section: ClinicCareAmbulatoryWorkspaceSection) => void;
 }) {
+  void onNavigate;
   const locale = localeKey(language);
   const copy = COPY[locale];
   const identity = medoraAssistRequestIdentity({ facilityId, encounterId });
@@ -166,7 +175,10 @@ export function AiChartReviewPanel({ encounterId, facilityId, language }: {
       setError(false);
     }
     try {
-      const raw = await apiFetch(`/ai/chart-review/${encodeURIComponent(encounterId)}`, { facilityId, signal: controller.signal });
+      const raw = await apiFetch(
+        `/ai/chart-review/${encodeURIComponent(encounterId)}?locale=${encodeURIComponent(locale)}`,
+        { facilityId, signal: controller.signal }
+      );
       if (!shouldAcceptMedoraAssistResponse({
         requestIdentity,
         activeIdentity: activeIdentity.current,
@@ -189,14 +201,18 @@ export function AiChartReviewPanel({ encounterId, facilityId, language }: {
         setError(true);
       }
     } finally {
-      if (shouldAcceptMedoraAssistResponse({
-        requestIdentity,
-        activeIdentity: activeIdentity.current,
-        requestSequence: sequence,
-        activeSequence: requestSequence.current,
-      }) && !silent) setLoading(false);
+      if (
+        shouldAcceptMedoraAssistResponse({
+          requestIdentity,
+          activeIdentity: activeIdentity.current,
+          requestSequence: sequence,
+          activeSequence: requestSequence.current,
+        }) && !silent
+      ) {
+        setLoading(false);
+      }
     }
-  }, [encounterId, facilityId, identity]);
+  }, [encounterId, facilityId, identity, locale]);
 
   useEffect(() => {
     void load(false);
@@ -228,7 +244,12 @@ export function AiChartReviewPanel({ encounterId, facilityId, language }: {
         facilityId,
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ suggestionId: suggestion.id, category: suggestion.category, snapshotVersion: suggestion.snapshotVersion, rating }),
+        body: JSON.stringify({
+          suggestionId: suggestion.id,
+          category: suggestion.category,
+          snapshotVersion: suggestion.snapshotVersion,
+          rating,
+        }),
       });
       setFeedback((value) => ({ ...value, [suggestion.id]: rating }));
     } catch {
@@ -239,7 +260,14 @@ export function AiChartReviewPanel({ encounterId, facilityId, language }: {
   }, [encounterId, facilityId]);
 
   const grouped = useMemo(() => {
-    const result: Record<TabId, AiSuggestion[]> = { safety: [], diagnostics: [], treatment: [], documentation: [], discharge: [], coding: [] };
+    const result: Record<TabId, AiSuggestion[]> = {
+      safety: [],
+      diagnostics: [],
+      treatment: [],
+      documentation: [],
+      discharge: [],
+      coding: [],
+    };
     for (const suggestion of suggestions) result[TAB_BY_CATEGORY[suggestion.category]].push(suggestion);
     return result;
   }, [suggestions]);
@@ -247,68 +275,163 @@ export function AiChartReviewPanel({ encounterId, facilityId, language }: {
   const current = grouped[activeTab];
 
   return (
-    <aside aria-label={copy.title} data-testid="ai-chart-review-panel" data-read-only="true" data-request-identity={identity} style={{
-      ...MEDORA_CARD_SHELL, position: "sticky", top: 12, width: "100%", maxHeight: "calc(100vh - 120px)",
-      overflow: "auto", padding: 14, boxSizing: "border-box", alignSelf: "flex-start",
-    }}>
-      <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a" }}>{copy.title}</h2>
-          <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#64748b" }}>{copy.subtitle}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "#94a3b8" }}>{copy.live}</p>
+    <aside
+      aria-label={copy.title}
+      data-testid="ai-chart-review-panel"
+      data-read-only="true"
+      data-request-identity={identity}
+      style={{
+        position: "sticky",
+        top: 12,
+        width: "100%",
+        maxHeight: "calc(100vh - 120px)",
+        overflow: "auto",
+        padding: 14,
+        boxSizing: "border-box",
+        alignSelf: "flex-start",
+        border: "1px solid #c7d2fe",
+        borderRadius: 16,
+        background: "linear-gradient(155deg,#ffffff 0%,#f5f7ff 52%,#fdf4ff 100%)",
+        boxShadow: "0 10px 28px rgba(79,70,229,.10)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span
+            aria-hidden="true"
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: 36,
+              height: 36,
+              borderRadius: 12,
+              background: "linear-gradient(135deg,#dbeafe,#ede9fe,#fae8ff)",
+              fontSize: 21,
+            }}
+          >
+            ✨
+          </span>
+          <h2 style={{ margin: 0, fontSize: 17, color: "#172554", letterSpacing: "-.01em" }}>{copy.title}</h2>
         </div>
-        <button type="button" onClick={() => void load(false)} disabled={loading} style={{ border: "1px solid #cbd5e1", background: "#fff", borderRadius: 7, padding: "5px 8px", fontSize: 11 }}>
-          {copy.refresh}
+        <button
+          type="button"
+          aria-label={copy.refresh}
+          title={copy.refresh}
+          onClick={() => void load(false)}
+          disabled={loading}
+          style={{
+            width: 32,
+            height: 32,
+            border: "1px solid #dbeafe",
+            background: "rgba(255,255,255,.85)",
+            borderRadius: 10,
+            cursor: "pointer",
+            fontSize: 15,
+          }}
+        >
+          ↻
         </button>
       </div>
 
-      <p style={{ margin: "10px 0", padding: 9, borderRadius: 8, background: "#f8fafc", color: "#475569", fontSize: 11.5, lineHeight: 1.45 }}>{copy.readOnly}</p>
-
-      <div role="tablist" aria-label={copy.title} style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
-        {TAB_ORDER.map((tab) => (
-          <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} style={{
-            border: activeTab === tab ? "1px solid #0f766e" : "1px solid #e2e8f0",
-            background: activeTab === tab ? "#f0fdfa" : "#fff", color: activeTab === tab ? "#115e59" : "#475569",
-            borderRadius: 999, padding: "5px 8px", fontSize: 10.5,
-          }}>
-            {copy.tabs[tab]}{tab !== "coding" && grouped[tab].length ? ` (${grouped[tab].length})` : ""}
-          </button>
-        ))}
+      <div role="tablist" aria-label={copy.title} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 14 }}>
+        {TAB_ORDER.map((tab) => {
+          const tone = TAB_TONE[tab];
+          const active = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                minHeight: 54,
+                border: `1px solid ${tone.border}`,
+                background: active ? tone.bg : "rgba(255,255,255,.72)",
+                color: tone.color,
+                borderRadius: 11,
+                padding: "6px 4px",
+                fontSize: 9.5,
+                fontWeight: active ? 750 : 600,
+                cursor: "pointer",
+              }}
+            >
+              <span aria-hidden="true" style={{ display: "block", fontSize: 17, marginBottom: 2 }}>{TAB_ICON[tab]}</span>
+              {copy.tabs[tab]}
+              {tab !== "coding" && grouped[tab].length ? ` · ${grouped[tab].length}` : ""}
+            </button>
+          );
+        })}
       </div>
 
-      {loading ? <p role="status" style={{ fontSize: 12.5, color: "#64748b" }}>{copy.loading}</p> : null}
-      {!loading && error ? (
-        <div role="alert" style={{ padding: 10, border: "1px solid #fecaca", borderRadius: 8, background: "#fef2f2" }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#991b1b" }}>{copy.unavailable}</p>
-          <button type="button" onClick={() => void load(false)} style={{ marginTop: 8 }}>{copy.retry}</button>
+      {loading ? (
+        <div role="status" style={{ padding: 14, textAlign: "center", color: "#64748b", fontSize: 12 }}>
+          ✨ {copy.loading}
         </div>
       ) : null}
-      {!loading && !error && activeTab === "coding" ? (
-        <div style={{ padding: 11, borderRadius: 8, border: "1px dashed #cbd5e1", background: "#f8fafc", fontSize: 12, color: "#475569" }}>{copy.codingInactive}</div>
-      ) : null}
-      {!loading && !error && activeTab !== "coding" && current.length === 0 ? <p style={{ fontSize: 12.5, color: "#64748b" }}>{copy.empty}</p> : null}
 
-      {!loading && !error && activeTab !== "coding" ? current.map((suggestion) => {
-        const selectedFeedback = feedback[suggestion.id];
-        const pending = feedbackPending[suggestion.id] === true;
-        const title = pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title);
-        const summary = pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary);
-        return (
-          <article key={suggestion.id} style={{ borderTop: "1px solid #e2e8f0", padding: "12px 0" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-              <span style={{ ...priorityStyle(suggestion.priority), border: "1px solid", borderRadius: 999, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{copy.priorities[suggestion.priority]}</span>
-            </div>
-            <h3 style={{ margin: "7px 0 4px", fontSize: 13.5, color: "#0f172a" }}>{title}</h3>
-            <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>{summary}</p>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 9 }}>
-              <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>{copy.helpful}</button>
-              <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>{copy.notHelpful}</button>
-              {selectedFeedback ? <span role="status" style={{ fontSize: 10.5, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
-              {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10.5, color: "#991b1b" }}>{copy.feedbackFailed}</span> : null}
-            </div>
-          </article>
-        );
-      }) : null}
+      {!loading && error ? (
+        <div role="alert" style={{ padding: 12, border: "1px solid #fecdd3", borderRadius: 12, background: "#fff1f2" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#9f1239" }}>{copy.unavailable}</p>
+          <button type="button" onClick={() => void load(false)}>{copy.retry}</button>
+        </div>
+      ) : null}
+
+      {!loading && !error && activeTab === "coding" ? (
+        <div style={{ padding: 12, border: "1px solid #e2e8f0", borderRadius: 12, background: "rgba(255,255,255,.75)", color: "#475569", fontSize: 12 }}>
+          🧾 {copy.codingInactive}
+        </div>
+      ) : null}
+
+      {!loading && !error && activeTab !== "coding" && current.length === 0 ? (
+        <div style={{ padding: "18px 10px", textAlign: "center", color: "#64748b", fontSize: 12 }}>
+          <div style={{ fontSize: 22, marginBottom: 5 }}>✓</div>
+          {copy.empty}
+        </div>
+      ) : null}
+
+      {!loading && !error && activeTab !== "coding"
+        ? current.map((suggestion) => {
+            const tone = priorityTone(suggestion.priority);
+            const selectedFeedback = feedback[suggestion.id];
+            const pending = feedbackPending[suggestion.id] === true;
+            const title = pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title);
+            const summary = pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary);
+            return (
+              <article
+                key={suggestion.id}
+                style={{
+                  border: `1px solid ${tone.border}`,
+                  borderRadius: 13,
+                  padding: 11,
+                  marginBottom: 9,
+                  background: tone.bg,
+                }}
+              >
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <span aria-hidden="true" style={{ fontSize: 19 }}>{tone.icon}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ color: tone.color, fontSize: 9.5, fontWeight: 800, textTransform: "uppercase" }}>
+                      {copy.priorities[suggestion.priority]}
+                    </span>
+                    <h3 style={{ margin: "2px 0 3px", fontSize: 13.5, color: "#0f172a" }}>{title}</h3>
+                    <p style={{ margin: 0, fontSize: 11.8, lineHeight: 1.45, color: "#334155" }}>{summary}</p>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9, alignItems: "center" }}>
+                  <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>
+                    {copy.helpful}
+                  </button>
+                  <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>
+                    {copy.notHelpful}
+                  </button>
+                  {selectedFeedback ? <span role="status" style={{ fontSize: 10, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
+                  {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10, color: "#b91c1c" }}>{copy.feedbackFailed}</span> : null}
+                </div>
+              </article>
+            );
+          })
+        : null}
     </aside>
   );
 }

@@ -26,7 +26,9 @@ function makeSnapshot(overrides: DeepPartial<EncounterAiSnapshot> = {}): Encount
       careSetting: "EMERGENCY_DEPARTMENT",
     },
     patientContext: {},
-    presentation: {},
+    presentation: {
+      latestVitals: { recordedAt: "2026-01-01T00:00:00.000Z", values: { hr: 80 } },
+    },
     clinicalDocumentation: { providerDocumentationStatus: "SIGNED" },
     diagnostics: {},
     treatments: {},
@@ -91,7 +93,7 @@ describe("DeterministicReviewEngine", () => {
       expect(output.suggestions[0].category).toBe("CLINICAL_SAFETY");
       expect(output.suggestions[0].priority).toBe("CRITICAL");
       expect(output.suggestions[0].title).toBe("Critical result without documented reconciliation");
-      expect(output.suggestions[0].recommendedActions?.[0].actionType).toBe("REVIEW");
+      expect(output.suggestions[0].recommendedActions?.[0].actionType).toBe("NAVIGATE");
     });
 
     it("does not flag an acknowledged critical result", () => {
@@ -303,12 +305,14 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].category).toBe("CONTRADICTION");
-      expect(output.suggestions[0].title).toBe("Administration is not linked to a medication order");
+      const unmatched = output.suggestions.find(
+        (suggestion) => suggestion.title === "Administration is not linked to a medication order"
+      );
+      expect(unmatched).toBeDefined();
+      expect(unmatched!.category).toBe("MEDICATION_CONSIDERATION");
     });
 
-    it("flags an active order with a non-administered MAR action", () => {
+    it("does not treat a legitimate held MAR action as a contradiction", () => {
       const engine = new DeterministicReviewEngine();
       const output = engine.run(
         makeSnapshot({
@@ -321,7 +325,7 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions[0].title).toBe("MAR action does not match an active medication order");
+      expect(output.suggestions).toEqual([]);
     });
 
     it("does not flag an active order with an administered action", () => {
@@ -331,7 +335,7 @@ describe("DeterministicReviewEngine", () => {
           treatments: {
             medicationOrders: [{ id: "med-1", status: "ACTIVE" }],
             medicationAdministrations: [
-              { id: "mar-1", orderItemId: "med-1", action: "administered" },
+              { id: "mar-1", orderItemId: "med-1", action: "administered", administeredAt: "2026-01-01T08:00:00.000Z" },
             ],
           },
         })

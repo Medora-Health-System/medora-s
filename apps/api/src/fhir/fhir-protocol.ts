@@ -1,7 +1,24 @@
 import { BadRequestException } from "@nestjs/common";
 
 export const FHIR_LOGICAL_ID_RE = /^[A-Za-z0-9\-.]{1,64}$/;
-export const FHIR_RESOURCE_TYPES = ["Patient", "Encounter", "Observation", "Organization", "Location", "Practitioner", "PractitionerRole"] as const;
+export const FHIR_RESOURCE_TYPES = [
+  "Patient",
+  "Encounter",
+  "Observation",
+  "Condition",
+  "AllergyIntolerance",
+  "MedicationRequest",
+  "MedicationAdministration",
+  "DocumentReference",
+  "Provenance",
+  "ServiceRequest",
+  "DiagnosticReport",
+  "CarePlan",
+  "Organization",
+  "Location",
+  "Practitioner",
+  "PractitionerRole",
+] as const;
 
 export function parseLogicalId(value: unknown): string {
   if (typeof value !== "string" || !FHIR_LOGICAL_ID_RE.test(value)) throw new BadRequestException("Malformed FHIR logical ID");
@@ -15,7 +32,7 @@ export function parseRelativeReference(value: unknown, allowed: readonly string[
   return { resourceType: match[1]!, id: match[2]! };
 }
 
-/** Strict P0.3B search-reference grammar: ResourceType/logical-id, relative only. */
+/** Strict P0.3 search-reference grammar: ResourceType/logical-id, relative only. */
 export function parseFhirReference<T extends (typeof FHIR_RESOURCE_TYPES)[number]>(
   value: unknown,
   expectedResourceType: T,

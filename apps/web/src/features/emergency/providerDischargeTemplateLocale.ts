@@ -3,14 +3,13 @@
  * No cross-language fallback at apply time.
  */
 
-import { bilingualStorageLocaleOrEn } from "@medora/shared";
 import {
   applyGoldStandardToSuggestedTextBody,
 } from "./providerDischargeTemplateGoldStandard";
 
 export type ProviderDischargeTemplateLocale = string;
 
-export const PROVIDER_DISCHARGE_TEMPLATE_LOCALES = ["en", "fr"] as const;
+export const PROVIDER_DISCHARGE_TEMPLATE_LOCALES = ["en", "fr", "es"] as const;
 
 export type ProviderDischargeTemplateSuggestedTextBody = {
   description: string;
@@ -26,6 +25,12 @@ export type ProviderDischargeTemplateSuggestedTextBody = {
 export type ProviderDischargeTemplateSuggestedText = {
   en: ProviderDischargeTemplateSuggestedTextBody;
   fr: ProviderDischargeTemplateSuggestedTextBody;
+  /**
+   * Spanish was added after the original bilingual catalogs. New/updated templates
+   * should provide this natively. Legacy templates are projected through the
+   * centralized Spanish safety body below so `es` never silently resolves to EN.
+   */
+  es?: ProviderDischargeTemplateSuggestedTextBody;
 };
 
 export type ProviderDischargeTemplateSuggestedTextCarrier = {
@@ -33,12 +38,13 @@ export type ProviderDischargeTemplateSuggestedTextCarrier = {
   suggestedText: ProviderDischargeTemplateSuggestedText;
 };
 
-/** Build locale-separated suggested text — both locales required. */
+/** Build locale-separated suggested text. EN/FR remain required for legacy catalog compatibility. */
 export function localizedSuggestedText(
   en: ProviderDischargeTemplateSuggestedTextBody,
-  fr: ProviderDischargeTemplateSuggestedTextBody
+  fr: ProviderDischargeTemplateSuggestedTextBody,
+  es?: ProviderDischargeTemplateSuggestedTextBody
 ): ProviderDischargeTemplateSuggestedText {
-  return { en, fr };
+  return { en, fr, ...(es ? { es } : {}) };
 }
 
 export class ProviderDischargeTemplateLocaleError extends Error {
@@ -62,25 +68,109 @@ function isSuggestedTextBody(value: unknown): value is ProviderDischargeTemplate
 function isLocalizedSuggestedText(value: unknown): value is ProviderDischargeTemplateSuggestedText {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const o = value as Record<string, unknown>;
-  return isSuggestedTextBody(o.en) && isSuggestedTextBody(o.fr);
+  return (
+    isSuggestedTextBody(o.en) &&
+    isSuggestedTextBody(o.fr) &&
+    (o.es === undefined || isSuggestedTextBody(o.es))
+  );
 }
 
-/** Returns locale body only — never falls back to another locale. */
+function normalizedDischargeLocale(locale: ProviderDischargeTemplateLocale): "en" | "fr" | "es" {
+  const normalized = locale.trim().toLowerCase().split(/[-_]/)[0];
+  if (normalized === "fr") return "fr";
+  if (normalized === "es") return "es";
+  return "en";
+}
+
+/**
+ * Central Spanish projection for legacy EN/FR-only discharge templates.
+ *
+ * This deliberately lives in the shared template locale layer (not Clinic UI), so
+ * ED and Clinic resolve the same Spanish patient-facing body. High-volume families
+ * have specific bodies; legacy remainder receives a conservative Spanish safety
+ * body rather than leaking English into an `es` encounter.
+ *
+ * As catalog templates are revised, pass a native third `es` body to
+ * localizedSuggestedText() and it automatically takes precedence over this bridge.
+ */
+function legacySpanishSuggestedTextBody(
+  template: ProviderDischargeTemplateSuggestedTextCarrier
+): ProviderDischargeTemplateSuggestedTextBody {
+  const id = template.id.toLowerCase();
+
+  if (/(^|_)(uti|cystitis)(_|$)|urinary.*infection|urology_uti/.test(id)) {
+    return {
+      description:
+        "Fue evaluado/a en el servicio de urgencias por síntomas urinarios. Los síntomas pueden persistir brevemente después de una visita de urgencias; se recomienda seguimiento ambulatorio cuando sea clínicamente apropiado.",
+      diagnosisInstructions:
+        "Beba líquidos según los tolere, salvo que su profesional clínico le haya indicado restringirlos. Tome los antibióticos u otros medicamentos exactamente según lo recetado. Se revisaron las precauciones de retorno ante síntomas que empeoren o sean preocupantes.",
+      medicationTreatment:
+        "Tome los antibióticos y los medicamentos para los síntomas urinarios únicamente según lo recetado o indicado durante esta visita. No comparta antibióticos ni los suspenda antes de tiempo salvo indicación de su profesional clínico.",
+      returnPrecautions:
+        "Busque atención médica si presenta fiebre, dolor en el costado o la espalda, vómitos, empeoramiento de los síntomas urinarios, debilidad, confusión, incapacidad para tolerar antibióticos o líquidos, u otros síntomas preocupantes.",
+    };
+  }
+
+  if (/abdominal|r10/.test(id)) {
+    return {
+      description:
+        "Fue evaluado/a en el servicio de urgencias por dolor abdominal. Algunas causas pueden evolucionar después de la visita; se recomienda seguimiento ambulatorio cuando sea clínicamente apropiado.",
+      diagnosisInstructions:
+        "Manténgase bien hidratado/a. Consuma una dieta ligera según la tolere, salvo que su profesional clínico le haya indicado lo contrario. Descanse según sea necesario y siga las indicaciones dadas durante esta visita.",
+      medicationTreatment:
+        "Tome los medicamentos para el dolor o las náuseas únicamente según lo recetado o indicado durante esta visita. No inicie medicamentos nuevos sin orientación de un profesional clínico.",
+      returnPrecautions:
+        "Busque atención médica si el dolor empeora, aparece fiebre, los vómitos persisten, observa sangre en las heces o el vómito, se desmaya, presenta nueva distensión abdominal, no puede retener líquidos o aparece cualquier otro síntoma preocupante.",
+    };
+  }
+
+  if (/nausea|vomit|emesis|r11/.test(id)) {
+    return {
+      description:
+        "Fue evaluado/a en el servicio de urgencias por náuseas y/o vómitos. Los síntomas pueden cambiar después de la visita; realice seguimiento según las indicaciones recibidas.",
+      diagnosisInstructions:
+        "Tome líquidos en pequeñas cantidades y con frecuencia. Avance la dieta gradualmente según la tolere y descanse. Siga las recomendaciones específicas de su profesional clínico.",
+      medicationTreatment:
+        "Use los medicamentos recetados o recomendados durante esta visita exactamente según las indicaciones. No inicie medicamentos nuevos sin consultar a un profesional clínico.",
+      returnPrecautions:
+        "Busque atención médica si no puede retener líquidos, presenta signos de deshidratación, dolor intenso, sangre en el vómito, fiebre persistente, desmayo o empeoramiento de los síntomas.",
+    };
+  }
+
+  return {
+    description:
+      "Fue evaluado/a en el servicio de urgencias por la condición diagnosticada durante esta visita. Algunas afecciones pueden evolucionar después del alta; realice el seguimiento recomendado cuando sea clínicamente apropiado.",
+    diagnosisInstructions:
+      "Siga las indicaciones entregadas durante esta visita, descanse según sea necesario y manténgase hidratado/a si no tiene una restricción médica de líquidos. Comuníquese con su profesional clínico si tiene dudas sobre su recuperación.",
+    medicationTreatment:
+      "Tome únicamente los medicamentos recetados o recomendados durante esta visita y siga exactamente las instrucciones de uso. No inicie medicamentos nuevos sin orientación de un profesional clínico.",
+    returnPrecautions:
+      "Busque atención médica si los síntomas empeoran, aparecen síntomas nuevos preocupantes o no mejora como se esperaba.",
+  };
+}
+
+/** Returns locale body only — never silently falls back to another language. */
 export function getProviderDischargeSuggestedTextBody(
   template: ProviderDischargeTemplateSuggestedTextCarrier,
   locale: ProviderDischargeTemplateLocale
 ): ProviderDischargeTemplateSuggestedTextBody {
   if (!isLocalizedSuggestedText(template.suggestedText)) {
     throw new ProviderDischargeTemplateLocaleError(
-      `[${template.id}] suggestedText is not locale-separated (en/fr required)`
+      `[${template.id}] suggestedText is not locale-separated (en/fr required; es optional during migration)`
     );
   }
-  const storageLocale = bilingualStorageLocaleOrEn(locale);
-  const body = template.suggestedText[storageLocale];
-  if (!body) {
-    throw new ProviderDischargeTemplateLocaleError(`[${template.id}] missing suggestedText.${storageLocale}`);
+
+  const activeLocale = normalizedDischargeLocale(locale);
+  if (activeLocale === "es") {
+    const body = template.suggestedText.es ?? legacySpanishSuggestedTextBody(template);
+    return applyGoldStandardToSuggestedTextBody(template.id, body, "es");
   }
-  return applyGoldStandardToSuggestedTextBody(template.id, body, storageLocale);
+
+  const body = template.suggestedText[activeLocale];
+  if (!body) {
+    throw new ProviderDischargeTemplateLocaleError(`[${template.id}] missing suggestedText.${activeLocale}`);
+  }
+  return applyGoldStandardToSuggestedTextBody(template.id, body, activeLocale);
 }
 
 export function suggestedTextBodyBlob(body: ProviderDischargeTemplateSuggestedTextBody): string {

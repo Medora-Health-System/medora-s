@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { Injectable, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { resolvePlatformPrincipalAccess } from "../../auth/platform-principal.js";
@@ -30,6 +30,7 @@ const MAX_DIAGNOSES = 50;
 const MAX_FOLLOWUPS = 50;
 const MAX_APPOINTMENTS = 50;
 const MAX_VITALS_TREND_ENTRIES = 50;
+const UNKNOWN_STRUCTURED_DOCUMENTED_AT = "1970-01-01T00:00:00.000Z";
 
 function ageYearsFromDob(dob: Date | string | null | undefined): number | null {
   if (!dob) return null;
@@ -46,6 +47,37 @@ function toIsoString(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function structuredEntryDocumentedAt(payload: unknown): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return UNKNOWN_STRUCTURED_DOCUMENTED_AT;
+  }
+
+  const source = payload as Record<string, unknown>;
+  for (const key of [
+    "reassessmentAt",
+    "clinicalDocumentedAt",
+    "documentedAt",
+    "recordedAt",
+    "authoredAt",
+    "createdAt",
+  ]) {
+    const value = source[key];
+    if (typeof value !== "string") continue;
+    const iso = toIsoString(value);
+    if (iso) return iso;
+  }
+
+  return UNKNOWN_STRUCTURED_DOCUMENTED_AT;
+}
+
+function stableStructuredEntryId(namespace: string, payload: unknown): string {
+  const digest = createHash("sha256")
+    .update(`${namespace}\n${canonicalJsonStringify(payload)}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `structured-${digest}`;
 }
 
 @Injectable()
@@ -403,12 +435,12 @@ export class EncounterAiSnapshotBuilder {
       const namespaces = nursingAssessment as Record<string, unknown>;
       for (const [namespace, payload] of Object.entries(namespaces).slice(0, MAX_STRUCTURED_ENTRIES)) {
         const entry = {
-          id: randomUUID(),
+          id: stableStructuredEntryId(namespace, payload),
           namespace,
-          documentedAt: new Date().toISOString(),
+          documentedAt: structuredEntryDocumentedAt(payload),
           payloadSummary: payload as Record<string, unknown>,
         };
-        if (namespace.includes("REASSESSMENT")) {
+        if (namespace.toLowerCase().includes("reassess")) {
           reassessments?.push(entry);
         } else {
           structuredEntries?.push(entry);

@@ -1,6 +1,66 @@
 export type IntegrationPermissionOption = { code: string; resourceType: string; interaction: string };
-export type IntegrationFacilityOption = { id: string; code: string; name: string; country: string; billingCity: string | null; billingStateProvince: string | null };
-export type IntegrationRow = { id: string; displayName: string; partnerName: string; status: string; protocol: string; direction: string; environment: string; jurisdiction: string; provisioningState: string; facilities: { facilityId: string }[]; permissions: { capabilityCode: string }[] };
+export type IntegrationFacilityOption = {
+  id: string;
+  code?: string | null;
+  name: string;
+  country?: string | null;
+  billingCity?: string | null;
+  billingStateProvince?: string | null;
+};
+export type IntegrationRow = {
+  id: string;
+  displayName: string;
+  partnerName: string;
+  status: string;
+  protocol: string;
+  direction: string;
+  environment: string;
+  jurisdiction: string;
+  provisioningState: string;
+  sourceSystemIdentifier?: string | null;
+  facilities: { facilityId: string; active?: boolean }[];
+  permissions: { capabilityCode: string }[];
+};
+export type FhirConnectionInfo = { fhirBaseUrl: string; tokenUrl: string; metadataUrl: string; authMethod: string; secretPolicy: string };
+export type FhirClientRow = {
+  id: string;
+  integrationId: string;
+  facilityId: string;
+  displayName: string;
+  sourceSystemIdentifier: string | null;
+  active: boolean;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  scopes: string[];
+  credentialCount: number;
+  lastUsedAt: string | null;
+};
+export type FhirCredentialRow = {
+  id: string;
+  keyId: string;
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
+};
+export type ProvisionedFhirCredential = FhirConnectionInfo & {
+  clientId: string;
+  facilityId: string;
+  keyId: string;
+  clientSecret: string;
+  scopes: string[];
+  expiresAt: string | null;
+  secretDisplayPolicy: string;
+};
+export type RotatedFhirCredential = FhirConnectionInfo & {
+  clientId: string;
+  keyId: string;
+  clientSecret: string;
+  expiresAt: string | null;
+  secretDisplayPolicy: string;
+};
 
 async function call(path: string, init?: RequestInit) {
   const res = await fetch(`/api/admin/integrations${path}`, { credentials: "include", headers: { "Content-Type": "application/json" }, ...init });
@@ -14,7 +74,18 @@ async function call(path: string, init?: RequestInit) {
   return body;
 }
 export const fetchIntegrations = () => call("") as Promise<IntegrationRow[]>;
+export const fetchIntegration = (id: string) => call(`/${id}`) as Promise<IntegrationRow>;
 export const fetchIntegrationPermissions = () => call("/permission-options") as Promise<IntegrationPermissionOption[]>;
 export const fetchIntegrationFacilities = () => call("/facility-options") as Promise<IntegrationFacilityOption[]>;
+export const fetchFhirConnectionInfo = () => call("/connection-info") as Promise<FhirConnectionInfo>;
+export const fetchFhirClients = (integrationId: string) => call(`/${integrationId}/clients`) as Promise<FhirClientRow[]>;
+export const fetchFhirCredentials = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials`) as Promise<FhirCredentialRow[]>;
+export const provisionFhirClient = (integrationId: string, body: unknown) => call(`/${integrationId}/clients`, { method: "POST", body: JSON.stringify(body) }) as Promise<ProvisionedFhirCredential>;
+export const rotateFhirCredential = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/credentials/rotate`, { method: "POST", body: "{}" }) as Promise<RotatedFhirCredential>;
+export const revokeFhirCredential = (integrationId: string, clientId: string, credentialId: string) => call(`/${integrationId}/clients/${clientId}/credentials/${credentialId}/revoke`, { method: "POST" }) as Promise<{ revoked: true; credentialId: string; keyId: string; alreadyRevoked: boolean }>;
+export const updateFhirClientScopes = (integrationId: string, clientId: string, scopes: string[]) => call(`/${integrationId}/clients/${clientId}/scopes`, { method: "PATCH", body: JSON.stringify({ scopes }) }) as Promise<{ clientId: string; scopes: string[] }>;
+export const revokeFhirClient = (integrationId: string, clientId: string) => call(`/${integrationId}/clients/${clientId}/revoke`, { method: "POST" }) as Promise<{ revoked: true; clientId: string }>;
+export const testFhirConnection = (integrationId: string, body: unknown) => call(`/${integrationId}/test-connection`, { method: "POST", body: JSON.stringify(body) }) as Promise<FhirConnectionInfo & { ok: true; tokenIssued: true; expiresIn: number; scopes: string[] }>;
 export const createIntegration = (body: unknown) => call("", { method: "POST", body: JSON.stringify(body) }) as Promise<IntegrationRow>;
+export const updateIntegrationPermissions = (id: string, permissionCodes: string[]) => call(`/${id}`, { method: "PATCH", body: JSON.stringify({ permissionCodes }) }) as Promise<IntegrationRow>;
 export const setIntegrationEnabled = (id: string, enabled: boolean) => call(`/${id}/${enabled ? "enable" : "disable"}`, { method: "POST" }) as Promise<IntegrationRow>;

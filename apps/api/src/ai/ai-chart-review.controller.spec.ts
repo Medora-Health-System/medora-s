@@ -31,13 +31,13 @@ describe("AiChartReviewController", () => {
     };
     const { controller, orchestrator, aiAudit } = createController({ output });
 
-    const result = await controller.getChartReview("encounter-1", request);
+    const result = await controller.getChartReview("encounter-1", undefined, request);
 
     expect(orchestrator.run).toHaveBeenCalledWith({
       facilityId: "facility-1",
       encounterId: "encounter-1",
       actorUserId: "provider-1",
-    });
+    }, "en");
     expect(aiAudit.log).toHaveBeenNthCalledWith(
       1,
       "AI_REVIEW_REQUESTED",
@@ -61,7 +61,7 @@ describe("AiChartReviewController", () => {
     const { controller, orchestrator, aiAudit } = createController();
     aiAudit.log.mockRejectedValue(new Error("audit unavailable"));
 
-    await expect(controller.getChartReview("encounter-1", request)).resolves.toEqual({ suggestions: [] });
+    await expect(controller.getChartReview("encounter-1", undefined, request)).resolves.toEqual({ suggestions: [] });
     expect(orchestrator.run).toHaveBeenCalledTimes(1);
   });
 
@@ -133,7 +133,7 @@ describe("AiChartReviewController", () => {
     const { controller } = createController();
 
     await expect(
-      controller.getChartReview("encounter-1", { user: { userId: "provider-1" }, headers: {} })
+      controller.getChartReview("encounter-1", undefined, { user: { userId: "provider-1" }, headers: {} })
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -141,7 +141,7 @@ describe("AiChartReviewController", () => {
     const { controller } = createController();
 
     await expect(
-      controller.getChartReview("encounter-1", { user: { facilityId: "facility-1" }, headers: {} })
+      controller.getChartReview("encounter-1", undefined, { user: { facilityId: "facility-1" }, headers: {} })
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

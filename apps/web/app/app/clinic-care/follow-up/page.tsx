@@ -1,17 +1,13 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
+import FollowUpsPage from "../../follow-ups/page";
 
-/** MEDUI.D4C.5B.1 — preserve typed drill-down query when opening enterprise Follow-ups. */
+/**
+ * Clinic Care keeps the shared enterprise Follow-ups engine mounted inside the persistent
+ * Clinic Care layout instead of redirecting to the standalone /app/follow-ups route.
+ * Query-string filters are preserved automatically because the shared page reads the
+ * current route's search params.
+ */
 export default function ClinicCareFollowUpPage() {
-  const searchParams = useSearchParams();
-  const qs = searchParams.toString();
-  const href = qs ? `/app/follow-ups?${qs}` : "/app/follow-ups";
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href={href}
-      labelKey="clinicCareD4c4.redirectingFollowUp"
-    />
-  );
+  return <FollowUpsPage />;
 }

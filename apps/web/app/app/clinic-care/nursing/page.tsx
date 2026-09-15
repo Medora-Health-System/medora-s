@@ -1,12 +1,12 @@
 "use client";
 
 import { Suspense } from "react";
-import { ClinicCareNursingWorkspaceView } from "@/features/clinic-care/ClinicCareNursingWorkspaceView";
+import { ClinicCareNursingSinglePageWorkspace } from "@/features/clinic-care/ClinicCareNursingSinglePageWorkspace";
 
 export default function ClinicCareNursingPage() {
   return (
     <Suspense fallback={null}>
-      <ClinicCareNursingWorkspaceView />
+      <ClinicCareNursingSinglePageWorkspace />
     </Suspense>
   );
 }

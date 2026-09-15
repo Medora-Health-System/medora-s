@@ -112,4 +112,21 @@ describe("MEDUI.D4C.2A unified clinic workspace capability navigation", () => {
     expect(shell).not.toMatch(/import\s*\{[^}]*ClinicCareSideNav/);
     expect(shell).not.toContain("<ClinicCareSideNav");
   });
+
+  it("H — compact Clinic home removes duplicate shortcut tabs and the default shell subtitle", () => {
+    const topNav = readFileSync(join(__dirname, "ClinicCareTopNav.tsx"), "utf8");
+    const shell = readFileSync(join(__dirname, "ClinicCareShell.tsx"), "utf8");
+
+    for (const id of ["provider", "orders", "results", "patients", "encounters"]) {
+      expect(topNav).toContain(`\"${id}\"`);
+    }
+    expect(topNav).toContain("CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS");
+    expect(topNav).toContain(".filter((item) => !CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS.has(item.id))");
+    expect(shell).not.toContain('t("clinicCareD4c2a.workspaceSubtitle")');
+  });
+
+  it("I — enterprise Pharmacy remains in the global left sidebar", () => {
+    expect(SIDEBAR_NAV_ITEMS.some((item) => item.href === "/app/pharmacy")).toBe(true);
+    expect(SIDEBAR_NAV_ITEMS.some((item) => item.href === "/app/pharmacy-worklist")).toBe(true);
+  });
 });

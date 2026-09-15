@@ -3,6 +3,8 @@ import type { SuggestionContext } from "../review.types.js";
 import { isAcuteCareSetting, parseIsoMs } from "../clinical-facts.js";
 import { buildCopiedSuggestion } from "../review.utils.js";
 
+const UNKNOWN_STRUCTURED_DOCUMENTED_AT = "1970-01-01T00:00:00.000Z";
+
 function isReassessmentEntry(entry: AiStructuredDocumentationEntry): boolean {
   return entry.namespace.toLowerCase().includes("reassess");
 }
@@ -16,7 +18,14 @@ function reassessmentClinicalTime(entry: AiStructuredDocumentationEntry): number
       if (parsed !== null) return parsed;
     }
   }
-  if (entry.namespace.toLowerCase() === "ernursingreassessmentv1") return null;
+
+  if (
+    entry.namespace.toLowerCase() === "ernursingreassessmentv1" ||
+    entry.documentedAt === UNKNOWN_STRUCTURED_DOCUMENTED_AT
+  ) {
+    return null;
+  }
+
   return parseIsoMs(entry.documentedAt);
 }
 

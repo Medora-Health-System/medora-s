@@ -3,6 +3,7 @@ import { AuditAction } from "@prisma/client";
 
 export const auditPresetSchema = z.enum([
   "critical_events",
+  "security_interop",
   "clinical_actions",
   "billing_exports",
   "access_views",
@@ -19,6 +20,8 @@ export const adminAuditEventsQuerySchema = z.object({
   /** When set, server applies a curated OR filter; raw `action` / `entity` filters are ignored. */
   preset: auditPresetSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  /** 1-based page number for the enterprise audit center. Cursor remains supported for older callers. */
+  page: z.coerce.number().int().min(1).max(100000).optional(),
   cursor: z.string().trim().min(1).max(512).optional(),
 }).strict();
 

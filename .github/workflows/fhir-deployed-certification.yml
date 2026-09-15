@@ -1,0 +1,68 @@
+name: FHIR Deployed Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed FHIR base URL"
+        required: true
+        default: "https://api.medoras.com/fhir"
+        type: string
+      allowed_scope:
+        description: "Granted scope used for the positive token/resource test"
+        required: true
+        default: "patient.search"
+        type: string
+      resource_type:
+        description: "FHIR resource used for the positive search test"
+        required: true
+        default: "Patient"
+        type: string
+      denied_resource_type:
+        description: "Different resource used to prove token-scope denial"
+        required: true
+        default: "Observation"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-p03h:
+    name: deployed-p03h
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate certification secrets are configured
+        env:
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+        run: |
+          missing=0
+          for name in FHIR_CERT_CLIENT_ID FHIR_CERT_KEY_ID FHIR_CERT_CLIENT_SECRET FHIR_CERT_FACILITY_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured as a repository/environment secret"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Run deployed non-destructive P0.3H certification
+        env:
+          FHIR_CERT_BASE_URL: ${{ inputs.base_url }}
+          FHIR_CERT_CLIENT_ID: ${{ secrets.FHIR_CERT_CLIENT_ID }}
+          FHIR_CERT_KEY_ID: ${{ secrets.FHIR_CERT_KEY_ID }}
+          FHIR_CERT_CLIENT_SECRET: ${{ secrets.FHIR_CERT_CLIENT_SECRET }}
+          FHIR_CERT_FACILITY_ID: ${{ secrets.FHIR_CERT_FACILITY_ID }}
+          FHIR_CERT_ALLOWED_SCOPE: ${{ inputs.allowed_scope }}
+          FHIR_CERT_RESOURCE_TYPE: ${{ inputs.resource_type }}
+          FHIR_CERT_DENIED_RESOURCE_TYPE: ${{ inputs.denied_resource_type }}
+        run: node scripts/fhir/p03h-deployed-certification.mjs

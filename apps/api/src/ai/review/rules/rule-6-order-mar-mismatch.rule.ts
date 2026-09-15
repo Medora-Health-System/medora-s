@@ -8,11 +8,13 @@ import {
 import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
- * Rule 6 — Medication order / MAR reconciliation.
+ * Medication order/MAR linkage integrity.
  *
- * Does not assume every active order must be administered. Unresolved active
- * orders are surfaced only when discharge/finalization is in progress and the
- * order is not PRN.
+ * Surfaces a structured linkage problem when a MAR row references an order
+ * item absent from the medication-order snapshot. A held, refused, omitted,
+ * stopped, or other non-administered MAR action is not treated as a
+ * contradiction with an active order. Unresolved active non-PRN orders are
+ * surfaced only when discharge/finalization is in progress.
  */
 export function rule6OrderMarMismatch(
   snapshot: EncounterAiSnapshot,
@@ -21,58 +23,39 @@ export function rule6OrderMarMismatch(
   const suggestions = [];
   const medicationOrders = snapshot.treatments.medicationOrders ?? [];
   const administrations = snapshot.treatments.medicationAdministrations ?? [];
-  const orderMap = new Map(medicationOrders.map((order) => [order.id, order]));
-  const discharging = isDischargeInProgress(snapshot);
+  const orderIds = new Set(medicationOrders.map((order) => order.id));
 
-  for (const admin of administrations) {
-    if (!admin.orderItemId) continue;
-    if (orderMap.has(admin.orderItemId)) continue;
+  const orphaned = administrations.filter(
+    (administration) =>
+      Boolean(administration.orderItemId) &&
+      !orderIds.has(administration.orderItemId as string)
+  );
+
+  if (orphaned.length > 0) {
     suggestions.push(
       buildCopiedSuggestion(ctx, {
-        category: "CONTRADICTION",
+        category: "MEDICATION_CONSIDERATION",
         priority: "MEDIUM",
         copyKey: "marUnknownOrder",
-        evidence: [
-          {
-            sourceType: "MEDICATION",
-            sourceId: admin.id,
-            label: "Administration without matching order",
-            value: admin.action ?? null,
-          },
+        evidence: orphaned.map((administration) => ({
+          sourceType: "MEDICATION" as const,
+          sourceId: administration.id,
+          label: "MAR entry with unmatched order reference",
+          value: administration.orderItemId ?? null,
+        })),
+        recommendedActions: [
+          { actionType: "REVIEW", label: "Review medication administration record" },
         ],
       })
     );
   }
 
+  if (!isDischargeInProgress(snapshot)) return suggestions;
+
   for (const order of medicationOrders) {
-    if (!isActiveMedicationOrder(order)) continue;
+    if (!isActiveMedicationOrder(order) || isPrnMedicationOrder(order)) continue;
     const relatedAdmins = administrations.filter((admin) => admin.orderItemId === order.id);
-    const hasMismatch = relatedAdmins.some(
-      (admin) => admin.action && admin.action !== "administered"
-    );
-    if (hasMismatch) {
-      suggestions.push(
-        buildCopiedSuggestion(ctx, {
-          category: "CONTRADICTION",
-          priority: "MEDIUM",
-          copyKey: "marActionMismatch",
-          evidence: [
-            {
-              sourceType: "MEDICATION",
-              sourceId: order.id,
-              label: "Active order with non-administered MAR action",
-              value: order.displayLabel ?? order.id,
-            },
-          ],
-        })
-      );
-      continue;
-    }
-
-    if (!discharging || isPrnMedicationOrder(order)) continue;
-    const hasAdministered = relatedAdmins.some((admin) => admin.action === "administered");
-    if (hasAdministered || relatedAdmins.length > 0) continue;
-
+    if (relatedAdmins.length > 0) continue;
     const medication = order.displayLabel?.trim();
     suggestions.push(
       buildCopiedSuggestion(ctx, {

@@ -8,6 +8,7 @@ import { buildCopiedSuggestion } from "../review.utils.js";
  *
  * Uses only the snapshot criticalValue flag and acknowledgement timestamp.
  * Never infers abnormality from free text or invented reference ranges.
+ * The action is navigation-only. Medora Assist never acknowledges a result.
  */
 export function rule1UnacknowledgedCriticalResult(
   snapshot: EncounterAiSnapshot,
@@ -32,6 +33,13 @@ export function rule1UnacknowledgedCriticalResult(
             sourceId: result.id,
             label: "Critical result",
             value: study ?? "present",
+          },
+        ],
+        recommendedActions: [
+          {
+            actionType: "NAVIGATE",
+            targetSection: "results",
+            label: "Review critical result",
           },
         ],
       })

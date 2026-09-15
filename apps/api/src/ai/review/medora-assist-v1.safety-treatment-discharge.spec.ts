@@ -25,7 +25,9 @@ function makeSnapshot(overrides: DeepPartial<EncounterAiSnapshot> = {}): Encount
       careSetting: "EMERGENCY_DEPARTMENT",
     },
     patientContext: { age: 42 },
-    presentation: {},
+    presentation: {
+      latestVitals: { recordedAt: "2026-01-01T00:00:00.000Z", values: { hr: 80 } },
+    },
     clinicalDocumentation: { providerDocumentationStatus: "SIGNED" },
     diagnostics: {},
     treatments: {},

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ClinicalWritingGuard } from "@/components/clinical-writing/ClinicalWritingGuard";
 import {
   defaultLanguage,
   isPubliclySelectableProductUiLanguage,
@@ -84,7 +85,12 @@ export function I18nProvider({
     [language, setLanguage, applyFacilityLanguage, t]
   );
 
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={value}>
+      <ClinicalWritingGuard language={language} />
+      {children}
+    </I18nContext.Provider>
+  );
 }
 
 /**

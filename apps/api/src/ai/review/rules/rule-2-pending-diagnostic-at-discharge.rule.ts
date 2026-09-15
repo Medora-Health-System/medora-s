@@ -60,6 +60,13 @@ export function rule2PendingDiagnosticAtDischarge(
             value: study ?? "present",
           },
         ],
+        recommendedActions: [
+          {
+            actionType: "NAVIGATE",
+            targetSection: "results",
+            label: "Review critical result",
+          },
+        ],
       })
     );
   }
