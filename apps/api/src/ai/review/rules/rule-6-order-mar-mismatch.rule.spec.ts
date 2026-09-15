@@ -34,7 +34,7 @@ describe("Phase 2L medication order/MAR integrity", () => {
 
     expect(findings).toHaveLength(1);
     expect(findings[0]?.category).toBe("MEDICATION_CONSIDERATION");
-    expect(findings[0]?.title).toBe("Medication administration is not linked to a medication order");
+    expect(findings[0]?.title).toBe("Administration is not linked to a medication order");
   });
 
   it.each(["held", "refused", "omitted", "stopped"])(

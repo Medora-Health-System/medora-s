@@ -2,7 +2,23 @@ import { ClinicalReviewOrchestratorService } from "./clinical-review-orchestrato
 
 const snapshot = {
   snapshotVersion: "snapshot-v1",
-  encounterContext: { careSetting: "EMERGENCY_DEPARTMENT" },
+  generatedAt: "2026-09-13T15:00:00.000Z",
+  encounterContext: {
+    encounterId: "11111111-1111-4111-8111-111111111111",
+    facilityId: "22222222-2222-4222-8222-222222222222",
+    patientId: "33333333-3333-4333-8333-333333333333",
+    country: "US",
+    encounterType: "EMERGENCY",
+    status: "OPEN",
+    careSetting: "EMERGENCY_DEPARTMENT",
+  },
+  patientContext: {},
+  presentation: {},
+  clinicalDocumentation: { structuredEntries: [], reassessments: [] },
+  diagnostics: { orders: [], results: [], pendingTests: [], criticalResults: [] },
+  treatments: { medicationOrders: [], medicationAdministrations: [], procedures: [] },
+  diagnoses: { documentedDiagnoses: [] },
+  disposition: { followUps: [], appointments: [] },
 } as any;
 
 const input = {

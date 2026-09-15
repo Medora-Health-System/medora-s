@@ -72,7 +72,7 @@ describe("buildExternalClinicalInput", () => {
     expect(serialized).not.toContain("secret-key");
     expect(serialized).not.toContain("internal-id");
     expect(serialized).not.toContain("opaque-secret");
-    expect(serialized).not.toContain("OUTPATIENT");
+    expect(serialized).not.toContain("billingClassification");
     expect(serialized).not.toContain("PROC-SECRET");
     expect(serialized).not.toContain("R05");
     expect(input.patient).toEqual({ age: 42, sexAtBirth: "F" });

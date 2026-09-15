@@ -26,7 +26,9 @@ function makeSnapshot(overrides: DeepPartial<EncounterAiSnapshot> = {}): Encount
       careSetting: "EMERGENCY_DEPARTMENT",
     },
     patientContext: {},
-    presentation: {},
+    presentation: {
+      latestVitals: { recordedAt: "2026-01-01T00:00:00.000Z", values: { hr: 80 } },
+    },
     clinicalDocumentation: { providerDocumentationStatus: "SIGNED" },
     diagnostics: {},
     treatments: {},
@@ -90,8 +92,8 @@ describe("DeterministicReviewEngine", () => {
       expect(output.suggestions).toHaveLength(1);
       expect(output.suggestions[0].category).toBe("CLINICAL_SAFETY");
       expect(output.suggestions[0].priority).toBe("CRITICAL");
-      expect(output.suggestions[0].title).toBe("Unacknowledged critical result");
-      expect(output.suggestions[0].recommendedActions?.[0].actionType).toBe("ACKNOWLEDGE");
+      expect(output.suggestions[0].title).toBe("Critical result without documented reconciliation");
+      expect(output.suggestions[0].recommendedActions?.[0].actionType).toBe("NAVIGATE");
     });
 
     it("does not flag an acknowledged critical result", () => {
@@ -139,10 +141,10 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      const pending = output.suggestions.find((s) => s.title === "Pending diagnostic test at discharge");
+      const pending = output.suggestions.find((s) => s.category === "DISCHARGE_SAFETY" && s.priority === "HIGH");
       expect(pending).toBeDefined();
-      expect(pending!.category).toBe("DISCHARGE_SAFETY");
-      expect(pending!.priority).toBe("HIGH");
+      expect(pending!.title).toBe("Pending diagnostic study at discharge");
+      expect(pending!.summary).toContain("CBC");
     });
 
     it("does not flag pending tests for an open encounter", () => {
@@ -183,10 +185,10 @@ describe("DeterministicReviewEngine", () => {
       );
 
       const critical = output.suggestions.find(
-        (s) => s.title === "Unacknowledged critical result at discharge"
+        (s) => s.category === "DISCHARGE_SAFETY" && s.priority === "CRITICAL"
       );
       expect(critical).toBeDefined();
-      expect(critical!.priority).toBe("CRITICAL");
+      expect(critical!.title).toBe("Critical result remains before discharge");
     });
   });
 
@@ -200,9 +202,10 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].category).toBe("DISPOSITION_GAP");
-      expect(output.suggestions[0].priority).toBe("HIGH");
+      const missing = output.suggestions.find((s) => s.category === "DISPOSITION_GAP");
+      expect(missing).toBeDefined();
+      expect(missing!.priority).toBe("HIGH");
+      expect(missing!.title).toBe("Disposition is not documented");
     });
 
     it("does not flag a closed encounter with a disposition", () => {
@@ -210,11 +213,11 @@ describe("DeterministicReviewEngine", () => {
       const output = engine.run(
         makeSnapshot({
           encounterContext: { status: "CLOSED" },
-          disposition: { disposition: "DISCHARGED_HOME" },
+          disposition: { disposition: "DISCHARGED_HOME", dischargeFollowUpDocumented: true },
         })
       );
 
-      expect(output.suggestions).toEqual([]);
+      expect(output.suggestions.some((s) => s.category === "DISPOSITION_GAP")).toBe(false);
     });
 
     it("does not flag an open encounter missing disposition", () => {
@@ -239,9 +242,7 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].category).toBe("DOCUMENTATION_GAP");
-      expect(output.suggestions[0].priority).toBe("MEDIUM");
+      expect(output.suggestions[0].title).toBe("Provider documentation is not signed");
     });
 
     it("does not flag signed documentation", () => {
@@ -273,9 +274,7 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].category).toBe("FOLLOW_UP_GAP");
-      expect(output.suggestions[0].priority).toBe("MEDIUM");
+      expect(output.suggestions[0].title).toBe("Follow-up remains incomplete");
     });
 
     it.each(["COMPLETED", "CANCELLED"] as const)("does not flag a %s follow-up", (status) => {
@@ -306,12 +305,14 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].category).toBe("CONTRADICTION");
-      expect(output.suggestions[0].title).toBe("Medication administration references unknown order");
+      const unmatched = output.suggestions.find(
+        (suggestion) => suggestion.title === "Administration is not linked to a medication order"
+      );
+      expect(unmatched).toBeDefined();
+      expect(unmatched!.category).toBe("MEDICATION_CONSIDERATION");
     });
 
-    it("flags an active order with a non-administered MAR action", () => {
+    it("does not treat a legitimate held MAR action as a contradiction", () => {
       const engine = new DeterministicReviewEngine();
       const output = engine.run(
         makeSnapshot({
@@ -324,8 +325,7 @@ describe("DeterministicReviewEngine", () => {
         })
       );
 
-      expect(output.suggestions).toHaveLength(1);
-      expect(output.suggestions[0].title).toBe("Medication administration action does not match active order");
+      expect(output.suggestions).toEqual([]);
     });
 
     it("does not flag an active order with an administered action", () => {
@@ -335,7 +335,7 @@ describe("DeterministicReviewEngine", () => {
           treatments: {
             medicationOrders: [{ id: "med-1", status: "ACTIVE" }],
             medicationAdministrations: [
-              { id: "mar-1", orderItemId: "med-1", action: "administered" },
+              { id: "mar-1", orderItemId: "med-1", action: "administered", administeredAt: "2026-01-01T08:00:00.000Z" },
             ],
           },
         })

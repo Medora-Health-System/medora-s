@@ -59,4 +59,13 @@ describe("rule9PossibleDuplicateMedication", () => {
       { id: "med-2", displayLabel: null, status: "ACTIVE" },
     ]), ctx)).toEqual([]);
   });
+
+  it("groups same-medication strengths without collapsing generic Medication A/B labels", () => {
+    const ketorolac = rule9PossibleDuplicateMedication(snapshot([
+      { id: "med-1", displayLabel: "ketorolac 30 mg", status: "ACTIVE" },
+      { id: "med-2", displayLabel: "ketorolac 15 mg", status: "ACTIVE" },
+    ]), ctx);
+    expect(ketorolac).toHaveLength(1);
+    expect(ketorolac[0].summary).toContain("ketorolac");
+  });
 });

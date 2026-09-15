@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { AiClinicalReviewOutput, type AiSuggestion } from "@medora/shared";
+import { AiClinicalReviewOutput, pickAiLocalizedCopy, type AiSuggestion } from "@medora/shared";
 import { AiFeatureFlagsService } from "../core/ai-feature-flags.service.js";
 import type { AiModelProvider } from "../providers/ai-model-provider.interface.js";
 import { AI_MODEL_PROVIDER } from "../providers/ai-provider.tokens.js";
@@ -88,7 +88,7 @@ Review every domain with usable data; do not stop after the first finding:
 
 Distinguish among: (a) missing/not documented, (b) internally inconsistent/needs review, and (c) a contextual clinical consideration supported by supplied facts. Do not manufacture a gap merely because a section is empty when this encounter does not establish that the content is clinically indicated. Avoid noisy generic alerts and return all meaningful, non-duplicative findings.
 
-Return only the requested structured suggestions. Do not autonomously diagnose, modify documentation, fabricate facts, infer unsupported payer/coding rules, or recommend services for reimbursement. Do not provide CPT/E&M/payer/reimbursement advice. Every suggestion is advisory and requires clinician review. Evidence must come only from the supplied payload. Recommended actions may only ask the clinician to REVIEW or NAVIGATE to an existing chart section.`;
+Return only the requested structured suggestions. Do not diagnose autonomously. Never place or imply orders. Do not autonomously diagnose, modify documentation, fabricate facts, infer unsupported payer/coding rules, or recommend services for reimbursement. Do not provide CPT/E&M/payer/reimbursement advice. Every suggestion is advisory and requires clinician review. Evidence must come only from the supplied payload. Recommended actions may only ask the clinician to review or navigate to an existing chart section.`;
 
 @Injectable()
 export class ClinicalReviewOrchestratorService {
@@ -165,6 +165,23 @@ export class ClinicalReviewOrchestratorService {
   }
 
   private localizeDeterministic(suggestion: AiSuggestion, locale: AiReviewLocale): AiSuggestion {
+    if (suggestion.titleLocalized && suggestion.summaryLocalized) {
+      return {
+        ...suggestion,
+        title: pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title),
+        summary: pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary),
+        reasoningSummary: pickAiLocalizedCopy(
+          suggestion.reasoningSummaryLocalized,
+          locale,
+          suggestion.reasoningSummary
+        ),
+        clinicalDisclaimer: pickAiLocalizedCopy(
+          suggestion.clinicalDisclaimerLocalized,
+          locale,
+          suggestion.clinicalDisclaimer
+        ),
+      };
+    }
     if (locale === "en") return suggestion;
     const copy = DETERMINISTIC_COPY[locale][suggestion.category];
     if (!copy) return suggestion;
@@ -224,13 +241,17 @@ export class ClinicalReviewOrchestratorService {
   private mergeSuggestions(deterministic: AiSuggestion[], external: AiSuggestion[]): AiSuggestion[] {
     const seen = new Set<string>();
     const merged: AiSuggestion[] = [];
+    const rank: Record<AiSuggestion["priority"], number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+
     for (const suggestion of [...deterministic, ...external]) {
-      const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}`;
+      const key = `${suggestion.category}:${suggestion.title.trim().toLowerCase()}:${suggestion.summary.trim().toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       merged.push(suggestion);
       if (merged.length >= 200) break;
     }
+
+    merged.sort((a, b) => rank[a.priority] - rank[b.priority]);
     return merged;
   }
 }

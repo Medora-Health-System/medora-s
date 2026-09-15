@@ -58,11 +58,8 @@ describe("rule7TransitionReassessment", () => {
     const findings = rule7TransitionReassessment(s, ctx);
     expect(findings).toHaveLength(1);
     expect(findings[0].category).toBe("REASSESSMENT_GAP");
-    expect(findings[0].recommendedActions[0]).toEqual({
-      actionType: "NAVIGATE",
-      targetSection: "nursing",
-      label: "Review reassessment documentation",
-    });
+    expect(findings[0].title).toBe("No structured reassessment after treatment before transition");
+    expect(findings[0].recommendedActions[0].actionType).toBe("NAVIGATE");
   });
 
   it("accepts a reliable ER reassessment documented after the latest treatment", () => {
@@ -102,7 +99,7 @@ describe("rule7TransitionReassessment", () => {
     });
     const findings = rule7TransitionReassessment(s, ctx);
     expect(findings).toHaveLength(1);
-    expect(findings[0].title).toBe("Latest structured reassessment predates treatment before disposition");
+    expect(findings[0].title).toBe("Latest reassessment predates the last treatment event");
   });
 
   it("never substitutes the legacy snapshot wrapper time for the clinical reassessment time", () => {

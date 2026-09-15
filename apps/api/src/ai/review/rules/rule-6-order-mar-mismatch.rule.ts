@@ -1,20 +1,26 @@
 import type { EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
-import { buildAiSuggestion } from "../review.utils.js";
+import {
+  isActiveMedicationOrder,
+  isDischargeInProgress,
+  isPrnMedicationOrder,
+} from "../clinical-facts.js";
+import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
  * Medication order/MAR linkage integrity.
  *
- * Only surfaces a structured linkage problem: a MAR row references an order
- * item that is absent from the medication-order snapshot. A held, refused,
- * omitted, stopped, or other non-administered MAR action is not treated as a
- * contradiction with an active order because those can be legitimate clinical
- * workflow states. No dose, indication, timing, or appropriateness is inferred.
+ * Surfaces a structured linkage problem when a MAR row references an order
+ * item absent from the medication-order snapshot. A held, refused, omitted,
+ * stopped, or other non-administered MAR action is not treated as a
+ * contradiction with an active order. Unresolved active non-PRN orders are
+ * surfaced only when discharge/finalization is in progress.
  */
 export function rule6OrderMarMismatch(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
+  const suggestions = [];
   const medicationOrders = snapshot.treatments.medicationOrders ?? [];
   const administrations = snapshot.treatments.medicationAdministrations ?? [];
   const orderIds = new Set(medicationOrders.map((order) => order.id));
@@ -25,26 +31,49 @@ export function rule6OrderMarMismatch(
       !orderIds.has(administration.orderItemId as string)
   );
 
-  if (orphaned.length === 0) return [];
+  if (orphaned.length > 0) {
+    suggestions.push(
+      buildCopiedSuggestion(ctx, {
+        category: "MEDICATION_CONSIDERATION",
+        priority: "MEDIUM",
+        copyKey: "marUnknownOrder",
+        evidence: orphaned.map((administration) => ({
+          sourceType: "MEDICATION" as const,
+          sourceId: administration.id,
+          label: "MAR entry with unmatched order reference",
+          value: administration.orderItemId ?? null,
+        })),
+        recommendedActions: [
+          { actionType: "REVIEW", label: "Review medication administration record" },
+        ],
+      })
+    );
+  }
 
-  return [
-    buildAiSuggestion(ctx, {
-      category: "MEDICATION_CONSIDERATION",
-      priority: "MEDIUM",
-      title: "Medication administration is not linked to a medication order",
-      summary:
-        "One or more MAR entries reference an order item that is not present in the medication-order snapshot. Confirm the medication record linkage when appropriate.",
-      reasoningSummary:
-        "This finding compares only structured MAR orderItemId values with medication-order IDs. It does not infer whether a medication was appropriate, administered correctly, or clinically indicated.",
-      evidence: orphaned.map((administration) => ({
-        sourceType: "MEDICATION" as const,
-        sourceId: administration.id,
-        label: "MAR entry with unmatched order reference",
-        value: administration.orderItemId ?? null,
-      })),
-      recommendedActions: [
-        { actionType: "REVIEW", label: "Review medication administration record" },
-      ],
-    }),
-  ];
+  if (!isDischargeInProgress(snapshot)) return suggestions;
+
+  for (const order of medicationOrders) {
+    if (!isActiveMedicationOrder(order) || isPrnMedicationOrder(order)) continue;
+    const relatedAdmins = administrations.filter((admin) => admin.orderItemId === order.id);
+    if (relatedAdmins.length > 0) continue;
+    const medication = order.displayLabel?.trim();
+    suggestions.push(
+      buildCopiedSuggestion(ctx, {
+        category: "MEDICATION_CONSIDERATION",
+        priority: "MEDIUM",
+        copyKey: medication ? "marUnresolvedNamed" : "marUnresolvedOrder",
+        vars: medication ? { medication } : undefined,
+        evidence: [
+          {
+            sourceType: "MEDICATION",
+            sourceId: order.id,
+            label: "Active medication order",
+            value: medication ?? order.id,
+          },
+        ],
+      })
+    );
+  }
+
+  return suggestions;
 }

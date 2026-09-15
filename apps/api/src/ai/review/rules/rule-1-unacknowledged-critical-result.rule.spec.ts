@@ -62,8 +62,8 @@ describe("rule1UnacknowledgedCriticalResult", () => {
         label: "Review critical result",
       },
     ]);
-    expect(findings[0].recommendedActions.some((action) => action.actionType === "ACKNOWLEDGE")).toBe(false);
-    expect(findings[0].recommendedActions.some((action) => action.actionType === "DISMISS")).toBe(false);
+    expect(findings[0].recommendedActions.map((action) => action.actionType)).not.toContain("ACKNOWLEDGE");
+    expect(findings[0].recommendedActions.map((action) => action.actionType)).not.toContain("DISMISS");
   });
 
   it("does not flag a critical result already acknowledged by a provider", () => {

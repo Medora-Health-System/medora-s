@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiLocalizedCopySchema } from "./ai-localized-copy.js";
 
 /**
  * Clinical AI suggestion categories.
@@ -108,6 +109,10 @@ export const AiSuggestion = z.object({
   title: z.string().max(200),
   summary: z.string().max(2000),
   reasoningSummary: z.string().max(2000),
+  titleLocalized: aiLocalizedCopySchema.optional(),
+  summaryLocalized: aiLocalizedCopySchema.optional(),
+  reasoningSummaryLocalized: aiLocalizedCopySchema.optional(),
+  clinicalDisclaimerLocalized: aiLocalizedCopySchema.optional(),
   evidence: z.array(AiSuggestionEvidence).max(50),
   recommendedActions: z.array(AiSuggestionRecommendedAction).max(10),
   clinicalDisclaimer: z.string().max(1000),

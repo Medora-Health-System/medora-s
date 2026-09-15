@@ -443,6 +443,32 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(snapshot.diagnostics.pendingTests).toContain("item-1");
   });
 
+  it("extracts clinic checkout and transfer facts from discharge JSON", async () => {
+    const prismaMock = buildPrismaMock({
+      encounter: {
+        dischargeSummaryJson: {
+          clinicAmbulatoryCheckoutState: "TRANSFER_ED",
+          transferReason: "Chest pain",
+          transferDestination: "ED",
+          transferTransport: "Ambulance",
+          followUpInstructions: "Call if worse",
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    expect(snapshot.disposition.checkoutState).toBe("TRANSFER_ED");
+    expect(snapshot.disposition.transferReason).toBe("Chest pain");
+    expect(snapshot.disposition.transferDestination).toBe("ED");
+    expect(snapshot.disposition.transferTransport).toBe("Ambulance");
+    expect(snapshot.disposition.dischargeFollowUpDocumented).toBe(true);
+  });
+
 
   it("changes snapshotVersion when truncation metadata changes", async () => {
     const prismaMock1 = buildPrismaMock({

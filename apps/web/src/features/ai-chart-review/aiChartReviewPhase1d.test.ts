@@ -48,26 +48,26 @@ describe("Medora AI chart review clinical workspace rail", () => {
 
   it("renders the six required panel tabs and read-only safety copy", () => {
     const panel = read(panelPath);
-    expect(panel).toContain("Clinical Safety");
-    expect(panel).toContain("Diagnostics");
-    expect(panel).toContain("Treatment & Orders");
-    expect(panel).toContain("Documentation / MDM");
+    expect(panel).toContain("Safety");
+    expect(panel).toContain("Diagnosis");
+    expect(panel).toContain("Treatment");
+    expect(panel).toContain("Documentation");
     expect(panel).toContain("Discharge");
-    expect(panel).toContain("Coding & Medical Necessity");
+    expect(panel).toContain("Coding");
     expect(panel).toContain('data-read-only="true"');
   });
 
   it("keeps coding intelligence inactive and does not expose fake acknowledge/dismiss controls", () => {
     const panel = read(panelPath);
-    expect(panel).toContain("Coding & Medical Necessity intelligence is not active in Phase 1D");
+    expect(panel).toContain("Coding intelligence is not active");
     expect(panel).not.toContain('actionType === "ACKNOWLEDGE"');
     expect(panel).not.toContain('actionType === "DISMISS"');
   });
 
   it("contains English, French, and Spanish panel chrome", () => {
     const panel = read(panelPath);
-    expect(panel).toContain("AI Chart Review");
-    expect(panel).toContain("Révision IA du dossier");
-    expect(panel).toContain("Revisión de historia con IA");
+    expect(panel).toContain("Medora Assist");
+    expect(panel).toContain("Medora Assistance");
+    expect(panel).toContain("Medora Asistente");
   });
 });

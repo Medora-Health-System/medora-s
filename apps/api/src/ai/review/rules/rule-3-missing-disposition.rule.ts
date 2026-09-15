@@ -1,45 +1,48 @@
 import type { EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
-import { buildAiSuggestion } from "../review.utils.js";
+import { isClinicSetting } from "../clinical-facts.js";
+import { buildCopiedSuggestion } from "../review.utils.js";
 
 /**
- * Rule 3 — Missing disposition.
- *
- * Flags a closed encounter that has no documented disposition value. Uses
- * only the encounter status and the disposition string from the snapshot.
+ * Rule 3 — Missing disposition / clinic checkout on a closed encounter.
+ * Clinic uses ambulatory checkout; ED/inpatient use disposition.
  */
 export function rule3MissingDisposition(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
-  const isClosed = snapshot.encounterContext.status === "CLOSED";
-  if (!isClosed) {
-    return [];
+  if (snapshot.encounterContext.status !== "CLOSED") return [];
+
+  if (isClinicSetting(snapshot.encounterContext.careSetting)) {
+    if (String(snapshot.disposition.checkoutState ?? "").trim()) return [];
+    return [
+      buildCopiedSuggestion(ctx, {
+        category: "DISPOSITION_GAP",
+        priority: "HIGH",
+        copyKey: "missingCheckout",
+        evidence: [
+          {
+            sourceType: "DISPOSITION",
+            label: "Clinic checkout destination",
+            value: snapshot.disposition.checkoutState ?? null,
+          },
+        ],
+      }),
+    ];
   }
 
-  const disposition = snapshot.disposition.disposition;
-  if (disposition && String(disposition).trim().length > 0) {
-    return [];
-  }
+  if (String(snapshot.disposition.disposition ?? "").trim()) return [];
 
   return [
-    buildAiSuggestion(ctx, {
+    buildCopiedSuggestion(ctx, {
       category: "DISPOSITION_GAP",
       priority: "HIGH",
-      title: "Missing disposition",
-      summary: "The encounter is closed but no disposition value is documented.",
-      reasoningSummary:
-        "The snapshot encounterContext.status is CLOSED and disposition.disposition is null or empty.",
+      copyKey: "missingDisposition",
       evidence: [
         {
           sourceType: "DISPOSITION",
           label: "Disposition",
           value: snapshot.disposition.disposition ?? null,
-        },
-        {
-          sourceType: "ENCOUNTER",
-          label: "Encounter status",
-          value: snapshot.encounterContext.status,
         },
       ],
     }),

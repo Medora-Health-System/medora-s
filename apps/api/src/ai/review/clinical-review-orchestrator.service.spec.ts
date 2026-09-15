@@ -105,14 +105,15 @@ describe("ClinicalReviewOrchestratorService", () => {
 
     expect(snapshotBuilder.build).toHaveBeenCalledTimes(2);
     expect(result.suggestions).toHaveLength(2);
-    expect(result.suggestions[0]).toBe(deterministicSuggestion);
-    expect(result.suggestions[1]).toMatchObject({
+    expect(result.suggestions.find((s) => s.source === "DETERMINISTIC")).toEqual(deterministicSuggestion);
+    const external = result.suggestions.find((s) => s.source === "OPENAI");
+    expect(external).toMatchObject({
       category: "DIAGNOSTIC_GAP",
       source: "OPENAI",
       snapshotVersion: "snapshot-v1",
       status: "PENDING",
     });
-    expect(result.suggestions[1]?.id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(external?.id).toMatch(/^[0-9a-f-]{36}$/i);
 
     const providerRequest = modelProvider.generateStructured.mock.calls[0]?.[0];
     const externalPayload = JSON.stringify(providerRequest.clinicalInput);
