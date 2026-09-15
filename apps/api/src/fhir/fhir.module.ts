@@ -34,6 +34,7 @@ import { FhirMachineCredentialAdminService } from "./fhir-machine-credential-adm
 import { FhirMachineStrategy } from "./fhir-machine.strategy";
 import { FhirMachineAuthController } from "./fhir-machine-auth.controller";
 import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
+import { FhirDiagnosticOutboundService } from "./fhir-diagnostic-outbound.service";
 
 @Module({
   imports: [PatientsModule, FhirMapperModule, PassportModule, JwtModule.register({})],
@@ -84,7 +85,8 @@ import { FhirMachineAuditInterceptor } from "./fhir-machine-audit.interceptor";
     FhirMedicationService,
     FhirDocumentReferenceService,
     FhirProvenanceService,
+    FhirDiagnosticOutboundService,
   ],
-  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService, FhirMachineCredentialAdminService],
+  exports: [FhirCapabilityRegistry, JurisdictionProfileRegistry, FhirMachineIdentityService, FhirMachineCredentialAdminService, FhirDiagnosticOutboundService],
 })
 export class FhirModule {}
