@@ -5,6 +5,7 @@ export type DiagnosticOutboundDeliveryState =
   | "dispatched"
   | "acknowledged"
   | "retryable_failure"
+  | "dead_lettered"
   | "permanent_failure";
 
 export type DiagnosticOutboundDeliveryTarget = {
@@ -29,6 +30,29 @@ export type PreparedDiagnosticServiceRequest = {
   serviceRequest: Record<string, unknown>;
 };
 
+/** PHI-minimized durable state. Raw FHIR payloads belong in governed transport storage. */
+export type DiagnosticOutboundDeliveryAttempt = {
+  integrationId: string;
+  facilityId: string;
+  orderItemId: string;
+  idempotencyKey: string;
+  state: DiagnosticOutboundDeliveryState;
+  attemptNumber: number;
+  nextAttemptAt?: string;
+  acknowledgedAt?: string;
+  partnerStatusCode?: number;
+  /** Opaque partner correlation only; never patient/result narrative. */
+  partnerMessageId?: string;
+};
+
+export const DIAGNOSTIC_OUTBOUND_RETRY_POLICY = Object.freeze({
+  maxAttempts: 5,
+  initialBackoffSeconds: 30,
+  maxBackoffSeconds: 900,
+  retryableHttpStatuses: [408, 425, 429, 500, 502, 503, 504] as const,
+  deadLetterAfterMaxAttempts: true,
+} as const);
+
 export const DIAGNOSTIC_OUTBOUND_INVARIANTS = Object.freeze({
   requiresFacilityAuthorization: true,
   requiresConfiguredFhirIntegration: true,
@@ -36,4 +60,6 @@ export const DIAGNOSTIC_OUTBOUND_INVARIANTS = Object.freeze({
   automaticCredentialFallbackAllowed: false,
   rawClinicalPayloadAllowedInAuditMetadata: false,
   retryMustReuseIdempotencyKey: true,
+  acknowledgementMustMatchIntegrationAndFacility: true,
+  transportMustFailClosedWithoutAuthentication: true,
 } as const);
