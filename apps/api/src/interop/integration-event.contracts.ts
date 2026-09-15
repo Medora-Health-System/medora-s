@@ -82,7 +82,9 @@ export type InboundDiagnosticArtifact = {
   source: "FHIR_R4" | "EXTERNAL_LAB" | "EXTERNAL_RADIOLOGY";
   domain: DiagnosticExchangeDomain;
   facilityId: string;
-  /** Partner message/event identity used with source + facility for replay suppression. */
+  /** Stable Medora integration/partner identity; required for replay namespacing. */
+  integrationId: string;
+  /** Partner message/event identity. It is only unique inside the partner namespace. */
   externalMessageId: string;
   correlation: Partial<Omit<DiagnosticExchangeCorrelation, "facilityId">>;
   resourceType: "ServiceRequest" | "DiagnosticReport" | "Observation";
@@ -97,6 +99,6 @@ export const DIAGNOSTIC_EXCHANGE_INVARIANTS = Object.freeze({
   patientAutoMergeAllowed: false,
   resultAutoFileAllowed: false,
   rawPayloadAllowedInAuditMetadata: false,
-  duplicateKey: "source+facilityId+externalMessageId",
+  duplicateKey: "integrationId+facilityId+resourceType+externalMessageId",
   inboundLegalChartState: "pending_clinical_review",
 } as const);
