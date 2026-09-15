@@ -1,32 +1,35 @@
 import type { SupportedLanguage } from "@/i18n/config";
 
-export type ClinicalGrammarSuggestion = {
-  original: string;
-  replacement: string;
-  start: number;
-  end: number;
-};
-
+export type ClinicalGrammarSuggestion = { original: string; replacement: string; start: number; end: number };
 type Rule = { pattern: RegExp; replacement: string };
 
-// Intentionally narrow: these rules repair grammar only. They never infer or rewrite
+// High-confidence grammar only. Rules must not infer clinical facts or rewrite
 // negation, diagnoses, medications, doses, allergies, laterality, numbers, or results.
 const RULES: Record<SupportedLanguage, readonly Rule[]> = {
   en: [
     { pattern: /\bpatient complain of\b/i, replacement: "patient complains of" },
-    { pattern: /\bpatient report\b/i, replacement: "patient reports" },
-    { pattern: /\bfor (one|two|three|four|five|six|seven|eight|nine|ten) day\b/i, replacement: "for $1 days" },
-    { pattern: /\bsince (one|two|three|four|five|six|seven|eight|nine|ten) day\b/i, replacement: "for $1 days" },
+    { pattern: /\bpatient reports? having\b/i, replacement: "patient reports" },
+    { pattern: /\b(two|three|four|five|six|seven|eight|nine|ten) day history\b/i, replacement: "$1-day history" },
+    { pattern: /\bfor (two|three|four|five|six|seven|eight|nine|ten) day\b/i, replacement: "for $1 days" },
+    { pattern: /\bsymptoms has been\b/i, replacement: "symptoms have been" },
+    { pattern: /\bvital signs is\b/i, replacement: "vital signs are" },
+    { pattern: /\blungs is clear\b/i, replacement: "lungs are clear" },
   ],
   fr: [
     { pattern: /\ble patient rapporte des douleur\b/i, replacement: "le patient rapporte des douleurs" },
     { pattern: /\bla patiente rapporte des douleur\b/i, replacement: "la patiente rapporte des douleurs" },
     { pattern: /\bdepuis deux jour\b/i, replacement: "depuis deux jours" },
+    { pattern: /\bdepuis trois jour\b/i, replacement: "depuis trois jours" },
+    { pattern: /\bles symptôme sont\b/i, replacement: "les symptômes sont" },
+    { pattern: /\bles poumons est clair\b/i, replacement: "les poumons sont clairs" },
   ],
   es: [
     { pattern: /\bel paciente refiere dolor desde dos dia\b/i, replacement: "el paciente refiere dolor desde hace dos días" },
     { pattern: /\bla paciente refiere dolor desde dos dia\b/i, replacement: "la paciente refiere dolor desde hace dos días" },
     { pattern: /\bpor dos dia\b/i, replacement: "por dos días" },
+    { pattern: /\bpor tres dia\b/i, replacement: "por tres días" },
+    { pattern: /\blos síntoma son\b/i, replacement: "los síntomas son" },
+    { pattern: /\blos pulmones está claro\b/i, replacement: "los pulmones están claros" },
   ],
 };
 
@@ -43,7 +46,6 @@ export function suggestClinicalGrammar(value: string, language: SupportedLanguag
     const match = rule.pattern.exec(value);
     if (!match || match.index == null) continue;
     const original = match[0];
-    // Do not offer sentence-level transformations over clinically meaning-sensitive tokens.
     if (PROTECTED.test(original) || /\d/.test(original)) continue;
     const rawReplacement = original.replace(rule.pattern, rule.replacement);
     const replacement = preserveInitialCase(original, rawReplacement);
