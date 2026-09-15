@@ -12,7 +12,7 @@ describe("FHIR Phase 3 diagnostic exchange contracts", () => {
         patientAutoMergeAllowed: false,
         resultAutoFileAllowed: false,
         rawPayloadAllowedInAuditMetadata: false,
-        duplicateKey: "source+facilityId+externalMessageId",
+        duplicateKey: "integrationId+facilityId+resourceType+externalMessageId",
         inboundLegalChartState: "pending_clinical_review",
       }),
     );
@@ -36,11 +36,12 @@ describe("FHIR Phase 3 diagnostic exchange contracts", () => {
     expect(order.correlation.facilityId).toBeTruthy();
   });
 
-  it("models inbound results as pre-chart artifacts", () => {
+  it("models inbound results as partner-namespaced pre-chart artifacts", () => {
     const artifact: InboundDiagnosticArtifact = {
       source: "EXTERNAL_LAB",
       domain: "LAB",
       facilityId: "facility-a",
+      integrationId: "integration-a",
       externalMessageId: "message-a",
       correlation: { placerOrderId: "opaque-placer-a" },
       resourceType: "DiagnosticReport",
@@ -49,6 +50,7 @@ describe("FHIR Phase 3 diagnostic exchange contracts", () => {
       hasNarrativeContent: true,
     };
     expect(artifact.status).toBe("pending_clinical_review");
+    expect(artifact.integrationId).toBeTruthy();
     expect(artifact.externalMessageId).toBeTruthy();
   });
 });
