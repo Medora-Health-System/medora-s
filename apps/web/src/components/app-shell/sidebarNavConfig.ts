@@ -46,7 +46,7 @@ export const NAV_ACCENT: Record<
   },
   green: {
     border: "#16a34a",
-    icon: "#15803d",
+    icon: "#15803c",
     pillBg: "rgba(22,163,74,0.14)",
     hoverBg: "rgba(22,163,74,0.1)",
     activeBg: "rgba(22,163,74,0.22)",
@@ -156,6 +156,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
   },
   { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate", navAreas: ["DASHBOARD"] },
   { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
+  { href: "/app/digital-care", labelKey: "nav.digitalCare", roles: ["RN", "PROVIDER"], group: "soins_dossiers", accent: "teal", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
   { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["DASHBOARD", "EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
   { href: "/app/encounters", labelKey: "nav.encounters", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
   { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["EMERGENCY", "HOSPITAL", "CLINIC_CARE"] },
