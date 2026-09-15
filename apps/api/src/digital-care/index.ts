@@ -5,3 +5,4 @@ export * from "./authorization";
 export * from "./repositories";
 export * from "./api";
 export * from "./persistence";
+export * from "./migration";
