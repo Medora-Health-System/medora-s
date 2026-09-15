@@ -39,19 +39,19 @@ export class PatientMessagesStaffController {
   }
 
   @Get("threads")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   async listThreads(@Req() req: any) {
     return this.messages.listStaffThreads(this.actor(req));
   }
 
   @Get("threads/:threadId")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   async getThread(@Param("threadId") threadId: string, @Req() req: any) {
     return this.messages.getStaffThread(this.actor(req), threadId);
   }
 
   @Post("threads/:threadId/messages")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   async reply(
     @Param("threadId") threadId: string,
     @Body() body: unknown,
@@ -67,7 +67,7 @@ export class PatientMessagesStaffController {
   }
 
   @Post("threads/:threadId/close")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN)
+  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   async close(@Param("threadId") threadId: string, @Req() req: any) {
     return this.messages.closeAsStaff(this.actor(req), threadId);
   }
