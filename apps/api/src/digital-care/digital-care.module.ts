@@ -8,23 +8,29 @@ import { PatientPortalAuditService } from "../patient-portal/patient-portal-audi
 import { PatientPortalRepository } from "../patient-portal/persistence/patient-portal.repository";
 import { PatientDiagnosticResultReleaseController } from "../patient-portal/records/patient-diagnostic-result-release.controller";
 import { PatientDiagnosticResultReleaseService } from "../patient-portal/records/patient-diagnostic-result-release.service";
+import { DigitalCarePatientRuntimeModule } from "./runtime/digital-care-patient-runtime.module";
 import { DigitalCareStaffWorkspaceController } from "./staff/digital-care-staff-workspace.controller";
 import { DigitalCareStaffWorkspaceService } from "./staff/digital-care-staff-workspace.service";
 
+const digitalCareImports = [
+  PrismaModule,
+  FacilityConfigurationModule,
+  ...(process.env.PATIENT_PORTAL_ENABLED === "true" ? [DigitalCarePatientRuntimeModule] : []),
+];
+
 /**
- * Staff-facing Digital Care runtime.
+ * Staff-facing Digital Care runtime is always registered.
  *
- * This module is intentionally registered independently of PATIENT_PORTAL_ENABLED.
  * ADMIN/PROVIDER/RN staff workflows (secure conversations and governed diagnostic
  * result release) must remain available in the Medora staff application even when
  * the patient-facing portal runtime is feature-gated.
  *
- * Patient-facing controllers remain owned by PatientPortalModule and keep their
- * existing feature flag. The shared services below retain facility-scoped queries,
- * role guards, and audit behavior.
+ * When PATIENT_PORTAL_ENABLED=true, the patient Digital Care runtime is mounted
+ * through DigitalCarePatientRuntimeModule so /digital-care/v1/me/* routes used by
+ * the patient app are available alongside the patient portal.
  */
 @Module({
-  imports: [PrismaModule, FacilityConfigurationModule],
+  imports: digitalCareImports,
   controllers: [
     PatientMessagesStaffController,
     PatientDiagnosticResultReleaseController,
