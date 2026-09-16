@@ -167,6 +167,10 @@ const APP_ROUTE_RULES: RouteRule[] = [
   },
   { prefix: "/app/encounters", roles: ["ADMIN", "PROVIDER", "RN", "BILLING"], exact: true },
   { prefix: "/app/provider", roles: ["ADMIN", "PROVIDER", "RN"] },
+  {
+    prefix: "/app/digital-care",
+    roles: ["ADMIN", "PROVIDER", "RN"],
+  },
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/emergency", roles: ["ADMIN", "PROVIDER", "RN"] },
@@ -272,13 +276,21 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+/** Staff Digital Care workspace — ADMIN / PROVIDER / RN only; not ancillary queues. */
+const DIGITAL_CARE_STAFF_ROLES = ["ADMIN", "PROVIDER", "RN"] as const;
+
+function isDigitalCareStaffPath(pathname: string): boolean {
+  return pathname === "/app/digital-care" || pathname.startsWith("/app/digital-care/");
+}
+
 /** MEDUI.NAV.ROLE.1 — path prefixes allowed when navigation area is visible (UI route guard only). */
 const NAVIGATION_AREA_ROUTE_PREFIXES: Partial<Record<NavigationArea, readonly string[]>> = {
   DASHBOARD: ["/app/trackboard", "/app/provider", "/app/nursing"],
   REGISTRATION: ["/app/registration", "/app/patients", "/app/clinic-care/registration"],
-  EMERGENCY: ["/app/emergency"],
-  HOSPITAL: ["/app/hospitalisation"],
+  EMERGENCY: ["/app/emergency", "/app/digital-care"],
+  HOSPITAL: ["/app/hospitalisation", "/app/digital-care"],
   CLINIC_CARE: [
+    "/app/digital-care",
     "/app/clinic-care",
     "/app/clinic-care/todays-visits",
     "/app/clinic-care/nursing",
@@ -424,6 +436,12 @@ export function isAppPathAllowedForRoles(
     options?.navigationProfile &&
     isAppPathAllowedForNavigationProfile(pathForRules, options.navigationProfile)
   ) {
+    if (
+      isDigitalCareStaffPath(pathForRules) &&
+      !DIGITAL_CARE_STAFF_ROLES.some((role) => set.has(role))
+    ) {
+      return false;
+    }
     return true;
   }
   if (isPlatformOperatorOnlyAppPath(pathForRules)) {
