@@ -2,12 +2,13 @@ import { Module } from "@nestjs/common";
 import { ResultsController } from "./results.controller";
 import { ResultsService } from "./results.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { AuditService } from "../common/services/audit.service";
 import { OrdersModule } from "../orders/orders.module";
 import { LabReferenceModule } from "../lab-reference/lab-reference.module";
 
 @Module({
-  imports: [PrismaModule, OrdersModule, LabReferenceModule],
+  imports: [PrismaModule, OrdersModule, LabReferenceModule, FacilityConfigurationModule],
   controllers: [ResultsController],
   providers: [ResultsService, AuditService],
   exports: [ResultsService],

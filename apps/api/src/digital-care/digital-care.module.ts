@@ -1,12 +1,15 @@
 import { Module } from "@nestjs/common";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { PatientMessagesStaffController } from "../patient-portal/messages/patient-messages-staff.controller";
 import { PatientMessagesService } from "../patient-portal/messages/patient-messages.service";
 import { PatientPortalAuditService } from "../patient-portal/patient-portal-audit.service";
 import { PatientPortalRepository } from "../patient-portal/persistence/patient-portal.repository";
 import { PatientDiagnosticResultReleaseController } from "../patient-portal/records/patient-diagnostic-result-release.controller";
 import { PatientDiagnosticResultReleaseService } from "../patient-portal/records/patient-diagnostic-result-release.service";
+import { DigitalCareStaffWorkspaceController } from "./staff/digital-care-staff-workspace.controller";
+import { DigitalCareStaffWorkspaceService } from "./staff/digital-care-staff-workspace.service";
 
 /**
  * Staff-facing Digital Care runtime.
@@ -21,16 +24,18 @@ import { PatientDiagnosticResultReleaseService } from "../patient-portal/records
  * role guards, and audit behavior.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FacilityConfigurationModule],
   controllers: [
     PatientMessagesStaffController,
     PatientDiagnosticResultReleaseController,
+    DigitalCareStaffWorkspaceController,
   ],
   providers: [
     PatientPortalRepository,
     PatientPortalAuditService,
     PatientMessagesService,
     PatientDiagnosticResultReleaseService,
+    DigitalCareStaffWorkspaceService,
     AuditService,
   ],
   exports: [

@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
   UnauthorizedException,
+  Optional,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -28,6 +29,7 @@ import {
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "../orders/order-item-result.select";
 import { hasStructuredDiagnosticResultContent } from "@medora/shared";
 import { LabReferenceIntervalService } from "../lab-reference/lab-reference-interval.service";
+import { FacilityConfigurationService } from "../facility-configuration/facility-configuration.service";
 
 /** Alignés avec la pré-validation client : `apps/web/src/lib/resultUploadLimits.ts` */
 const MAX_TOTAL_RESULT_CHARS = 2_500_000;
@@ -103,7 +105,8 @@ export class ResultsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly labReference: LabReferenceIntervalService
+    private readonly labReference: LabReferenceIntervalService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   async updateResult(
@@ -384,6 +387,18 @@ export class ResultsService {
       void tryAutoImagingResultBillingAfterVerify(this.prisma, {
         facilityId,
         orderItemId,
+      });
+    }
+
+    if (shouldStampVerification && this.facilityConfiguration && (orderItem.catalogItemType === "LAB_TEST" || orderItem.catalogItemType === "IMAGING_STUDY")) {
+      void this.facilityConfiguration.maybeAutoReleaseVerifiedItem({
+        facilityId,
+        orderItemId,
+        patientId: orderItem.order.encounter.patientId,
+        kind: orderItem.catalogItemType === "IMAGING_STUDY" ? "IMAGING_STUDY" : "LAB_TEST",
+        critical: Boolean(result.criticalValue ?? data.criticalValue),
+        verifiedAt: result.verifiedAt ?? new Date(),
+        userId,
       });
     }
 

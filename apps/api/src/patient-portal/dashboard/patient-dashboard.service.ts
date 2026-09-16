@@ -1,20 +1,26 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { AppointmentStatus } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
 
 @Injectable()
 export class PatientDashboardService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: PatientPortalAuditService
+    private readonly audit: PatientPortalAuditService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   async get(
     access: PatientPortalAccessContext,
     context: { ip?: string | null; userAgent?: string | null }
   ) {
+    const configuration = this.facilityConfiguration
+      ? await this.facilityConfiguration.runtimeForFacility(access.facilityId)
+      : null;
+    const portal = configuration?.patientPortal;
     const now = new Date();
     const [facility, nextAppointment, lastVisit, recentOrders] = await Promise.all([
       this.prisma.facility.findFirst({
@@ -136,8 +142,30 @@ export class PatientDashboardService {
     });
 
     return {
-      facility,
-      nextAppointment: nextAppointment
+      facility: facility
+        ? {
+            ...facility,
+            branding: configuration?.branding ?? null,
+          }
+        : null,
+      configuration,
+      features: portal
+        ? {
+            appointments: portal.appointments,
+            visits: portal.visits,
+            documents: portal.documents,
+            messages: portal.messages,
+            invoices: portal.invoices,
+            medications: portal.medications,
+            labResults: portal.labResults,
+            radiology: portal.radiology,
+            carePlans: portal.carePlans,
+            telehealth: portal.telehealth,
+            notifications: portal.notifications,
+            portalHome: portal.portalHome,
+          }
+        : null,
+      nextAppointment: portal && !portal.appointments ? null : nextAppointment
         ? {
             id: nextAppointment.id,
             status: nextAppointment.status,
@@ -146,7 +174,9 @@ export class PatientDashboardService {
             reason: nextAppointment.reason,
           }
         : null,
-      lastVisit: lastVisit
+      lastVisit: portal && !portal.visits
+        ? null
+        : lastVisit
         ? {
             id: lastVisit.id,
             visitDate: (lastVisit.admittedAt ?? lastVisit.createdAt).toISOString(),
@@ -155,7 +185,12 @@ export class PatientDashboardService {
             chiefComplaint: lastVisit.chiefComplaint,
           }
         : null,
-      recentResults,
+      recentResults: recentResults.filter((row) => {
+        if (!portal) return true;
+        if (row.kind === "LAB") return portal.labResults;
+        if (row.kind === "IMAGING") return portal.radiology;
+        return true;
+      }),
     };
   }
 }

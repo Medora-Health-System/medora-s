@@ -12,6 +12,7 @@ describe("PatientDiagnosticResultsService", () => {
   it("queries diagnostics only through the authorized patient + facility order scope", async () => {
     const prisma = {
       order: { findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
     } as any;
     const audit = { record: jest.fn().mockResolvedValue(undefined) } as any;
     const service = new PatientDiagnosticResultsService(prisma, audit);
@@ -31,6 +32,7 @@ describe("PatientDiagnosticResultsService", () => {
 
   it("does not release an unverified result", async () => {
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([]),
       order: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -80,6 +82,7 @@ describe("PatientDiagnosticResultsService", () => {
   it("removes embedded attachment payloads from patient resultData", async () => {
     const verifiedAt = new Date("2026-09-01T02:00:00Z");
     const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([{ orderItemId: "lab-a" }]),
       order: {
         findMany: jest.fn().mockResolvedValue([
           {

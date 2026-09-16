@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SIDEBAR_NAV_ITEMS } from "@/components/app-shell/sidebarNavConfig";
 import { filterSidebarNavItemsForSession } from "@/features/navigation/navigationVisibility";
 import { resolveClinicalUiMessage } from "@/i18n/messages/registry";
+import { digitalCareOverlayKeyParity } from "@/i18n/messages/digitalCareNavOverrides";
 import { getRouteGuardRedirect, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 
 const CANONICAL_DIGITAL_CARE = "/app/digital-care";
@@ -118,5 +119,10 @@ describe("Digital Care provider messaging workspace", () => {
     expect(resolveClinicalUiMessage("en", "nav.digitalCare")).toBe("Digital Care");
     expect(resolveClinicalUiMessage("fr", "nav.digitalCare")).toBe("Soins numériques");
     expect(resolveClinicalUiMessage("es", "nav.digitalCare")).toBe("Atención Digital");
+    expect(resolveClinicalUiMessage("fr", "digitalCare.title")).toBe("Soins numériques");
+    expect(resolveClinicalUiMessage("fr", "digitalCare.subtitle")).toContain("Communication patient");
+    expect(resolveClinicalUiMessage("en", "digitalCare.tab.results")).toBe("Patient results");
+    expect(resolveClinicalUiMessage("fr", "digitalCare.tab.messages")).toBe("Messages");
+    expect(digitalCareOverlayKeyParity()).toEqual([]);
   });
 });

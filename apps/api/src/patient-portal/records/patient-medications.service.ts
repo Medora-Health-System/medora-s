@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, Optional, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
 
 const PATIENT_MEDICATION_ORDER_SELECT = {
   id: true,
@@ -36,7 +37,8 @@ const PATIENT_MEDICATION_ORDER_SELECT = {
 export class PatientMedicationsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: PatientPortalAuditService
+    private readonly audit: PatientPortalAuditService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   private async medicationOrders(access: PatientPortalAccessContext) {
@@ -85,6 +87,12 @@ export class PatientMedicationsService {
     access: PatientPortalAccessContext,
     context: { ip?: string | null; userAgent?: string | null }
   ) {
+    if (this.facilityConfiguration) {
+      const settings = await this.facilityConfiguration.settingsForFacility(access.facilityId);
+      if (!settings.patientPortal.medications || !settings.digitalCare.medicationSharing) {
+        throw new ForbiddenException("Médicaments non disponibles dans le portail de cet établissement.");
+      }
+    }
     const orders = await this.medicationOrders(access);
     const catalogIds = [...new Set(
       orders.flatMap((order) => order.items.flatMap((item) => item.catalogItemId ? [item.catalogItemId] : []))

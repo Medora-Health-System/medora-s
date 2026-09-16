@@ -16,6 +16,10 @@ import {
   getProactiveRefreshIntervalMs,
 } from "@/lib/jwtAccessTtl";
 import { filterSidebarNavItemsByNavigationAreas, buildNavigationProfileFromSession } from "@/features/navigation/navigationVisibility";
+import { facilityModuleHidesHref } from "@medora/shared";
+import { fetchFacilityRuntimeConfiguration } from "@/lib/facilityConfigurationApi";
+import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
+import type { FacilityConfigurationSettings } from "@medora/shared";
 /**
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
@@ -46,6 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [authRecoveryMessage, setAuthRecoveryMessage] = useState<string | null>(null);
   /** TTL d’accès (secondes) tel que renvoyé par GET /api/auth/me — aligné sur JWT_ACCESS_TTL (cookies), pas sur NEXT_PUBLIC seul. */
   const [sessionAccessTtlSec, setSessionAccessTtlSec] = useState<number | null>(null);
+  const [runtimeModules, setRuntimeModules] = useState<FacilityConfigurationSettings["modules"] | null>(null);
 
   const isMountedRef = useRef(true);
   const loadSessionSeqRef = useRef(0);
@@ -60,6 +65,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!activeFacility || sessionPhase !== "authenticated") return;
+    let cancelled = false;
+    const loadRuntime = () => {
+      void fetchFacilityRuntimeConfiguration(activeFacility)
+        .then((runtime) => {
+          if (!cancelled) setRuntimeModules(runtime.modules);
+        })
+        .catch(() => {
+          /* keep last valid modules — never blank the sidebar on a transient failure */
+        });
+    };
+    loadRuntime();
+    const unsubscribe = subscribeFacilityConfigurationUpdated((detail) => {
+      if (detail.facilityId === activeFacility) loadRuntime();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [activeFacility, sessionPhase]);
+
   const clearAuthenticatedSession = useCallback(() => {
     const cleared = clearedAuthenticatedSessionState();
     setUser(cleared.user);
@@ -67,6 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setActiveFacility(cleared.activeFacility);
     setAuthRecoveryMessage(cleared.authRecoveryMessage);
     setSessionAccessTtlSec(cleared.sessionAccessTtlSec);
+    setRuntimeModules(null);
   }, []);
 
   const redirectToLogin = useCallback(() => {
@@ -439,6 +467,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!hasNationalMsppRoles && !isFrontDeskNavRestricted) {
     navItems = filterSidebarNavItemsByNavigationAreas(navItems, buildNavigationProfile());
+  }
+  if (runtimeModules) {
+    navItems = navItems.filter((item) => !facilityModuleHidesHref(item.href, runtimeModules));
   }
 
   const groupedNavSections = groupSidebarNavItems(navItems);

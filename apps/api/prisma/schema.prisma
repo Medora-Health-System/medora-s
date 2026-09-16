@@ -125,6 +125,41 @@ model Facility {
   userRoles                              UserRole[]
   vaccineAdministrations                 VaccineAdministration[]
   organizationDataExports                OrganizationDataExport[]
+  facilityConfiguration                  FacilityConfiguration?
+}
+
+/// One row per facility — canonical Facility Configuration Console document.
+model FacilityConfiguration {
+  id              String                          @id @default(uuid())
+  facilityId      String                          @unique
+  revision        Int                             @default(1)
+  settingsJson    Json
+  updatedByUserId String?
+  createdAt       DateTime                        @default(now())
+  updatedAt       DateTime                        @updatedAt
+  facility        Facility                        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  revisions       FacilityConfigurationRevision[]
+
+  @@index([updatedAt])
+}
+
+/// Append-only version history for FacilityConfiguration (never overwrite prior revisions).
+model FacilityConfigurationRevision {
+  id              String                @id @default(uuid())
+  configurationId String
+  facilityId      String
+  revision        Int
+  settingsJson    Json
+  changedByUserId String
+  reason          String?
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime              @default(now())
+  configuration   FacilityConfiguration @relation(fields: [configurationId], references: [id], onDelete: Restrict)
+
+  @@unique([facilityId, revision])
+  @@index([facilityId, createdAt])
+  @@index([configurationId])
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -8046,6 +8081,8 @@ enum AuditAction {
   DENTAL_TREATMENT_PLAN_SAVE
   DENTAL_TREATMENT_PLAN_ITEM_SAVE
   DENTAL_PROCEDURE_RECORD_SAVE
+  /// Facility Configuration Console — persisted settings document for one facility.
+  FACILITY_CONFIGURATION_UPDATE
 }
 
 enum MedoraStaffPersona {

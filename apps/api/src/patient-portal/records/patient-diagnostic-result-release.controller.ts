@@ -16,7 +16,16 @@ export class PatientDiagnosticResultReleaseController {
     if (!facilityId) throw new BadRequestException("Facility is required");
     return { userId, facilityId, ip: req.ip, userAgent: req.headers?.["user-agent"] };
   }
-  @Get() list(@Req() req: any) { return this.releases.list(this.actor(req)); }
+  @Get() list(@Req() req: any) {
+    const patientId = typeof req.query?.patientId === "string" ? req.query.patientId : undefined;
+    return this.releases.list(this.actor(req), patientId);
+  }
+  @Get(":orderItemId")
+  get(@Param("orderItemId") id: string, @Req() req: any) {
+    const purposeRaw = typeof req.query?.purpose === "string" ? req.query.purpose.toUpperCase() : "VIEW";
+    const purpose = purposeRaw === "DOWNLOAD" || purposeRaw === "PRINT" ? purposeRaw : "VIEW";
+    return this.releases.get(id, this.actor(req), purpose);
+  }
   @Post(":orderItemId/release") release(@Param("orderItemId") id: string, @Req() req: any) { return this.releases.release(id, this.actor(req)); }
   @Delete(":orderItemId/release") revoke(@Param("orderItemId") id: string, @Req() req: any) { return this.releases.revoke(id, this.actor(req)); }
 }

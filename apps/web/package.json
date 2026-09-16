@@ -9,6 +9,7 @@
     "start": "next start -H 0.0.0.0 -p 5000",
     "lint": "node -e \"console.log('lint not configured yet')\"",
     "test": "vitest run",
+    "test:playwright": "playwright test",
     "i18n:audit": "vitest run src/i18n/messages/publicCatalogParity.test.ts src/i18n/messages/publicCatalogAdversarialAudit.test.ts src/i18n/platformCatalogParity.test.ts src/i18n/authenticatedI18nSmoke.test.ts",
     "icons:generate": "node scripts/generate-brand-icons.mjs"
   },
@@ -21,6 +22,7 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/d3-geo": "^3.1.0",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.13.4",

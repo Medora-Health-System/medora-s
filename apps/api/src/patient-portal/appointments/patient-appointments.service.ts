@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, Optional, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
 
 const PATIENT_APPOINTMENT_SELECT = {
   id: true,
@@ -24,13 +25,20 @@ const PATIENT_APPOINTMENT_SELECT = {
 export class PatientAppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: PatientPortalAuditService
+    private readonly audit: PatientPortalAuditService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   async list(
     access: PatientPortalAccessContext,
     context: { ip?: string | null; userAgent?: string | null }
   ) {
+    if (this.facilityConfiguration) {
+      const settings = await this.facilityConfiguration.settingsForFacility(access.facilityId);
+      if (!settings.patientPortal.appointments || !settings.modules.scheduling.enabled) {
+        throw new ForbiddenException("Rendez-vous non disponibles dans le portail de cet établissement.");
+      }
+    }
     const rows = await this.prisma.appointment.findMany({
       where: {
         facilityId: access.facilityId,
