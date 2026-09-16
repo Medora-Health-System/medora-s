@@ -322,7 +322,7 @@ export function DigitalCareProviderWorkspace() {
           </button>
           {quickOpen ? (
             <div style={{ position: "absolute", right: 0, top: "110%", zIndex: 20, minWidth: 240, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 10px 30px rgba(15,23,42,.12)" }}>
-              {[
+              {([
                 ["releaseResults", () => { setTab("results"); setQuickOpen(false); }],
                 ["messagePatient", () => { setTab("messages"); setQuickOpen(false); }],
                 ["generateSummary", () => { setTab("visitSummary"); printCurrent(); setQuickOpen(false); }],
@@ -330,8 +330,8 @@ export function DigitalCareProviderWorkspace() {
                 ["print", () => { printCurrent(); setQuickOpen(false); }],
                 ["downloadPdf", () => { void downloadCurrent(); setQuickOpen(false); }],
                 ["shareDocuments", () => { openChart(); setQuickOpen(false); }],
-              ].map(([key, action]) => (
-                <button key={key} type="button" onClick={action as () => void} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: 0, background: "transparent", cursor: "pointer" }}>
+              ] satisfies Array<[string, () => void]>).map(([key, action]) => (
+                <button key={key} type="button" onClick={action} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", border: 0, background: "transparent", cursor: "pointer" }}>
                   {t(`digitalCare.qa.${key}`)}
                 </button>
               ))}
@@ -553,7 +553,13 @@ export function DigitalCareProviderWorkspace() {
                   onOpenThread={(id) => facilityId && void fetchDigitalCareStaffThread(facilityId, id).then(setThread)}
                   onSend={() => void sendReply()}
                   onStart={() => void startThread()}
-                  onClose={() => thread && facilityId && window.confirm(t("digitalCare.messages.closeThread")) && void closeDigitalCareStaffThread(facilityId, thread.id).then(() => selectedId && loadWorkspace(selectedId))}
+                  onClose={() => {
+                    if (!thread || !facilityId) return;
+                    if (!window.confirm(t("digitalCare.messages.closeThread"))) return;
+                    void closeDigitalCareStaffThread(facilityId, thread.id).then(() => {
+                      if (selectedId) void loadWorkspace(selectedId);
+                    });
+                  }}
                   busy={busy}
                 />
               ) : null}
@@ -671,7 +677,7 @@ function ResultsPanel({
   busy: boolean;
 }) {
   const viewer = detail ?? selected;
-  const attachments = attachmentsFromResultDataAll(viewer?.resultData);
+  const attachments = attachmentsFromResultDataAll(detail?.resultData);
   return (
     <>
       <div style={{ ...card, padding: 12 }}>

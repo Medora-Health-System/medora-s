@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
@@ -95,13 +96,506 @@ export default function AdminPage() {
   return (
     <div style={{ padding: 24 }}>
       {facilityId ? (
-        <FacilityConfigurationConsole
-          facilityId={facilityId}
-          canUsePlatformTools={isPlatformOperator || canCreateFacilities}
-        />
+        <div style={{ marginBottom: 32 }}>
+          <FacilityConfigurationConsole
+            facilityId={facilityId}
+            canUsePlatformTools={isPlatformOperator || canCreateFacilities}
+          />
+        </div>
       ) : (
         <p style={{ color: "#64748b" }}>{t("adminHub.errorSelectFacility")}</p>
       )}
+      <h1 style={{ marginTop: 0 }}>{t("adminHub.title")}</h1>
+      <p style={{ color: "#555", marginBottom: 20 }}>{t("adminHub.intro")}</p>
+      <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionFacility")}</h2>
+      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <li>
+          <Link
+            href="/app/admin/users"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#1a1a1a",
+              color: "white",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.usersAndAccess")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/audit"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.auditLogLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/reports"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.opsReportsLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/go-live"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.goLiveLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/enterprise-workflow"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.enterpriseWorkflowLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/enterprise-clinical-rules"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.enterpriseClinicalRulesLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/revenue-cycle"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.revenueCycleLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/revenue-cycle/claims"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.revenueClaimSubmissionLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/revenue-cycle/payments"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.revenuePaymentLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/billing-governance"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.billingGovernanceLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/medical-exam-analytics"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.medicalExamAnalyticsLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/order-set-analytics"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.orderSetAnalyticsLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/medication-master"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.medicationMasterLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/medication-governance"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.medicationGovernanceLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/medication-governance/rxnorm-review"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.rxNormReviewLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/medication-inventory-staging"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.medicationInventoryStagingLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/catalog-import"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.catalogImportLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/high-risk-medication-review"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.highRiskMedicationReviewLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/er-procedure-catalog-import"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.erProcedureCatalogLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/roi"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.roiWorkflowLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/app/admin/mfa"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("auth.mfa.adminResetTitle")}
+          </Link>
+        </li>
+      </ul>
+      {isPlatformOperator ? (
+        <>
+          <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionPlatform")}</h2>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <li>
+              <Link
+                href="/app/admin/exports"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.exportMonitoringLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/roi-monitoring"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.roiMonitoringLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/backup-readiness"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.backupReadinessLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/system-health"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.systemHealthLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/compliance"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.complianceLink")}
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/app/admin/catalog-audit"
+                style={{
+                  display: "inline-block",
+                  padding: "12px 20px",
+                  backgroundColor: "#fff",
+                  color: "#1a1a1a",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 4,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                {t("adminHub.catalogAuditLink")}
+              </Link>
+            </li>
+          </ul>
+        </>
+      ) : null}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {ready && canCreateFacilities ? (
+          <><li><Link href="/app/admin/integrations" style={{ display: "inline-block", padding: "12px 20px", backgroundColor: "#0f766e", color: "white", borderRadius: 4, textDecoration: "none", fontWeight: 600 }}>{t("adminHub.integrationsLink")}</Link></li><li>
+            <Link
+              href="/app/admin/mspp-access"
+              style={{
+                display: "inline-block",
+                padding: "12px 20px",
+                backgroundColor: "#fff",
+                color: "#1a1a1a",
+                border: "1px solid #1a1a1a",
+                borderRadius: 4,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              {t("nav.adminMsppAccess")}
+            </Link>
+          </li></>
+        ) : null}
+      </ul>
 
       {ready && canCreateFacilities ? (
         <section style={{ marginTop: 32 }}>
@@ -132,7 +626,14 @@ export default function AdminPage() {
                       <tr key={f.id} style={{ borderBottom: "1px solid #eee" }}>
                         <td style={{ padding: 10 }}>
                           <div>{f.name}</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginTop: 8,
+                            }}
+                          >
                             <span style={{ fontSize: 12, color: "#666" }}>{t("adminHub.languageLabel")}</span>
                             <select
                               value={f.defaultLanguage ?? FACILITY_DEFAULT_LANGUAGE}
@@ -147,7 +648,7 @@ export default function AdminPage() {
                                   try {
                                     await refreshFromMe();
                                   } catch {
-                                    /* shell refresh event below */
+                                    /* shell : événement ci-dessous */
                                   }
                                   window.dispatchEvent(new Event("medora:session-refresh"));
                                 } catch {
