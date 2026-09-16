@@ -11,5 +11,7 @@ export function can(ctx:PlatformContext|undefined,cap:PlatformCapability){return
 export function canEnter(ctx:PlatformContext|undefined,area:PlatformArea){return !!ctx&&(ctx.platformPrincipal||AREA_CAPABILITIES[area].some(c=>ctx.capabilities.includes(c)));}
 export function visibleAreas(ctx:PlatformContext|undefined){return (Object.keys(AREA_CAPABILITIES) as PlatformArea[]).filter(a=>canEnter(ctx,a));}
 export function mayApprove(action:PrivilegedAction,actorId:string,ctx:PlatformContext){return can(ctx,"PRIVILEGED_ACTION_APPROVE")&&action.status==="PENDING"&&action.requesterUserId!==actorId&&action.targetUserId!==actorId;}
+export function mayReject(action:PrivilegedAction,actorId:string,ctx:PlatformContext){return mayApprove(action,actorId,ctx);}
+export function mayCancel(action:PrivilegedAction,actorId:string){return action.status==="PENDING"&&action.requesterUserId===actorId;}
 export function mayExecute(action:PrivilegedAction,actorId:string,ctx:PlatformContext){return action.status==="APPROVED"&&(ctx.platformPrincipal||action.requesterUserId===actorId);}
 export function safeStepUpMessage(error:{status:number;message:string}){return error.status===403&&error.message.includes("RECENT_SESSION_MFA_REQUIRED")?"Recent MFA verification is required. Complete step-up verification, then retry.":error.message;}
