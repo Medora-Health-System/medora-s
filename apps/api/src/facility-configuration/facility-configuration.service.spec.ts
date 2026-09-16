@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from "@nes
 import { AuditAction } from "@prisma/client";
 import { defaultFacilityConfigurationSettings } from "@medora/shared";
 import { FacilityConfigurationService } from "./facility-configuration.service";
+import { FacilityConfigurationRuntimeCache } from "./facility-configuration.runtime-cache";
 
 jest.mock("../admin/facility-department-seed.util", () => ({
   ensureFacilityServiceLineDepartments: jest.fn().mockResolvedValue({ created: 0, existing: 1 }),
@@ -60,16 +61,21 @@ describe("FacilityConfigurationService", () => {
         findUnique: jest.fn().mockResolvedValue(row),
         create: jest.fn(),
         update: jest.fn().mockResolvedValue({ ...row, revision: 2 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       facilityConfigurationRevision: {
         findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       },
       user: { findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)),
     } as any;
     const audit = { log: jest.fn().mockResolvedValue(undefined) };
-    const service = new FacilityConfigurationService(prisma, audit as any);
+    const cache = new FacilityConfigurationRuntimeCache();
+    const service = new FacilityConfigurationService(prisma, audit as any, cache);
     jest.spyOn(service as any, "assertCanConfigure").mockImplementation(async (...args: unknown[]) => {
       const userId = String(args[0] ?? "");
       const facilityId = String(args[1] ?? "");
@@ -79,7 +85,7 @@ describe("FacilityConfigurationService", () => {
       }
       return { platform: false };
     });
-    return { prisma, audit, service, settings };
+    return { prisma, audit, service, settings, cache, row };
   }
 
   it("returns the current facility document only", async () => {
@@ -100,7 +106,28 @@ describe("FacilityConfigurationService", () => {
     await expect(
       service.patchForAdmin({ userId: adminA, facilityId: facilityA }, { facilityId: facilityB, revision: 1 }),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.facilityConfiguration.update).not.toHaveBeenCalled();
+    expect(prisma.facilityConfiguration.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid combinations before writing", async () => {
+    const { service, prisma, settings } = build();
+    const next = structuredClone(settings);
+    next.modules.digitalCare.enabled = false;
+    next.modules.digitalCare.hidden = true;
+    next.digitalCare.secureMessaging = true;
+    next.patientPortal.messages = true;
+    await expect(
+      service.patchForAdmin({ userId: adminA, facilityId: facilityA }, { revision: 1, settings: next }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    try {
+      await service.patchForAdmin({ userId: adminA, facilityId: facilityA }, { revision: 1, settings: next });
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect((err as BadRequestException).getResponse()).toEqual(
+        expect.objectContaining({ code: "FACILITY_CONFIGURATION_INVALID" }),
+      );
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("conflicts on stale revision", async () => {
@@ -113,17 +140,19 @@ describe("FacilityConfigurationService", () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it("writes, versions, and audits a configuration change", async () => {
+  it("writes, versions, and audits a configuration change inside one transaction", async () => {
     const { service, prisma, audit, settings } = build();
     const next = structuredClone(settings);
     next.digitalCare.secureMessaging = false;
-    next.digitalCare.autoRelease = true;
-    next.patientPortal.invoices = false;
+    next.digitalCare.providerChat = false;
+    next.digitalCare.patientChat = false;
+    next.patientPortal.messages = false;
     await service.patchForAdmin(
-      { userId: adminA, facilityId: facilityA, ip: "10.0.0.8" },
+      { userId: adminA, facilityId: facilityA, ip: "10.0.0.8", userAgent: "MedoraTest/1.0" },
       { revision: 1, reason: "Disable messaging for Hospital A", settings: next },
     );
-    expect(prisma.facilityConfiguration.update).toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.facilityConfiguration.updateMany).toHaveBeenCalled();
     expect(prisma.facilityConfigurationRevision.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -132,20 +161,70 @@ describe("FacilityConfigurationService", () => {
           changedByUserId: adminA,
           reason: "Disable messaging for Hospital A",
           ip: "10.0.0.8",
+          userAgent: "MedoraTest/1.0",
         }),
       }),
     );
+    expect(prisma.facilityConfigurationRevision.update).not.toHaveBeenCalled();
+    expect(prisma.facilityConfigurationRevision.delete).not.toHaveBeenCalled();
     expect(audit.log).toHaveBeenCalledWith(
       AuditAction.FACILITY_CONFIGURATION_UPDATE,
       "FacilityConfiguration",
       expect.objectContaining({
         facilityId: facilityA,
         userId: adminA,
+        ip: "10.0.0.8",
+        userAgent: "MedoraTest/1.0",
         metadata: expect.objectContaining({
           reason: "Disable messaging for Hospital A",
+          changedKeys: expect.arrayContaining(["digitalCare.secureMessaging"]),
+          oldJson: expect.any(Object),
+          newJson: expect.any(Object),
         }),
       }),
     );
+  });
+
+  it("restores a previous revision as a new snapshot without rewriting history", async () => {
+    const { service, prisma, settings, row } = build();
+    const previous = structuredClone(settings);
+    previous.digitalCare.secureMessaging = false;
+    previous.digitalCare.providerChat = false;
+    previous.digitalCare.patientChat = false;
+    previous.patientPortal.messages = false;
+    prisma.facilityConfigurationRevision.findFirst.mockResolvedValue({
+      ...row,
+      revision: 1,
+      settingsJson: previous,
+      changedByUserId: adminA,
+      reason: "old",
+      createdAt: new Date(),
+    });
+    await service.restoreForAdmin(
+      { userId: adminA, facilityId: facilityA },
+      { revision: 1, restoreRevision: 1, reason: "Rollback messaging" },
+    );
+    expect(prisma.facilityConfigurationRevision.create).toHaveBeenCalled();
+    expect(prisma.facilityConfigurationRevision.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to load another hospital’s version history", async () => {
+    const { service, prisma } = build();
+    prisma.facilityConfigurationRevision.findFirst.mockResolvedValue(null);
+    await expect(service.getRevisionForAdmin({ userId: adminA, facilityId: facilityB }, 1)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it("fails over to the last valid runtime instead of crashing", async () => {
+    const { service, prisma, cache, settings } = build();
+    cache.put(facilityA, 1, settings);
+    prisma.facility.findUnique.mockRejectedValue(new Error("database unavailable"));
+    prisma.facilityConfiguration.findUnique.mockRejectedValue(new Error("database unavailable"));
+    cache.invalidate(facilityA);
+    const runtime = await service.runtimeForFacility(facilityA);
+    expect(runtime.facilityId).toBe(facilityA);
+    expect(runtime.digitalCare.secureMessaging).toBe(true);
   });
 
   it("lets a platform administrator read the switched facility only", async () => {

@@ -3,7 +3,9 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Patch,
+  Post,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -11,7 +13,11 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
-import { RequireRoles, RolesGuard } from "../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RequireRoles,
+  RolesGuard,
+} from "../common/guards/roles.guard";
 import { FacilityConfigurationService } from "./facility-configuration.service";
 
 function facilityActor(req: {
@@ -21,9 +27,9 @@ function facilityActor(req: {
 }) {
   const userId = req.user?.userId;
   const header = req.headers?.["x-facility-id"];
-  const facilityId =
-    req.user?.facilityId ||
-    (typeof header === "string" ? header : Array.isArray(header) ? header[0] : undefined);
+  const headerFacilityId = typeof header === "string" ? header : Array.isArray(header) ? header[0] : undefined;
+  const jwtFacilityId = req.user?.facilityId;
+  const facilityId = jwtFacilityId || headerFacilityId;
   if (!userId) throw new UnauthorizedException("Identité manquante.");
   if (!facilityId?.trim()) throw new BadRequestException("Établissement requis.");
   return {
@@ -37,6 +43,7 @@ function facilityActor(req: {
 @Controller("admin/facility/configuration")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+@AllowPlatformPrincipalWithFacilityContext()
 export class FacilityConfigurationAdminController {
   constructor(private readonly configuration: FacilityConfigurationService) {}
 
@@ -45,9 +52,23 @@ export class FacilityConfigurationAdminController {
     return this.configuration.getForAdmin(facilityActor(req));
   }
 
+  @Get("revisions/:revision")
+  getRevision(@Param("revision") revision: string, @Req() req: any) {
+    const value = Number(revision);
+    if (!Number.isInteger(value) || value < 1) {
+      throw new BadRequestException("Version invalide.");
+    }
+    return this.configuration.getRevisionForAdmin(facilityActor(req), value);
+  }
+
   @Patch()
   patch(@Body() body: unknown, @Req() req: any) {
     return this.configuration.patchForAdmin(facilityActor(req), body);
+  }
+
+  @Post("restore")
+  restore(@Body() body: unknown, @Req() req: any) {
+    return this.configuration.restoreForAdmin(facilityActor(req), body);
   }
 }
 

@@ -15,6 +15,7 @@ export * from "./auth/workspaceAuthorization.js";
 export * from "./auth/adminUserAssignment.js";
 export * from "./auth/enterpriseFacilityConfigurationAuthorityD4c9.js";
 export * from "./facility/facilityConfiguration.js";
+export * from "./facility/facilityConfigurationDependencies.js";
 export * from "./auth/facilityClinicCareProfileD4c1.js";
 export * from "./auth/clinicCareTrackboardProjectionD4c2.js";
 export * from "./auth/clinicRegistrationAppointmentD4c3.js";

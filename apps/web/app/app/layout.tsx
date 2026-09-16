@@ -18,6 +18,7 @@ import {
 import { filterSidebarNavItemsByNavigationAreas, buildNavigationProfileFromSession } from "@/features/navigation/navigationVisibility";
 import { facilityModuleHidesHref } from "@medora/shared";
 import { fetchFacilityRuntimeConfiguration } from "@/lib/facilityConfigurationApi";
+import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
 import type { FacilityConfigurationSettings } from "@medora/shared";
 /**
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
@@ -67,15 +68,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!activeFacility || sessionPhase !== "authenticated") return;
     let cancelled = false;
-    void fetchFacilityRuntimeConfiguration(activeFacility)
-      .then((runtime) => {
-        if (!cancelled) setRuntimeModules(runtime.modules);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntimeModules(null);
-      });
+    const loadRuntime = () => {
+      void fetchFacilityRuntimeConfiguration(activeFacility)
+        .then((runtime) => {
+          if (!cancelled) setRuntimeModules(runtime.modules);
+        })
+        .catch(() => {
+          /* keep last valid modules — never blank the sidebar on a transient failure */
+        });
+    };
+    loadRuntime();
+    const unsubscribe = subscribeFacilityConfigurationUpdated((detail) => {
+      if (detail.facilityId === activeFacility) loadRuntime();
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [activeFacility, sessionPhase]);
 

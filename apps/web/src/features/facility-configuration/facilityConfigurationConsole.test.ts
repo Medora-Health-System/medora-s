@@ -4,6 +4,7 @@ import { facilityConfigurationOverlayKeyParity } from "@/i18n/messages/facilityC
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import {
   facilityConfigurationIsDirty,
+  facilityConfigurationSaveEnabled,
   facilityConsoleEnabledProgress,
   setFacilityModuleRuntime,
 } from "./facilityConfigurationConsoleView";
@@ -42,5 +43,14 @@ describe("Facility configuration console", () => {
     expect(i18nMessage("en", "facilityConfig.title")).toBe("Facility configuration");
     expect(i18nMessage("es", "facilityConfig.title")).toBe("Configuración del establecimiento");
     expect(i18nMessage("fr", "facilityConfig.save")).not.toBe(i18nMessage("en", "facilityConfig.save"));
+    expect(i18nMessage("en", "facilityConfig.conflict")).toBe("This configuration changed. Reload?");
+    expect(i18nMessage("fr", "facilityConfig.conflict")).toContain("Recharger");
+  });
+
+  it("disables save while the draft is invalid or unchanged", () => {
+    expect(facilityConfigurationSaveEnabled({ dirty: true, busy: false, issueCount: 0 })).toBe(true);
+    expect(facilityConfigurationSaveEnabled({ dirty: true, busy: false, issueCount: 1 })).toBe(false);
+    expect(facilityConfigurationSaveEnabled({ dirty: false, busy: false, issueCount: 0 })).toBe(false);
+    expect(facilityConfigurationSaveEnabled({ dirty: true, busy: true, issueCount: 0 })).toBe(false);
   });
 });

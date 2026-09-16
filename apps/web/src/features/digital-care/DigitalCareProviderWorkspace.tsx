@@ -37,6 +37,7 @@ import {
   type DigitalCareRosterFilter,
 } from "./digitalCareWorkspaceView";
 import { digitalCareResultPrintHtml, digitalCareWorkspacePrintHtml, openDigitalCarePrintDocument } from "./digitalCareWorkspacePrint";
+import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
 
 const card: CSSProperties = {
   ...MEDORA_CARD_SHELL,
@@ -144,6 +145,15 @@ export function DigitalCareProviderWorkspace() {
     }, 280);
     return () => window.clearTimeout(handle);
   }, [ready, canUse, facilityId, loadRoster]);
+
+  useEffect(() => {
+    if (!facilityId) return;
+    return subscribeFacilityConfigurationUpdated((detail) => {
+      if (detail.facilityId !== facilityId) return;
+      void loadRoster(0, false);
+      if (selectedId) void loadWorkspace(selectedId);
+    });
+  }, [facilityId, loadRoster, loadWorkspace, selectedId]);
 
   useEffect(() => {
     if (selectedId) void loadWorkspace(selectedId);

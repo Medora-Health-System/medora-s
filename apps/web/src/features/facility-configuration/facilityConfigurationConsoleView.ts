@@ -41,6 +41,14 @@ export function facilityConfigurationIsDirty(
   return JSON.stringify(saved) !== JSON.stringify(draft);
 }
 
+export function facilityConfigurationSaveEnabled(input: {
+  dirty: boolean;
+  busy: boolean;
+  issueCount: number;
+}): boolean {
+  return input.dirty && !input.busy && input.issueCount === 0;
+}
+
 export function facilityConsoleEnabledProgress(modules: FacilityConfigurationSettings["modules"]): {
   enabled: number;
   total: number;

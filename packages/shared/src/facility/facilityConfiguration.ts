@@ -639,6 +639,16 @@ export const facilityConfigurationPatchDtoSchema = z
 
 export type FacilityConfigurationPatchDto = z.infer<typeof facilityConfigurationPatchDtoSchema>;
 
+export const facilityConfigurationRestoreDtoSchema = z
+  .object({
+    revision: z.number().int().positive(),
+    restoreRevision: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+
+export type FacilityConfigurationRestoreDto = z.infer<typeof facilityConfigurationRestoreDtoSchema>;
+
 export type FacilityConfigurationChange = {
   path: string;
   oldValue: unknown;
@@ -675,6 +685,7 @@ export function diffFacilityConfiguration(
 
 export type FacilityRuntimeConfiguration = {
   facilityId: string;
+  revision: number;
   branding: FacilityConfigurationSettings["branding"];
   modules: FacilityConfigurationSettings["modules"];
   digitalCare: FacilityConfigurationSettings["digitalCare"];
@@ -684,14 +695,18 @@ export type FacilityRuntimeConfiguration = {
   messaging: FacilityConfigurationSettings["messaging"];
   ai: FacilityConfigurationSettings["ai"];
   scheduling: FacilityConfigurationSettings["scheduling"];
+  telehealth: FacilityConfigurationSettings["telehealth"];
+  featureFlags: FacilityConfigurationSettings["featureFlags"];
 };
 
 export function projectFacilityRuntimeConfiguration(
   facilityId: string,
   settings: FacilityConfigurationSettings,
+  revision = 0,
 ): FacilityRuntimeConfiguration {
   return {
     facilityId,
+    revision,
     branding: settings.branding,
     modules: settings.modules,
     digitalCare: settings.digitalCare,
@@ -701,6 +716,8 @@ export function projectFacilityRuntimeConfiguration(
     messaging: settings.messaging,
     ai: settings.ai,
     scheduling: settings.scheduling,
+    telehealth: settings.telehealth,
+    featureFlags: settings.featureFlags,
   };
 }
 

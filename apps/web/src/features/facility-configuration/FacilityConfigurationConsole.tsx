@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   FACILITY_MODULE_KEYS,
   resolveFacilityModuleLiveStatus,
+  validateFacilityConfiguration,
   type FacilityConfigurationSettings,
 } from "@medora/shared";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -12,9 +13,13 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
   fetchFacilityConfiguration,
+  fetchFacilityConfigurationRevision,
   patchFacilityConfiguration,
+  restoreFacilityConfiguration,
   type FacilityConfigurationDocument,
+  type FacilityConfigurationRevisionDocument,
 } from "@/lib/facilityConfigurationApi";
+import { broadcastFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
 import {
   AI_SWITCHES,
   CLINICAL_RULE_SWITCHES,
@@ -118,10 +123,16 @@ export function FacilityConfigurationConsole({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [viewedRevision, setViewedRevision] = useState<FacilityConfigurationRevisionDocument | null>(null);
+  const [compareRevision, setCompareRevision] = useState<FacilityConfigurationRevisionDocument | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
+    setConflict(false);
+    setViewedRevision(null);
+    setCompareRevision(null);
     const next = await fetchFacilityConfiguration(facilityId);
     setDocument(next);
     setDraft(structuredClone(next.settings));
@@ -135,11 +146,14 @@ export function FacilityConfigurationConsole({
 
   const dirty = facilityConfigurationIsDirty(document?.settings ?? null, draft);
   const progress = draft ? facilityConsoleEnabledProgress(draft.modules) : { enabled: 0, total: 0, percent: 0 };
+  const issues = useMemo(() => (draft ? validateFacilityConfiguration(draft) : []), [draft]);
+  const canSave = Boolean(dirty && !busy && issues.length === 0);
 
   async function save() {
-    if (!document || !draft || !dirty) return;
+    if (!document || !draft || !canSave) return;
     setBusy(true);
     setError(null);
+    setConflict(false);
     try {
       const next = await patchFacilityConfiguration(facilityId, {
         revision: document.revision,
@@ -149,8 +163,15 @@ export function FacilityConfigurationConsole({
       setDocument(next);
       setDraft(structuredClone(next.settings));
       setReason("");
+      broadcastFacilityConfigurationUpdated({ facilityId, revision: next.revision });
     } catch (err: unknown) {
-      setError(normalizeUserFacingError(err instanceof Error ? err.message : "", language) || t("facilityConfig.error"));
+      const thrown = err as Error & { status?: number; code?: string };
+      if (thrown.status === 409 || thrown.code === "FACILITY_CONFIGURATION_CONFLICT") {
+        setConflict(true);
+        setError(t("facilityConfig.conflict"));
+      } else {
+        setError(normalizeUserFacingError(err instanceof Error ? err.message : "", language) || t("facilityConfig.error"));
+      }
     } finally {
       setBusy(false);
     }
@@ -184,10 +205,26 @@ export function FacilityConfigurationConsole({
           {dirty ? <span style={{ borderRadius: 999, padding: "4px 10px", background: "#fef3c7", color: "#92400e", fontWeight: 800, fontSize: 12 }}>{t("facilityConfig.unsaved")}</span> : <span style={{ borderRadius: 999, padding: "4px 10px", background: "#dcfce7", color: "#166534", fontWeight: 800, fontSize: 12 }}>{t("facilityConfig.saved")}</span>}
           <button type="button" onClick={() => setShowHistory((value) => !value)} style={ghostBtn}>{t("facilityConfig.history")}</button>
           <button type="button" disabled={!dirty || busy} onClick={discard} style={ghostBtn}>{t("facilityConfig.discard")}</button>
-          <button type="button" disabled={!dirty || busy} onClick={() => void save()} style={{ ...primaryBtn, opacity: !dirty || busy ? 0.5 : 1 }}>{t("facilityConfig.save")}</button>
+          <button type="button" disabled={!canSave} onClick={() => void save()} style={{ ...primaryBtn, opacity: canSave ? 1 : 0.5 }}>{t("facilityConfig.save")}</button>
         </div>
 
-        {error ? <div role="alert" style={{ marginBottom: 12, padding: 12, borderRadius: 12, background: "#fee2e2", color: "#991b1b" }}>{error}</div> : null}
+        {conflict ? (
+          <div role="alert" style={{ marginBottom: 12, padding: 12, borderRadius: 12, background: "#fef3c7", color: "#92400e", display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+            <span>{t("facilityConfig.conflict")}</span>
+            <button type="button" onClick={() => void load()} style={ghostBtn}>{t("facilityConfig.reload")}</button>
+          </div>
+        ) : null}
+        {error && !conflict ? <div role="alert" style={{ marginBottom: 12, padding: 12, borderRadius: 12, background: "#fee2e2", color: "#991b1b" }}>{error}</div> : null}
+        {issues.length > 0 ? (
+          <div role="alert" style={{ marginBottom: 12, padding: 12, borderRadius: 12, background: "#fff7ed", color: "#9a3412" }}>
+            <strong>{t("facilityConfig.validation.title")}</strong>
+            <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+              {issues.map((issue) => (
+                <li key={issue.id} style={{ fontSize: 13, marginTop: 4 }}>{t(issue.messageKey)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <label style={{ display: "block", marginBottom: 12 }}>
           <span style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{t("facilityConfig.reason")}</span>
@@ -199,11 +236,60 @@ export function FacilityConfigurationConsole({
             <strong>{t("facilityConfig.history")}</strong>
             <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
               {document.history.map((row) => (
-                <li key={row.id} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}>
-                  v{row.revision} · {row.changedByName ?? row.changedByUserId} · {new Date(row.createdAt).toLocaleString()} {row.reason ? `· ${row.reason}` : ""}
+                <li key={row.id} style={{ padding: "8px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <span>v{row.revision} · {row.changedByName ?? row.changedByUserId} · {new Date(row.createdAt).toLocaleString()} {row.reason ? `· ${row.reason}` : ""}</span>
+                  <button type="button" style={ghostBtn} onClick={() => void fetchFacilityConfigurationRevision(facilityId, row.revision).then(setViewedRevision)}>
+                    {t("facilityConfig.history.view")}
+                  </button>
+                  <button type="button" style={ghostBtn} onClick={() => void fetchFacilityConfigurationRevision(facilityId, row.revision).then(setCompareRevision)}>
+                    {t("facilityConfig.history.compare")}
+                  </button>
+                  <button
+                    type="button"
+                    style={ghostBtn}
+                    disabled={busy}
+                    onClick={() => {
+                      if (!window.confirm(t("facilityConfig.history.restoreConfirm"))) return;
+                      setBusy(true);
+                      restoreFacilityConfiguration(facilityId, {
+                        revision: document.revision,
+                        restoreRevision: row.revision,
+                        reason: reason.trim() || t("facilityConfig.history.restoreReason"),
+                      })
+                        .then((next) => {
+                          setDocument(next);
+                          setDraft(structuredClone(next.settings));
+                          broadcastFacilityConfigurationUpdated({ facilityId, revision: next.revision });
+                        })
+                        .catch((err: unknown) => {
+                          const thrown = err as Error & { status?: number; code?: string };
+                          if (thrown.status === 409 || thrown.code === "FACILITY_CONFIGURATION_CONFLICT") {
+                            setConflict(true);
+                            setError(t("facilityConfig.conflict"));
+                          } else {
+                            setError(normalizeUserFacingError(err instanceof Error ? err.message : "", language) || t("facilityConfig.error"));
+                          }
+                        })
+                        .finally(() => setBusy(false));
+                    }}
+                  >
+                    {t("facilityConfig.history.restore")}
+                  </button>
                 </li>
               ))}
             </ul>
+            {viewedRevision ? (
+              <pre style={{ marginTop: 12, maxHeight: 220, overflow: "auto", fontSize: 11, background: "#f8fafc", padding: 10, borderRadius: 10 }}>
+                {JSON.stringify({ revision: viewedRevision.revision, settings: viewedRevision.settings }, null, 2)}
+              </pre>
+            ) : null}
+            {compareRevision ? (
+              <ul style={{ marginTop: 12, paddingLeft: 18, fontSize: 12 }}>
+                {compareRevision.diffFromCurrent.length === 0 ? <li>{t("facilityConfig.history.noDiff")}</li> : compareRevision.diffFromCurrent.map((change) => (
+                  <li key={change.path}><code>{change.path}</code></li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 
