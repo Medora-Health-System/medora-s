@@ -43,4 +43,16 @@ describe("isAppPathAllowedForRoles — detail paths under trailing-slash prefixe
       })
     ).toBe(true);
   });
+
+  it("allows canonical Digital Care for ADMIN, PROVIDER, and RN", () => {
+    for (const role of ["ADMIN", "PROVIDER", "RN"]) {
+      expect(isAppPathAllowedForRoles("/app/digital-care", [role])).toBe(true);
+    }
+  });
+
+  it("denies canonical Digital Care for FRONT_DESK and ancillary queues", () => {
+    for (const role of ["FRONT_DESK", "LAB", "RADIOLOGY", "PHARMACY", "BILLING"]) {
+      expect(isAppPathAllowedForRoles("/app/digital-care", [role])).toBe(false);
+    }
+  });
 });
