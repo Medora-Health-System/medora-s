@@ -3,6 +3,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { AuditService } from "../common/services/audit.service";
 import { DocumentsModule } from "../documents/documents.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { PatientAppointmentsController } from "./appointments/patient-appointments.controller";
 import { PatientAppointmentsService } from "./appointments/patient-appointments.service";
@@ -48,7 +49,7 @@ import { PatientSessionSecurityService } from "./security/patient-session-securi
  * live in DigitalCareModule so they are available independently of this feature flag.
  */
 @Module({
-  imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({})],
+  imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({}), FacilityConfigurationModule],
   controllers: [PatientPortalAuthController,PatientOrganizationsController,PatientPortalActivationController,PatientPortalStaffActivationController,PatientDashboardController,PatientRecordsController,PatientDocumentsController,PatientDocumentReleaseController,PatientDiagnosticResultsController,PatientMedicationsController,PatientAppointmentsController,PatientProfileController,PatientMessagesController,PatientServiceRequestsController,PatientServiceRequestsStaffController,PatientSessionSecurityController],
   providers: [PatientPortalRepository,PatientPortalActivationRepository,PatientPortalAuditService,PatientPortalAuthService,PatientPortalJwtStrategy,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientOrganizationsService,PatientPortalActivationService,PatientDashboardService,PatientRecordsService,PatientDocumentsService,PatientDocumentReleaseService,PatientDiagnosticResultsService,PatientDiagnosticResultReleaseService,PatientMedicationsService,PatientAppointmentsService,PatientProfileService,PatientMessagesService,PatientPortalMessagingFacade,PatientServiceRequestsService,PatientSessionSecurityService,AuditService],
   exports: [PatientPortalRepository,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientPortalMessagingFacade],

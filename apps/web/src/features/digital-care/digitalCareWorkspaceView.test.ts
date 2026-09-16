@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   digitalCareInitials,
   digitalCareSafeLabel,
+  digitalCareVisibleTabs,
   filterDigitalCareRoster,
   fillCountTemplate,
 } from "./digitalCareWorkspaceView";
@@ -49,5 +50,10 @@ describe("Digital Care workspace view helpers", () => {
 
   it("fills patient count copy without exposing identifiers", () => {
     expect(fillCountTemplate("Showing {shown} of {total} patients", 8, 142)).toBe("Showing 8 of 142 patients");
+  });
+
+  it("hides Digital Care tabs that the facility configuration disabled", () => {
+    expect(digitalCareVisibleTabs({ digitalCare: { secureMessaging: false, resultRelease: true } })).not.toContain("messages");
+    expect(digitalCareVisibleTabs({ digitalCare: { secureMessaging: false, resultRelease: true } })).toContain("results");
   });
 });

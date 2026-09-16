@@ -1,10 +1,11 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, Optional, ForbiddenException } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { AuditService } from "../../common/services/audit.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
 import type {
   CreatePatientMessageThreadInput,
   PatientMessageReplyInput,
@@ -52,6 +53,7 @@ export class PatientMessagesService {
     private readonly prisma: PrismaService,
     private readonly patientAudit: PatientPortalAuditService,
     private readonly staffAudit: AuditService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   private patientThreadView(thread: ThreadRow) {
@@ -285,6 +287,9 @@ export class PatientMessagesService {
     input: CreatePatientMessageThreadInput,
     context: RequestContext,
   ) {
+    if (this.facilityConfiguration) {
+      await this.facilityConfiguration.assertMessaging(access.facilityId, "PATIENT");
+    }
     return this.prisma.$transaction(async (tx) => {
       const threadId = randomUUID();
       const messageId = randomUUID();
@@ -381,6 +386,9 @@ export class PatientMessagesService {
     patientId: string,
     input: CreatePatientMessageThreadInput,
   ) {
+    if (this.facilityConfiguration) {
+      await this.facilityConfiguration.assertMessaging(actor.facilityId, "STAFF");
+    }
     return this.prisma.$transaction(async (tx) => {
       const links = await tx.$queryRaw<Array<{ portalAccountId: string }>>(Prisma.sql`
         SELECT l."portalAccountId"

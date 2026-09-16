@@ -10,6 +10,7 @@ import esMessages from "@/i18n/messages/es";
 import frMessages from "@/i18n/messages/fr";
 import { resolveClinicPresentationOverride } from "@/i18n/messages/clinicPresentationOverrides";
 import { resolveDigitalCareNavOverride } from "@/i18n/messages/digitalCareNavOverrides";
+import { resolveFacilityConfigurationOverride } from "@/i18n/messages/facilityConfigurationOverrides";
 import { resolveRegistrationPacketSpanishOverride } from "@/i18n/messages/registrationPacketSpanishOverrides";
 
 /**
@@ -46,6 +47,9 @@ export function resolveClinicalUiMessage(language: string, key: string): string 
 
   const digitalCareNavOverride = resolveDigitalCareNavOverride(language, key);
   if (digitalCareNavOverride !== undefined) return digitalCareNavOverride;
+
+  const facilityConfigurationOverride = resolveFacilityConfigurationOverride(language, key);
+  if (facilityConfigurationOverride !== undefined) return facilityConfigurationOverride;
 
   const registrationPacketOverride = resolveRegistrationPacketSpanishOverride(language, key);
   if (registrationPacketOverride !== undefined) return registrationPacketOverride;

@@ -83,3 +83,24 @@ export const DIGITAL_CARE_MAIN_TABS = [
 ] as const;
 
 export type DigitalCareMainTab = (typeof DIGITAL_CARE_MAIN_TABS)[number];
+
+export function digitalCareVisibleTabs(configuration?: {
+  digitalCare?: {
+    resultRelease?: boolean;
+    secureMessaging?: boolean;
+    medicationSharing?: boolean;
+    dischargeSharing?: boolean;
+    carePlans?: boolean;
+  };
+} | null): DigitalCareMainTab[] {
+  const flags = configuration?.digitalCare;
+  return DIGITAL_CARE_MAIN_TABS.filter((tab) => {
+    if (!flags) return true;
+    if (tab === "results") return flags.resultRelease !== false;
+    if (tab === "messages") return flags.secureMessaging !== false;
+    if (tab === "medications") return flags.medicationSharing !== false;
+    if (tab === "discharge") return flags.dischargeSharing !== false;
+    if (tab === "carePlan") return flags.carePlans !== false;
+    return true;
+  });
+}

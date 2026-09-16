@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/apiClient";
+import type { FacilityRuntimeConfiguration } from "@medora/shared";
 import {
   closeDigitalCareStaffThread,
   fetchDigitalCareStaffThread,
@@ -83,6 +84,7 @@ export type DigitalCareWorkspaceMedication = {
 
 export type DigitalCareWorkspaceBundle = {
   identity: DigitalCareRosterPatient & { insurance: string | null };
+  configuration?: FacilityRuntimeConfiguration | null;
   results: DigitalCareWorkspaceResult[];
   threads: Array<{ id: string; subject: string; status: string; category: string; lastMessageAt: string }>;
   medications: { ordered: DigitalCareWorkspaceMedication[]; homeSummary: string | null; reconComplete: boolean };
@@ -145,6 +147,7 @@ export async function fetchDigitalCareRoster(
     total: number;
     offset: number;
     limit: number;
+    configuration?: FacilityRuntimeConfiguration | null;
   }>;
 }
 

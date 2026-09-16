@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { AuditService } from "../../common/services/audit.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { DiagnosticResultStaffActor } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { PatientDiagnosticResultReleaseService } from "../../patient-portal/records/patient-diagnostic-result-release.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
+import { projectFacilityRuntimeConfiguration } from "@medora/shared";
 import {
   digitalCareAgeYears,
   digitalCareImagingReport,
@@ -31,14 +33,20 @@ export class DigitalCareStaffWorkspaceService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly releases: PatientDiagnosticResultReleaseService,
+    @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
   ) {}
 
   async roster(actor: DiagnosticResultStaffActor, query?: { q?: string; limit?: number; offset?: number }) {
+    const configuration = this.facilityConfiguration
+      ? await this.facilityConfiguration.assertStaffDigitalCare(actor.facilityId).then((settings) =>
+          projectFacilityRuntimeConfiguration(actor.facilityId, settings),
+        )
+      : null;
     const limit = Math.min(Math.max(query?.limit ?? 40, 1), 80);
     const offset = Math.max(query?.offset ?? 0, 0);
     const needle = (query?.q ?? "").trim().toLowerCase();
     if (digitalCareLooksLikeUuid(needle)) {
-      return { patients: [], total: 0, offset, limit };
+      return { patients: [], total: 0, offset, limit, configuration };
     }
 
     const [threadPatients, resultOrders, recentEncounters] = await Promise.all([
@@ -94,7 +102,7 @@ export class DigitalCareStaffWorkspaceService {
         facilityId: actor.facilityId,
         metadata: { count: 0 },
       });
-      return { patients: [], total: 0, offset, limit };
+      return { patients: [], total: 0, offset, limit, configuration };
     }
 
     const [patients, encounters, portalRows, unreadRows] = await Promise.all([
@@ -215,10 +223,16 @@ export class DigitalCareStaffWorkspaceService {
       total: filtered.length,
       offset,
       limit,
+      configuration,
     };
   }
 
   async workspace(actor: DiagnosticResultStaffActor, patientId: string) {
+    const configuration = this.facilityConfiguration
+      ? await this.facilityConfiguration.assertStaffDigitalCare(actor.facilityId).then((settings) =>
+          projectFacilityRuntimeConfiguration(actor.facilityId, settings),
+        )
+      : null;
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, facilityId: actor.facilityId },
       select: {
@@ -550,14 +564,18 @@ export class DigitalCareStaffWorkspaceService {
 
     return {
       identity,
-      results: patientResults,
-      threads: threads.map((thread) => ({
-        id: thread.id,
-        subject: thread.subject,
-        status: thread.status,
-        category: thread.category,
-        lastMessageAt: thread.lastMessageAt.toISOString(),
-      })),
+      configuration,
+      results: !configuration || configuration.digitalCare.resultRelease ? patientResults : [],
+      threads:
+        !configuration || configuration.digitalCare.secureMessaging
+          ? threads.map((thread) => ({
+              id: thread.id,
+              subject: thread.subject,
+              status: thread.status,
+              category: thread.category,
+              lastMessageAt: thread.lastMessageAt.toISOString(),
+            }))
+          : [],
       medications: {
         ordered: medicationItems,
         homeSummary,

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { PatientMessagesStaffController } from "../patient-portal/messages/patient-messages-staff.controller";
 import { PatientMessagesService } from "../patient-portal/messages/patient-messages.service";
 import { PatientPortalAuditService } from "../patient-portal/patient-portal-audit.service";
@@ -23,7 +24,7 @@ import { DigitalCareStaffWorkspaceService } from "./staff/digital-care-staff-wor
  * role guards, and audit behavior.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FacilityConfigurationModule],
   controllers: [
     PatientMessagesStaffController,
     PatientDiagnosticResultReleaseController,

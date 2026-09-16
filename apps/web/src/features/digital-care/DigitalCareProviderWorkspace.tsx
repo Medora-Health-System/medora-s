@@ -29,7 +29,7 @@ import {
   digitalCareInitials,
   digitalCareResultKindFilter,
   digitalCareSafeLabel,
-  DIGITAL_CARE_MAIN_TABS,
+  digitalCareVisibleTabs,
   fillCountTemplate,
   filterDigitalCareRoster,
   medicationsByBucket,
@@ -92,6 +92,7 @@ export function DigitalCareProviderWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [quickOpen, setQuickOpen] = useState(false);
   const [messageQuery, setMessageQuery] = useState("");
+  const [configuration, setConfiguration] = useState<DigitalCareWorkspaceBundle["configuration"]>(null);
 
   const loadRoster = useCallback(
     async (offset = 0, append = false) => {
@@ -102,6 +103,7 @@ export function DigitalCareProviderWorkspace() {
         const data = await fetchDigitalCareRoster(facilityId, { q: rosterQuery, limit: 40, offset });
         setPatients((prev) => (append ? [...prev, ...data.patients] : data.patients));
         setRosterTotal(data.total);
+        if (data.configuration) setConfiguration(data.configuration);
         setSelectedId((current) => current ?? data.patients[0]?.id ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : t("digitalCare.error"));
@@ -120,6 +122,7 @@ export function DigitalCareProviderWorkspace() {
       try {
         const bundle = await fetchDigitalCareWorkspace(facilityId, patientId);
         setWorkspace(bundle);
+        if (bundle.configuration) setConfiguration(bundle.configuration);
         setSelectedResult(bundle.results[0] ?? null);
         setResultDetail(null);
         const openThread = bundle.threads.find((row) => row.status === "OPEN") ?? bundle.threads[0];
@@ -153,6 +156,15 @@ export function DigitalCareProviderWorkspace() {
     }, 20000);
     return () => window.clearInterval(timer);
   }, [tab, facilityId, thread]);
+
+  const visibleTabs = useMemo(
+    () => digitalCareVisibleTabs(configuration ?? workspace?.configuration),
+    [configuration, workspace],
+  );
+
+  useEffect(() => {
+    if (!visibleTabs.includes(tab) && visibleTabs[0]) setTab(visibleTabs[0]);
+  }, [visibleTabs, tab]);
 
   const filteredPatients = useMemo(
     () => filterDigitalCareRoster(patients, rosterFilter),
@@ -336,7 +348,7 @@ export function DigitalCareProviderWorkspace() {
       </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
-        {DIGITAL_CARE_MAIN_TABS.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item}
             type="button"
@@ -489,7 +501,9 @@ export function DigitalCareProviderWorkspace() {
                   </Link>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                  {(["results", "medications", "discharge", "messages", "visitSummary"] as DigitalCareMainTab[]).map((item) => (
+                  {(["results", "medications", "discharge", "messages", "visitSummary"] as DigitalCareMainTab[])
+                    .filter((item) => visibleTabs.includes(item))
+                    .map((item) => (
                     <button key={item} type="button" onClick={() => setTab(item)} style={{ border: 0, background: tab === item ? "#ecfeff" : "transparent", color: tab === item ? "#0f766e" : "#475569", fontWeight: 700, padding: "6px 10px", borderRadius: 8 }}>
                       {t(`digitalCare.inner.${item === "visitSummary" ? "summary" : item}`)}
                     </button>

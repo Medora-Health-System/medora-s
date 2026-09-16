@@ -14,7 +14,7 @@ import { parseApiResponse } from "./apiClient";
 
 const ADMIN_API_BASE = "/api/admin";
 
-async function adminApiFetch(
+export async function adminApiFetch(
   path: string,
   options: RequestInit & { facilityId?: string } = {}
 ): Promise<unknown> {

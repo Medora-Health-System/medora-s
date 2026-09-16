@@ -62,6 +62,7 @@ import { PlatformAuditModule } from "./platform-audit/platform-audit.module";
 import { PlatformStaffModule } from "./platform-staff/platform-staff.module";
 import { PatientPortalModule } from "./patient-portal/patient-portal.module";
 import { DigitalCareModule } from "./digital-care/digital-care.module";
+import { FacilityConfigurationModule } from "./facility-configuration/facility-configuration.module";
 
 const imports = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -129,6 +130,7 @@ const imports = [
   AiModule,
   PlatformAuditModule,
   PlatformStaffModule,
+  FacilityConfigurationModule,
   DigitalCareModule,
   ...(process.env.PATIENT_PORTAL_ENABLED === "true" ? [PatientPortalModule] : []),
 ];
