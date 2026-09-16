@@ -1,1 +1,3 @@
-import {Security} from "@/features/platform/PlatformUi";export default function Page(){return <Security/>}
+import {SecurityConsole} from "@/features/platform/SecurityConsole";
+
+export default function Page(){return <SecurityConsole/>}
