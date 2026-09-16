@@ -1,4 +1,4 @@
-import {describe,expect,it} from "vitest";import {AREA_CAPABILITIES,can,canEnter,mayApprove,mayExecute,safeStepUpMessage,visibleAreas} from "./access";import type {PlatformContext,PrivilegedAction} from "@/lib/platform/api";
+import {describe,expect,it} from "vitest";import {AREA_CAPABILITIES,can,canEnter,mayApprove,mayCancel,mayExecute,mayReject,safeStepUpMessage,visibleAreas} from "./access";import type {PlatformContext,PrivilegedAction} from "@/lib/platform/api";
 const ctx=(caps:string[]=[],extra:Partial<PlatformContext>={}):PlatformContext=>({platformPrincipal:false,staff:{persona:"SUPPORT",isActive:true},capabilities:caps as any,...extra});
 const action=(status:string,requester="requester",target="target"):PrivilegedAction=>({id:"a",operationType:"STAFF_GRANT_CAPABILITY",status,requesterUserId:requester,targetUserId:target,scope:{capabilityCode:"STAFF_VIEW"},reason:"Needed for duties",ticketReference:null,requestedAt:"2026-01-01",expiresAt:"2026-01-02",approverUserId:null,approvedAt:null,executedAt:null,failureCode:null});
 describe("D4SEC.1C.5 platform presentation boundary",()=>{
@@ -15,6 +15,13 @@ describe("D4SEC.1C.5 platform presentation boundary",()=>{
  it("stale MFA maps to step-up UX",()=>expect(safeStepUpMessage({status:403,message:"RECENT_SESSION_MFA_REQUIRED"})).toContain("MFA"));
  it("requester cannot self-approve",()=>expect(mayApprove(action("PENDING","me"),"me",ctx(["PRIVILEGED_ACTION_APPROVE"]))).toBe(false));
  it("target cannot approve",()=>expect(mayApprove(action("PENDING","other","me"),"me",ctx(["PRIVILEGED_ACTION_APPROVE"]))).toBe(false));
+ it("authorized independent approver can approve",()=>expect(mayApprove(action("PENDING","requester","target"),"approver",ctx(["PRIVILEGED_ACTION_APPROVE"]))).toBe(true));
+ it("reject follows the same dual-control eligibility as approve",()=>expect(mayReject(action("PENDING","me"),"me",ctx(["PRIVILEGED_ACTION_APPROVE"]))).toBe(false));
+ it("only requester can cancel a pending request",()=>{expect(mayCancel(action("PENDING","me"),"me")).toBe(true);expect(mayCancel(action("PENDING","other"),"me")).toBe(false)});
+ it("non-pending request cannot be cancelled",()=>expect(mayCancel(action("APPROVED","me"),"me")).toBe(false));
+ it("requester can execute an approved request",()=>expect(mayExecute(action("APPROVED","me"),"me",ctx())).toBe(true));
+ it("unrelated non-principal cannot execute an approved request",()=>expect(mayExecute(action("APPROVED","requester"),"other",ctx())).toBe(false));
+ it("platform principal can execute an approved request",()=>expect(mayExecute(action("APPROVED","requester"),"principal",ctx([],{platformPrincipal:true}))).toBe(true));
  it("rejected request cannot execute",()=>expect(mayExecute(action("REJECTED"),"requester",ctx())).toBe(false));
  it("expired request cannot execute",()=>expect(mayExecute(action("EXPIRED"),"requester",ctx())).toBe(false));
  it("executed request cannot execute twice",()=>expect(mayExecute(action("EXECUTED"),"requester",ctx())).toBe(false));
