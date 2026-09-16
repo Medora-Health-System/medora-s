@@ -22,7 +22,7 @@ export const NAV_ACCENT: Record<NavAccent,{ border:string; icon:string; pillBg:s
   slate:{border:"#64748b",icon:"#475569",pillBg:"rgba(100,116,139,0.14)",hoverBg:"rgba(100,116,139,0.1)",activeBg:"rgba(100,116,139,0.2)"},
   teal:{border:"#0d9488",icon:"#0f766e",pillBg:"rgba(13,148,136,0.14)",hoverBg:"rgba(13,148,136,0.1)",activeBg:"rgba(13,148,136,0.22)"},
   blue:{border:"#2563eb",icon:"#1d4ed8",pillBg:"rgba(37,99,235,0.14)",hoverBg:"rgba(37,99,235,0.1)",activeBg:"rgba(37,99,235,0.22)"},
-  green:{border:"#16a34a",icon:"#15803d",pillBg:"rgba(22,163,74,0.14)",hoverBg:"rgba(22,163,74,0.1)",activeBg:"rgba(22,163,74,0.22)"},
+  green:{border:"#16a34a",icon:"#15803c",pillBg:"rgba(22,163,74,0.14)",hoverBg:"rgba(22,163,74,0.1)",activeBg:"rgba(22,163,74,0.22)"},
   purple:{border:"#9333ea",icon:"#7e22ce",pillBg:"rgba(147,51,234,0.14)",hoverBg:"rgba(147,51,234,0.1)",activeBg:"rgba(147,51,234,0.22)"},
   amber:{border:"#d97706",icon:"#b45309",pillBg:"rgba(217,119,6,0.14)",hoverBg:"rgba(217,119,6,0.1)",activeBg:"rgba(217,119,6,0.22)"},
   indigo:{border:"#4f46e5",icon:"#4338ca",pillBg:"rgba(79,70,229,0.14)",hoverBg:"rgba(79,70,229,0.1)",activeBg:"rgba(79,70,229,0.22)"},
