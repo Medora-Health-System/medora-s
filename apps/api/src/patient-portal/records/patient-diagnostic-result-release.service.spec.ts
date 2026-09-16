@@ -72,6 +72,43 @@ describe("PatientDiagnosticResultReleaseService", () => {
     );
   });
 
+  it("audits VIEW, DOWNLOAD, and PRINT of a facility-scoped result", async () => {
+    const { prisma, audit, service } = build();
+    prisma.orderItem.findFirst.mockResolvedValue({
+      id: "item-a",
+      catalogItemType: "LAB_TEST",
+      manualLabel: "CMP",
+      documentedCollectedAt: new Date("2026-09-15T13:00:00.000Z"),
+      effectiveCollectedAt: null,
+      order: { id: "order-a", patientId: "patient-a", encounterId: null, facilityId: "facility-a", prescriberName: "Dr Jean" },
+      result: {
+        criticalValue: false,
+        resultText: "Glucose 96",
+        resultData: { schemaVersion: "medora.clinicalResult.v1", resultType: "LAB", observations: [] },
+        verifiedAt: new Date("2026-09-15T13:54:00.000Z"),
+        effectiveResultedAt: new Date("2026-09-15T13:54:00.000Z"),
+        effectiveFinalizedAt: null,
+        verifiedByUserId: null,
+        acknowledgedByUserId: null,
+        acknowledgedByProviderAt: null,
+      },
+    });
+    prisma.$queryRaw.mockResolvedValue([]);
+    prisma.auditLog = { findMany: jest.fn().mockResolvedValue([]) };
+    prisma.user = { findMany: jest.fn() };
+    const viewed = await service.get("item-a", actor, "DOWNLOAD");
+    expect(viewed.patientId).toBe("patient-a");
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.VIEW,
+      "PATIENT_DIAGNOSTIC_RESULT_RELEASE",
+      expect.objectContaining({
+        facilityId: "facility-a",
+        patientId: "patient-a",
+        metadata: { operation: "DOWNLOAD" },
+      }),
+    );
+  });
+
   it("does not release a result from another facility", async () => {
     const { prisma, audit, service } = build(null);
     await expect(service.release("foreign-item", actor)).rejects.toBeInstanceOf(NotFoundException);

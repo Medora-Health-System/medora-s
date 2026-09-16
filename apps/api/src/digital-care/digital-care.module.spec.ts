@@ -17,6 +17,7 @@ describe("Digital Care staff runtime registration", () => {
     const patientPortal = source("src/patient-portal/patient-portal.module.ts");
     expect(digitalCare).toContain("PatientMessagesStaffController");
     expect(digitalCare).toContain("PatientDiagnosticResultReleaseController");
+    expect(digitalCare).toContain("DigitalCareStaffWorkspaceController");
     expect(patientPortal).not.toContain("PatientMessagesStaffController");
     expect(patientPortal).not.toContain("PatientDiagnosticResultReleaseController");
   });
@@ -24,8 +25,10 @@ describe("Digital Care staff runtime registration", () => {
   it("keeps staff Digital Care RBAC on ADMIN, PROVIDER, and RN", () => {
     const messaging = source("src/patient-portal/messages/patient-messages-staff.controller.ts");
     const results = source("src/patient-portal/records/patient-diagnostic-result-release.controller.ts");
+    const workspace = source("src/digital-care/staff/digital-care-staff-workspace.controller.ts");
     expect(messaging).toContain("RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN");
     expect(results).toContain("RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN");
+    expect(workspace).toContain("RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN");
     expect(messaging).not.toContain("RoleCode.FRONT_DESK");
     expect(results).not.toContain("RoleCode.FRONT_DESK");
   });

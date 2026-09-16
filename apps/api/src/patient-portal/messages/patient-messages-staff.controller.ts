@@ -11,8 +11,12 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
+import { z } from "zod";
 import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
-import { patientMessageReplySchema } from "./patient-messages.schemas";
+import {
+  createPatientMessageThreadSchema,
+  patientMessageReplySchema,
+} from "./patient-messages.schemas";
 import {
   PatientMessagesService,
   type PatientPortalStaffMessagingActor,
@@ -42,6 +46,19 @@ export class PatientMessagesStaffController {
   @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   async listThreads(@Req() req: any) {
     return this.messages.listStaffThreads(this.actor(req));
+  }
+
+  @Post("threads")
+  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  async createThread(@Body() body: unknown, @Req() req: any) {
+    const parsed = createPatientMessageThreadSchema
+      .extend({ patientId: z.string().uuid() })
+      .safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid secure message payload", { cause: parsed.error });
+    }
+    const { patientId, ...input } = parsed.data;
+    return this.messages.createAsStaff(this.actor(req), patientId, input);
   }
 
   @Get("threads/:threadId")

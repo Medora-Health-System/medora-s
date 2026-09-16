@@ -7,6 +7,8 @@ import { PatientPortalAuditService } from "../patient-portal/patient-portal-audi
 import { PatientPortalRepository } from "../patient-portal/persistence/patient-portal.repository";
 import { PatientDiagnosticResultReleaseController } from "../patient-portal/records/patient-diagnostic-result-release.controller";
 import { PatientDiagnosticResultReleaseService } from "../patient-portal/records/patient-diagnostic-result-release.service";
+import { DigitalCareStaffWorkspaceController } from "./staff/digital-care-staff-workspace.controller";
+import { DigitalCareStaffWorkspaceService } from "./staff/digital-care-staff-workspace.service";
 
 /**
  * Staff-facing Digital Care runtime.
@@ -25,12 +27,14 @@ import { PatientDiagnosticResultReleaseService } from "../patient-portal/records
   controllers: [
     PatientMessagesStaffController,
     PatientDiagnosticResultReleaseController,
+    DigitalCareStaffWorkspaceController,
   ],
   providers: [
     PatientPortalRepository,
     PatientPortalAuditService,
     PatientMessagesService,
     PatientDiagnosticResultReleaseService,
+    DigitalCareStaffWorkspaceService,
     AuditService,
   ],
   exports: [

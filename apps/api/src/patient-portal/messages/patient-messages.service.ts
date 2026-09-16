@@ -376,6 +376,79 @@ export class PatientMessagesService {
     });
   }
 
+  async createAsStaff(
+    actor: PatientPortalStaffMessagingActor,
+    patientId: string,
+    input: CreatePatientMessageThreadInput,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const links = await tx.$queryRaw<Array<{ portalAccountId: string }>>(Prisma.sql`
+        SELECT l."portalAccountId"
+        FROM "PatientPortalLink" l
+        INNER JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
+        INNER JOIN "Patient" p ON p."id" = l."patientId"
+        WHERE l."patientId" = ${patientId}
+          AND l."facilityId" = ${actor.facilityId}
+          AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
+          AND l."revokedAt" IS NULL
+          AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
+          AND p."facilityId" = ${actor.facilityId}
+        LIMIT 1
+      `);
+      const portalAccountId = links[0]?.portalAccountId;
+      if (!portalAccountId) throw new NotFoundException("Active patient portal link not found");
+
+      const threadId = randomUUID();
+      const messageId = randomUUID();
+      const threadRows = await tx.$queryRaw<ThreadRow[]>(Prisma.sql`
+        INSERT INTO "PatientPortalMessageThread" (
+          "id", "portalAccountId", "patientId", "facilityId", "category", "subject"
+        ) VALUES (
+          ${threadId}, ${portalAccountId}, ${patientId}, ${actor.facilityId},
+          ${input.category}::"PatientPortalMessageCategory", ${input.subject}
+        )
+        RETURNING
+          "id", "portalAccountId", "patientId", "facilityId",
+          "category"::text AS "category", "subject", "status"::text AS "status",
+          "lastMessageAt", "closedAt", "createdAt", "updatedAt"
+      `);
+      const messageRows = await tx.$queryRaw<MessageRow[]>(Prisma.sql`
+        INSERT INTO "PatientPortalMessage" (
+          "id", "threadId", "senderType", "senderPortalAccountId", "senderUserId", "body"
+        ) VALUES (
+          ${messageId}, ${threadId}, 'STAFF'::"PatientPortalMessageSenderType",
+          NULL, ${actor.userId}, ${input.message}
+        )
+        RETURNING
+          "id", "threadId", "senderType"::text AS "senderType",
+          "senderPortalAccountId", "senderUserId", "body", "createdAt"
+      `);
+
+      await this.staffAudit.log(AuditAction.CREATE, "PATIENT_PORTAL_MESSAGE_THREAD", {
+        tx,
+        critical: true,
+        userId: actor.userId,
+        facilityId: actor.facilityId,
+        patientId,
+        entityId: threadId,
+        ip: actor.ip ?? undefined,
+        userAgent: actor.userAgent ?? undefined,
+        metadata: {
+          category: input.category,
+          subjectLength: input.subject.length,
+          messageLength: input.message.length,
+          senderType: "STAFF",
+        },
+      });
+
+      return {
+        ...this.staffThreadView(threadRows[0]!),
+        messages: [this.staffMessageView(messageRows[0]!)],
+        messagesTruncated: false,
+      };
+    });
+  }
+
   async listStaffThreads(actor: PatientPortalStaffMessagingActor) {
     const rows = await this.prisma.$queryRaw<ThreadRow[]>(Prisma.sql`
       SELECT
