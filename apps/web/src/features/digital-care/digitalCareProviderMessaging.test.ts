@@ -44,9 +44,10 @@ describe("Digital Care provider messaging workspace", () => {
     expect(item?.href).not.toBe("/app/provider/digital-care");
   });
 
-  it("keeps FRONT_DESK excluded from Digital Care", () => {
+  it("keeps Digital Care sidebar roles on ADMIN, PROVIDER, and RN", () => {
     const item = SIDEBAR_NAV_ITEMS.find((candidate) => candidate.href === CANONICAL_DIGITAL_CARE);
     expect(item?.roles).not.toContain("FRONT_DESK");
+    expect(item?.roles).not.toContain("MEDORA_SUPER_ADMIN");
     expect(item?.roles).not.toContain("LAB");
     expect(item?.roles).not.toContain("RADIOLOGY");
     expect(item?.roles).not.toContain("PHARMACY");
@@ -59,10 +60,13 @@ describe("Digital Care provider messaging workspace", () => {
     }
   });
 
-  it("does not give FRONT_DESK Digital Care", () => {
+  it("does not show Digital Care in FRONT_DESK or MEDORA_SUPER_ADMIN sidebars", () => {
     expect(sessionHrefs("FRONT_DESK", { facilityType: "CLINIC", facilityServiceLines: ["CLINIC"] })).not.toContain(
       CANONICAL_DIGITAL_CARE
     );
+    expect(
+      sessionHrefs("MEDORA_SUPER_ADMIN", { facilityType: "HOSPITAL", facilityServiceLines: ["INPATIENT"] }),
+    ).not.toContain(CANONICAL_DIGITAL_CARE);
   });
 
   it("lets ADMIN, PROVIDER, and RN stay on /app/digital-care", () => {
@@ -73,7 +77,7 @@ describe("Digital Care provider messaging workspace", () => {
   });
 
   it("redirects unauthorized roles away from /app/digital-care", () => {
-    for (const role of ["FRONT_DESK", "LAB", "RADIOLOGY", "PHARMACY", "BILLING"]) {
+    for (const role of ["FRONT_DESK", "LAB", "RADIOLOGY", "PHARMACY", "BILLING", "MEDORA_SUPER_ADMIN"]) {
       const redirect = getRouteGuardRedirect(CANONICAL_DIGITAL_CARE, [role]);
       expect(redirect).toBeTruthy();
       expect(redirect).not.toBe(CANONICAL_DIGITAL_CARE);
@@ -136,5 +140,29 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("fetchDigitalCareWorkspace(facilityId, patientId)");
     expect(workspace).toContain("releaseDigitalCareResult");
     expect(workspace).toContain("createDigitalCareStaffThread");
+    expect(workspace).toContain("DigitalCarePatientAppAccess");
+    expect(workspace).toContain("issuePatientPortalActivation");
+    expect(workspace).toContain("revokePatientPortalAccess");
+    expect(workspace).toContain("canActivatePortal");
+    expect(workspace).toContain('roles.includes("ADMIN")');
+    expect(workspace).not.toContain("roles.includes(\"MEDORA_SUPER_ADMIN\")");
+    expect(workspace).toContain("digitalCareVisitStatusPresentation");
+    expect(workspace).not.toContain("localStorage");
+    expect(workspace).not.toContain("sessionStorage");
+    expect(workspace).not.toContain("console.log");
+  });
+
+  it("keeps activation UI on the existing staff activation endpoints", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    const api = readFileSync(join(__dirname, "../../lib/patientPortalAdminApi.ts"), "utf8");
+    expect(access).toContain("digitalCare.appAccess.activate");
+    expect(access).toContain("digitalCare.appAccess.regenerate");
+    expect(access).toContain("digitalCare.appAccess.copy");
+    expect(access).toContain("role=\"dialog\"");
+    expect(access).toContain("issuedCode");
+    expect(workspace).toContain("fetchPatientPortalAccess(facilityId, patientId)");
+    expect(api).toContain("/patient-portal-admin/v1/patients/");
+    expect(api).toContain("/activation");
   });
 });

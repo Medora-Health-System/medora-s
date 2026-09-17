@@ -42,6 +42,9 @@ describe("Digital Care runtime registration", () => {
     expect(messaging).not.toContain("RoleCode.FRONT_DESK");
     expect(results).not.toContain("RoleCode.FRONT_DESK");
     expect(workspace).not.toContain("RoleCode.FRONT_DESK");
+    expect(messaging).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
+    expect(results).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
+    expect(workspace).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
   });
 
   it("resolves Digital Care and patient search facility from the authorized request context", () => {
@@ -59,5 +62,14 @@ describe("Digital Care runtime registration", () => {
     expect(patients).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
     expect(messaging).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
     expect(results).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
+  });
+
+  it("reuses the canonical staff activation controller with authorized facility context", () => {
+    const activation = source("src/patient-portal/organizations/patient-portal-staff-activation.controller.ts");
+    expect(activation).toContain("resolveAuthorizedFacilityId");
+    expect(activation).not.toContain('req.headers?.["x-facility-id"]');
+    expect(activation).toContain("RoleCode.PROVIDER, RoleCode.RN");
+    expect(activation).toContain('@RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)');
+    expect(activation).toContain('@RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)');
   });
 });

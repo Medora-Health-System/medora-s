@@ -37,12 +37,44 @@ export type DigitalCareRosterFilter = "ALL" | "RECENT" | "ACTIVE" | "OBSERVATION
 /** Encounter state is authoritative over the visual visit type. A CLOSED encounter is
  * discharged even when an older record did not persist dischargedAt. Conversely an
  * observation encounter is only active observation while it is still OPEN. */
-export function digitalCareIsDischarged(patient: DigitalCareRosterPatient): boolean {
+export function digitalCareIsDischarged(patient: Pick<DigitalCareRosterPatient, "visitStatus" | "dischargedAt">): boolean {
   return Boolean(patient.dischargedAt) || patient.visitStatus === "CLOSED";
 }
 
-export function digitalCareIsActive(patient: DigitalCareRosterPatient): boolean {
+export function digitalCareIsActive(patient: Pick<DigitalCareRosterPatient, "visitStatus" | "dischargedAt">): boolean {
   return patient.visitStatus === "OPEN" && !digitalCareIsDischarged(patient);
+}
+
+export function digitalCareVisitStatusPresentation(patient: Pick<DigitalCareRosterPatient, "visitType" | "visitStatus" | "dischargedAt">): {
+  discharged: boolean;
+  observation: boolean;
+  tone: "green" | "amber" | "blue" | "slate";
+  marker: string;
+  statusKey: "digitalCare.status.discharged" | "digitalCare.status.activeVisit";
+} {
+  const discharged = digitalCareIsDischarged(patient);
+  const observation = patient.visitType === "OBSERVATION";
+  return {
+    discharged,
+    observation,
+    tone: discharged ? "slate" : observation ? "amber" : patient.visitType === "ED" ? "green" : "blue",
+    marker: discharged ? "#94a3b8" : observation ? "#f59e0b" : patient.visitType === "ED" ? "#16a34a" : "#0ea5e9",
+    statusKey: discharged ? "digitalCare.status.discharged" : "digitalCare.status.activeVisit",
+  };
+}
+
+export function countDigitalCareRoster(
+  patients: DigitalCareRosterPatient[],
+  now = Date.now(),
+): Record<DigitalCareRosterFilter, number> {
+  return {
+    ALL: patients.length,
+    RECENT: filterDigitalCareRoster(patients, "RECENT", now).length,
+    ACTIVE: filterDigitalCareRoster(patients, "ACTIVE", now).length,
+    OBSERVATION: filterDigitalCareRoster(patients, "OBSERVATION", now).length,
+    DISCHARGED: filterDigitalCareRoster(patients, "DISCHARGED", now).length,
+    UNREAD: filterDigitalCareRoster(patients, "UNREAD", now).length,
+  };
 }
 
 export function filterDigitalCareRoster(
@@ -68,6 +100,34 @@ export function filterDigitalCareRoster(
   });
 }
 
+export type PatientAppAccessKind = "NOT_ACTIVATED" | "PENDING" | "EXPIRED" | "ACTIVE" | "REVOKED";
+
+export type PatientAppAccessSnapshot = {
+  accessStatus?: string | null;
+  accountStatus?: string | null;
+  verifiedAt?: string | null;
+  revokedAt?: string | null;
+  latestActivation?: { state?: string | null } | null;
+};
+
+/** Canonical PatientPortalAccountStatus. Portal auth only accepts ACTIVE. */
+const USABLE_PORTAL_ACCOUNT_STATUS = "ACTIVE";
+
+export function mapPatientAppAccessStatus(access: PatientAppAccessSnapshot | null | undefined): PatientAppAccessKind {
+  if (!access) return "NOT_ACTIVATED";
+  const link = String(access.accessStatus ?? "NOT_LINKED");
+  const revoked = Boolean(access.revokedAt) || link === "REVOKED";
+  if (revoked) return "REVOKED";
+  if (link === "VERIFIED") {
+    return access.accountStatus === USABLE_PORTAL_ACCOUNT_STATUS ? "ACTIVE" : "NOT_ACTIVATED";
+  }
+  const state = String(access.latestActivation?.state ?? "NONE");
+  if (state === "EXPIRED") return "EXPIRED";
+  if (state === "PENDING") return "PENDING";
+  if (state === "REVOKED") return "REVOKED";
+  return "NOT_ACTIVATED";
+}
+
 export function digitalCareResultKindFilter(result: DigitalCareWorkspaceResult, kind: "ALL" | "LAB" | "IMAGING" | "OTHER"): boolean {
   if (kind === "ALL") return true;
   if (kind === "LAB") return result.kind === "LAB_TEST";
@@ -81,7 +141,7 @@ export function medicationsByBucket(items: DigitalCareWorkspaceMedication[], buc
 
 export function mapDigitalCareUserError(
   error: unknown,
-): "portalInactive" | "patientNotFound" | "messagingUnavailable" | "generic" | "passthrough" {
+): "portalInactive" | "patientNotFound" | "messagingUnavailable" | "notAuthorized" | "activationExpired" | "activationUsed" | "portalUnavailable" | "network" | "generic" | "passthrough" {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const status =
     error && typeof error === "object" && "status" in error ? Number((error as { status?: unknown }).status) : 0;
@@ -93,6 +153,21 @@ export function mapDigitalCareUserError(
   }
   if (status === 404 || /patient not found|patient introuvable|paciente no encontrado/i.test(message)) {
     return "patientNotFound";
+  }
+  if (status === 401 || status === 403 || /not authorized|access denied|forbidden|n.est pas autoris|no autorizad/i.test(message)) {
+    return "notAuthorized";
+  }
+  if (/activation code invalid or expired|activation expired|activation expir/i.test(message)) {
+    return "activationExpired";
+  }
+  if (/already used|déjà utilisé|ya (fue )?usad/i.test(message)) {
+    return "activationUsed";
+  }
+  if (/portal unavailable|portail indisponible|portal no está disponible/i.test(message)) {
+    return "portalUnavailable";
+  }
+  if (status === 0 || /failed to fetch|network|networkerror|econnrefused/i.test(message)) {
+    return "network";
   }
   if (status >= 500 || /internal server error|erreur interne du serveur/i.test(message)) return "generic";
   return message.trim() ? "passthrough" : "generic";

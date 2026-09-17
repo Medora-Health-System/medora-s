@@ -24,11 +24,13 @@ import {
   type DigitalCareWorkspaceResult,
 } from "@/lib/digitalCareStaffWorkspaceApi";
 import {
+  countDigitalCareRoster,
   digitalCareFormatDay,
   digitalCareFormatWhen,
   digitalCareInitials,
   digitalCareResultKindFilter,
   digitalCareSafeLabel,
+  digitalCareVisitStatusPresentation,
   digitalCareVisibleTabs,
   fillCountTemplate,
   filterDigitalCareRoster,
@@ -37,6 +39,13 @@ import {
   type DigitalCareMainTab,
   type DigitalCareRosterFilter,
 } from "./digitalCareWorkspaceView";
+import { DigitalCarePatientAppAccess } from "./DigitalCarePatientAppAccess";
+import {
+  fetchPatientPortalAccess,
+  issuePatientPortalActivation,
+  revokePatientPortalAccess,
+  type PatientPortalAccessStatus,
+} from "@/lib/patientPortalAdminApi";
 import { digitalCareResultPrintHtml, digitalCareWorkspacePrintHtml, openDigitalCarePrintDocument } from "./digitalCareWorkspacePrint";
 import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
 
@@ -63,6 +72,11 @@ function digitalCareCaughtError(error: unknown, t: (key: string) => string): str
   if (kind === "portalInactive") return t("digitalCare.messages.needPortal");
   if (kind === "patientNotFound") return t("digitalCare.error.patientNotFound");
   if (kind === "messagingUnavailable") return t("digitalCare.messages.unavailable");
+  if (kind === "notAuthorized") return t("digitalCare.error.notAuthorized");
+  if (kind === "activationExpired") return t("digitalCare.error.activationExpired");
+  if (kind === "activationUsed") return t("digitalCare.error.activationUsed");
+  if (kind === "portalUnavailable") return t("digitalCare.error.portalUnavailable");
+  if (kind === "network") return t("digitalCare.error.network");
   if (kind === "generic") return t("digitalCare.error");
   return error instanceof Error && error.message.trim() ? error.message : t("digitalCare.error");
 }
@@ -84,6 +98,10 @@ export function DigitalCareProviderWorkspace() {
   const { t } = useI18n();
   const { facilityId, roles, ready } = useFacilityAndRoles();
   const canUse = roles.includes("ADMIN") || roles.includes("PROVIDER") || roles.includes("RN");
+  // Digital Care itself is ADMIN/PROVIDER/RN. MEDORA_SUPER_ADMIN is not a workspace actor here;
+  // platform-principal activation stays on the existing staff activation API / admin portal.
+  const canActivatePortal = roles.includes("ADMIN");
+  const canRevokePortal = canActivatePortal;
   const [tab, setTab] = useState<DigitalCareMainTab>("results");
   const [rosterFilter, setRosterFilter] = useState<DigitalCareRosterFilter>("ALL");
   const [rosterQuery, setRosterQuery] = useState("");
@@ -104,6 +122,10 @@ export function DigitalCareProviderWorkspace() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [messageQuery, setMessageQuery] = useState("");
   const [configuration, setConfiguration] = useState<DigitalCareWorkspaceBundle["configuration"]>(null);
+  const [portalAccess, setPortalAccess] = useState<PatientPortalAccessStatus | null>(null);
+  const [issuedCode, setIssuedCode] = useState<string | null>(null);
+  const [issuedExpiresAt, setIssuedExpiresAt] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const loadRoster = useCallback(
     async (offset = 0, append = false) => {
@@ -144,6 +166,13 @@ export function DigitalCareProviderWorkspace() {
         const openThread = bundle.threads.find((row) => row.status === "OPEN") ?? bundle.threads[0];
         if (openThread) setThread(await fetchDigitalCareStaffThread(facilityId, openThread.id));
         else setThread(null);
+        try {
+          setPortalAccess(await fetchPatientPortalAccess(facilityId, patientId));
+        } catch (accessError) {
+          setPortalAccess(null);
+          const kind = mapDigitalCareUserError(accessError);
+          if (kind !== "notAuthorized") setError(digitalCareCaughtError(accessError, t));
+        }
       } catch (e) {
         setError(digitalCareCaughtError(e, t));
       } finally {
@@ -171,7 +200,16 @@ export function DigitalCareProviderWorkspace() {
   }, [facilityId, loadRoster, loadWorkspace, selectedId]);
 
   useEffect(() => {
-    if (selectedId) void loadWorkspace(selectedId);
+    if (selectedId) {
+      setIssuedCode(null);
+      setIssuedExpiresAt(null);
+      setCopiedCode(false);
+      void loadWorkspace(selectedId);
+    } else {
+      setPortalAccess(null);
+      setIssuedCode(null);
+      setIssuedExpiresAt(null);
+    }
   }, [selectedId, loadWorkspace]);
 
   useEffect(() => {
@@ -195,6 +233,7 @@ export function DigitalCareProviderWorkspace() {
     () => filterDigitalCareRoster(patients, rosterFilter),
     [patients, rosterFilter],
   );
+  const rosterCounts = useMemo(() => countDigitalCareRoster(patients), [patients]);
 
   const results = useMemo(() => {
     const list = (workspace?.results ?? []).filter((row) => digitalCareResultKindFilter(row, resultKind));
@@ -261,6 +300,46 @@ export function DigitalCareProviderWorkspace() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function issuePortalActivation() {
+    if (!facilityId || !selectedId || !canActivatePortal) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const issued = await issuePatientPortalActivation(facilityId, selectedId);
+      setIssuedCode(issued.activationCode);
+      setIssuedExpiresAt(issued.expiresAt);
+      setCopiedCode(false);
+      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
+      return issued;
+    } catch (e) {
+      setError(digitalCareCaughtError(e, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revokePortalAccessAction() {
+    if (!facilityId || !selectedId || !canRevokePortal) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await revokePatientPortalAccess(facilityId, selectedId);
+      setIssuedCode(null);
+      setIssuedExpiresAt(null);
+      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
+    } catch (e) {
+      setError(digitalCareCaughtError(e, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyActivationCode() {
+    if (!issuedCode) return;
+    await navigator.clipboard.writeText(issuedCode);
+    setCopiedCode(true);
   }
 
   function openChart() {
@@ -427,6 +506,9 @@ export function DigitalCareProviderWorkspace() {
                 }}
               >
                 {t(`digitalCare.patients.${item === "ALL" ? "all" : item.toLowerCase()}`)}
+                {item === "ACTIVE" || item === "OBSERVATION" || item === "DISCHARGED" || item === "ALL"
+                  ? ` (${rosterCounts[item]})`
+                  : ""}
               </button>
             ))}
           </div>
@@ -445,6 +527,7 @@ export function DigitalCareProviderWorkspace() {
             ) : (
               filteredPatients.map((patient) => {
                 const selected = patient.id === selectedId;
+                const visit = digitalCareVisitStatusPresentation(patient);
                 return (
                   <button
                     key={patient.id}
@@ -473,9 +556,9 @@ export function DigitalCareProviderWorkspace() {
                       <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>
                         {t("digitalCare.header.mrn")} {digitalCareSafeLabel(patient.mrn)}
                       </span>
-                      <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 11, color: "#0f766e", fontWeight: 700 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 99, background: patient.dischargedAt ? "#22c55e" : patient.visitType === "ED" ? "#14b8a6" : "#f59e0b" }} />
-                        {patient.visitType} {patient.dischargedAt ? t("digitalCare.status.discharged") : t("digitalCare.status.activeVisit")}
+                      <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 11, color: visit.discharged ? "#475569" : "#0f766e", fontWeight: 700 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 99, background: visit.marker }} />
+                        {patient.visitType} {t(visit.statusKey)}
                         <span style={{ color: "#94a3b8", fontWeight: 500 }}>{digitalCareFormatDay(patient.arrivedAt)}</span>
                       </span>
                     </span>
@@ -508,7 +591,10 @@ export function DigitalCareProviderWorkspace() {
                     <div>
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                         <h2 style={{ margin: 0, fontSize: 22 }}>{digitalCareSafeLabel(identity.displayName)}</h2>
-                        <Chip label={identity.dischargedAt ? t("digitalCare.status.discharged") : t("digitalCare.status.activeVisit")} tone={identity.dischargedAt ? "green" : "blue"} />
+                        <Chip
+                          label={`${identity.visitType} ${t(digitalCareVisitStatusPresentation(identity).statusKey)}`}
+                          tone={digitalCareVisitStatusPresentation(identity).tone}
+                        />
                       </div>
                       <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
                         {t("digitalCare.header.mrn")} {digitalCareSafeLabel(identity.mrn)} · {t("digitalCare.header.dob")} {digitalCareFormatDay(identity.dob)}
@@ -606,16 +692,26 @@ export function DigitalCareProviderWorkspace() {
                 <Row label={t("digitalCare.side.primaryProvider")} value={digitalCareSafeLabel(identity.attending)} />
               </dl>
             ) : <p style={{ color: "#64748b" }}>{t("digitalCare.noPatient")}</p>}
-            {identity?.portalActive ? (
-              <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#ecfdf5", color: "#166534", fontSize: 13 }}>
-                {t("digitalCare.header.portalOn")}
-              </div>
-            ) : identity ? (
-              <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#fff7ed", color: "#9a3412", fontSize: 13 }}>
-                {t("digitalCare.header.portalOff")}
-              </div>
-            ) : null}
           </div>
+          {identity ? (
+            <DigitalCarePatientAppAccess
+              t={t}
+              patientName={digitalCareSafeLabel(identity.displayName)}
+              access={portalAccess}
+              canActivate={canActivatePortal}
+              canRevoke={canRevokePortal}
+              busy={busy}
+              issuedCode={issuedCode}
+              issuedExpiresAt={issuedExpiresAt}
+              copied={copiedCode}
+              onActivate={issuePortalActivation}
+              onRevoke={revokePortalAccessAction}
+              onCopy={copyActivationCode}
+              onRefresh={async () => {
+                if (selectedId) await loadWorkspace(selectedId);
+              }}
+            />
+          ) : null}
           <div style={{ ...card, padding: 16, background: "#f0fdf4" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <strong>{t("digitalCare.side.medications")}</strong>
@@ -629,7 +725,7 @@ export function DigitalCareProviderWorkspace() {
           <div style={{ ...card, padding: 16 }}>
             <strong>{t("digitalCare.side.discharge")}</strong>
             <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
-              <div>{t("digitalCare.side.dischargeReady")}: {identity?.dischargedAt ? t("digitalCare.status.discharged") : t("digitalCare.discharge.ready")}</div>
+              <div>{t("digitalCare.side.dischargeReady")}: {identity && digitalCareVisitStatusPresentation(identity).discharged ? t("digitalCare.status.discharged") : t("digitalCare.discharge.ready")}</div>
               <div>{t("digitalCare.side.outstanding")}: {outstanding}</div>
               <div>{t("digitalCare.side.unread")}: {identity?.unreadCount ?? 0}</div>
               <div>{t("digitalCare.side.recon")}: {workspace?.medications.reconComplete ? t("digitalCare.meds.reconciled") : t("digitalCare.results.pending")}</div>
