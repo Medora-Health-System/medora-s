@@ -1,4 +1,5 @@
 import { attachmentsFromResultDataAll } from "@/lib/clinicalResultNormalize";
+import { digitalCarePrintLabels } from "@/lib/digitalCareLocale";
 import type { DigitalCareResultDetail, DigitalCareWorkspaceBundle } from "@/lib/digitalCareStaffWorkspaceApi";
 import { digitalCareFormatWhen, digitalCareSafeLabel } from "./digitalCareWorkspaceView";
 
@@ -31,6 +32,7 @@ export function digitalCareResultPrintHtml(
   mrn: string,
   result: DigitalCareResultDetail,
 ): string {
+  const labels = digitalCarePrintLabels();
   const rows = (result.rows ?? [])
     .map(
       (row) =>
@@ -38,12 +40,12 @@ export function digitalCareResultPrintHtml(
     )
     .join("");
   const attachments = attachmentsFromResultDataAll(result.resultData)
-    .map((row) => escapeHtml(row.fileName || row.mimeType || "attachment"))
+    .map((row) => escapeHtml(row.fileName || row.mimeType || labels.attachment))
     .join(", ");
   return `<h1>${escapeHtml(digitalCareSafeLabel(result.title))}</h1>
     <p class="muted">${escapeHtml(identityName)} · MRN ${escapeHtml(mrn)} · ${escapeHtml(digitalCareFormatWhen(result.verifiedAt))}</p>
-    ${rows ? `<table><thead><tr><th>Test</th><th>Result</th><th>Reference</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table>` : `<pre>${escapeHtml(result.resultText ?? "")}</pre>`}
-    ${result.imaging?.impression ? `<p><strong>Impression</strong><br>${escapeHtml(result.imaging.impression)}</p>` : ""}
+    ${rows ? `<table><thead><tr><th>${labels.test}</th><th>${labels.result}</th><th>${labels.reference}</th><th>${labels.flag}</th></tr></thead><tbody>${rows}</tbody></table>` : `<pre>${escapeHtml(result.resultText ?? "")}</pre>`}
+    ${result.imaging?.impression ? `<p><strong>${labels.impression}</strong><br>${escapeHtml(result.imaging.impression)}</p>` : ""}
     ${attachments ? `<p class="muted">${attachments}</p>` : ""}
     ${result.verifiedByName ? `<p class="muted">${escapeHtml(result.verifiedByName)}</p>` : ""}`;
 }
