@@ -1,6 +1,10 @@
 import { apiFetch } from "@/lib/apiClient";
 import type { FacilityRuntimeConfiguration } from "@medora/shared";
 import {
+  localizeDigitalCareResultCategory,
+  localizeDigitalCareResultTitle,
+} from "@/lib/digitalCareLocale";
+import {
   closeDigitalCareStaffThread,
   fetchDigitalCareStaffThread,
   fetchDigitalCareStaffThreads,
@@ -134,6 +138,18 @@ export type DigitalCareResultDetail = DigitalCareWorkspaceResult & {
   resultData?: unknown;
 };
 
+function localizeResult<T extends DigitalCareWorkspaceResult>(result: T): T {
+  return {
+    ...result,
+    title: localizeDigitalCareResultTitle(result.title, result.kind),
+    category: localizeDigitalCareResultCategory(result.category, result.kind),
+  };
+}
+
+function localizeWorkspace(bundle: DigitalCareWorkspaceBundle): DigitalCareWorkspaceBundle {
+  return { ...bundle, results: bundle.results.map(localizeResult) };
+}
+
 export async function fetchDigitalCareRoster(
   facilityId: string,
   query?: { q?: string; limit?: number; offset?: number },
@@ -154,9 +170,10 @@ export async function fetchDigitalCareRoster(
 }
 
 export async function fetchDigitalCareWorkspace(facilityId: string, patientId: string) {
-  return apiFetch(`/patient-portal/v1/staff/digital-care/patients/${encodeURIComponent(patientId)}`, {
+  const bundle = await (apiFetch(`/patient-portal/v1/staff/digital-care/patients/${encodeURIComponent(patientId)}`, {
     facilityId,
-  }) as Promise<DigitalCareWorkspaceBundle>;
+  }) as Promise<DigitalCareWorkspaceBundle>);
+  return localizeWorkspace(bundle);
 }
 
 export async function fetchDigitalCareResultDetail(
@@ -164,10 +181,11 @@ export async function fetchDigitalCareResultDetail(
   orderItemId: string,
   purpose: "VIEW" | "DOWNLOAD" | "PRINT" = "VIEW",
 ) {
-  return apiFetch(
+  const result = await (apiFetch(
     `/patient-portal/v1/staff/results/${encodeURIComponent(orderItemId)}?purpose=${purpose}`,
     { facilityId },
-  ) as Promise<DigitalCareResultDetail>;
+  ) as Promise<DigitalCareResultDetail>);
+  return localizeResult(result);
 }
 
 export async function createDigitalCareStaffThread(
