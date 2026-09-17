@@ -6,6 +6,7 @@ import {
   resolvePlatformAuthority,
   resolvePlatformPrincipalAccess,
 } from "../../auth/platform-principal";
+import { resolveRequestedFacilityId } from "../http/request-facility";
 import {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   MSPP_ROLES_KEY,
@@ -45,13 +46,10 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.userId;
-    const rawFacilityId = request.user?.facilityId || request.headers["x-facility-id"];
-    const facilityId =
-      typeof rawFacilityId === "string"
-        ? rawFacilityId
-        : Array.isArray(rawFacilityId)
-          ? rawFacilityId[0]
-          : "";
+    const facilityId = resolveRequestedFacilityId({
+      userFacilityId: request.user?.facilityId,
+      headerFacilityId: request.headers?.["x-facility-id"],
+    });
 
     if (!userId) {
       throw new ForbiddenException("Authentication required");

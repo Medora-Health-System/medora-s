@@ -49,9 +49,15 @@ describe("Digital Care runtime registration", () => {
     const patients = source("src/patients/patients.controller.ts");
     const messaging = source("src/patient-portal/messages/patient-messages-staff.controller.ts");
     const results = source("src/patient-portal/records/patient-diagnostic-result-release.controller.ts");
+    const rolesGuard = source("src/common/guards/roles.guard.ts");
+    expect(rolesGuard).toContain("resolveRequestedFacilityId");
     expect(workspace).toContain("resolveAuthorizedFacilityId");
     expect(patients).toContain("resolveAuthorizedFacilityId");
     expect(messaging).toContain("resolveAuthorizedFacilityId");
     expect(results).toContain("resolveAuthorizedFacilityId");
+    expect(workspace).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
+    expect(patients).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
+    expect(messaging).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
+    expect(results).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
   });
 });
