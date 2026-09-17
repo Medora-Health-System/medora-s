@@ -98,7 +98,12 @@ export class BackupReadinessService {
     checks.push({
       key: "backup_policy",
       label: "backup_policy",
-      status: backupPolicy === "true" ? "pass" : backupPolicy === "false" ? "fail" : "warn",
+      status:
+        backupPolicy === "true"
+          ? "pass"
+          : backupPolicy === "false" || prod
+            ? "fail"
+            : "warn",
       detail:
         backupPolicy === "true"
           ? null
@@ -111,7 +116,12 @@ export class BackupReadinessService {
     checks.push({
       key: "data_retention",
       label: "data_retention",
-      status: retention === "true" ? "pass" : retention === "false" ? "fail" : "warn",
+      status:
+        retention === "true"
+          ? "pass"
+          : retention === "false" || prod
+            ? "fail"
+            : "warn",
       detail:
         retention === "true"
           ? null
@@ -124,7 +134,7 @@ export class BackupReadinessService {
     let drillStatus: BackupReadinessCheckStatus = "warn";
     let drillDetail: string | null = "restore_drill_unset";
     if (drill.rawPresent && !drill.ok) {
-      drillStatus = "warn";
+      drillStatus = prod ? "fail" : "warn";
       drillDetail = "restore_drill_invalid";
     } else if (drill.ok && drill.date) {
       const days = daysSinceDrill(drill.date);
@@ -132,14 +142,14 @@ export class BackupReadinessService {
         drillStatus = "pass";
         drillDetail = null;
       } else if (days != null && days <= 365) {
-        drillStatus = "warn";
+        drillStatus = prod ? "fail" : "warn";
         drillDetail = "restore_drill_stale";
       } else {
-        drillStatus = "warn";
+        drillStatus = prod ? "fail" : "warn";
         drillDetail = "restore_drill_very_stale";
       }
     } else if (!drill.rawPresent) {
-      drillStatus = "warn";
+      drillStatus = prod ? "fail" : "warn";
       drillDetail = "restore_drill_unset";
     }
     checks.push({
@@ -154,7 +164,12 @@ export class BackupReadinessService {
     checks.push({
       key: "alert_webhook",
       label: "alert_webhook",
-      status: !alertsEnabled ? "warn" : alertHook ? "pass" : "warn",
+      status:
+        alertsEnabled && alertHook
+          ? "pass"
+          : prod
+            ? "fail"
+            : "warn",
       detail: !alertsEnabled ? "alerts_disabled" : !alertHook ? "alert_webhook_missing" : null,
     });
 
