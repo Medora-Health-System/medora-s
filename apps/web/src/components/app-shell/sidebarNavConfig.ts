@@ -42,7 +42,6 @@ const SIDEBAR_NAV_DEFS:SidebarNavItemDef[]=[
 {href:"/app/trackboard",labelKey:"nav.trackboard",roles:["ADMIN","PROVIDER","RN"],group:"accueil",accent:"slate",navAreas:["DASHBOARD"]},
 {href:"/app/digital-care",labelKey:"nav.digitalCare",roles:["ADMIN","RN","PROVIDER"],group:"soins_dossiers",accent:"teal",navAreas:["EMERGENCY","HOSPITAL","CLINIC_CARE"]},
 {href:"/app/patients",labelKey:"nav.patients",roles:["RN","PROVIDER","ADMIN","FRONT_DESK"],group:"soins_dossiers",accent:"slate",navAreas:["DASHBOARD","EMERGENCY","HOSPITAL","CLINIC_CARE"]},
-{href:"/app/encounters",labelKey:"nav.encounters",roles:["RN","PROVIDER","ADMIN"],group:"soins_dossiers",accent:"slate",navAreas:["EMERGENCY","HOSPITAL","CLINIC_CARE"]},
 {href:"/app/follow-ups",labelKey:"nav.followUps",roles:["RN","PROVIDER","ADMIN","FRONT_DESK"],group:"soins_dossiers",accent:"slate",navAreas:["EMERGENCY","HOSPITAL","CLINIC_CARE"]},
 {href:"/app/rad-worklist",labelKey:"nav.radWorklist",roles:["RADIOLOGY","ADMIN"],group:"examens",accent:"amber",navAreas:["RADIOLOGY"]},
 {href:"/app/lab-worklist",labelKey:"nav.labWorklist",roles:["LAB","RN","PROVIDER","ADMIN"],group:"examens",accent:"purple",navAreas:["LABORATORY"]},
