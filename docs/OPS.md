@@ -8,12 +8,26 @@
 |------|--------|
 | **API `start` script** (`@medora/api`) | `node dist/main.js` only |
 | **Apply migrations (staging/production)** | From repo root: `pnpm --filter @medora/api migrate:deploy` (runs `prisma migrate deploy` in `apps/api`) |
-| **Order of operations** | Run **`migrate:deploy` successfully first** (or in a dedicated release job), then start/restart the API process. Do not rely on the Node process to migrate on boot. |
-| **Health check** | `GET /health` — use for load balancer readiness after the process is up; it does not verify migration state. |
+| **Railway API pre-deploy** | `apps/api/railway.json` runs `pnpm --filter @medora/api migrate:deploy` before the new deployment starts. |
+| **Order of operations** | Run **`migrate:deploy` successfully first** in the release/pre-deploy stage, then start/restart the API process. Do not rely on the Node process to migrate on boot. |
+| **Health check** | `GET /health/ready` for Railway readiness after the process is up. |
 
-**Regression guard:** If a host (PaaS, Docker, systemd) is configured with a custom start command, it must **not** prepend `prisma migrate deploy` to `node dist/main.js` unless you intentionally accept coupled startup (not recommended).
+### Railway one-time configuration
 
-CI reference: `.github/workflows/verify.yml` runs `prisma migrate deploy` as its **own step** before API e2e tests — same separation pattern.
+The API Railway service must use `apps/api/railway.json` as its config-as-code file (or use `apps/api` as the service root so Railway discovers that file). This is the one-time deployment setting that makes the pre-deploy migration gate effective. Do not configure the web service to use this API config.
+
+After a deployment that contains migrations, verify from a Railway shell:
+
+```bash
+cd /app/apps/api
+pnpm prisma migrate status
+```
+
+Expected result: `Database schema is up to date!` / no pending migrations. If Railway reports pending migrations, stop the release investigation there; do not treat the API deployment as migration-current until the pre-deploy configuration path is corrected.
+
+**Regression guard:** `apps/api/scripts/validate-railway-deploy-config.cjs` and the Verify workflow fail if the Railway pre-deploy command disappears, `migrate:deploy` stops mapping to `prisma migrate deploy`, the runtime start script becomes migration-coupled, or the readiness path drifts.
+
+CI reference: `.github/workflows/verify.yml` validates the Railway deployment contract and also runs `prisma migrate deploy` as its own step before API tests.
 
 ## Facility creation (platform owner)
 
