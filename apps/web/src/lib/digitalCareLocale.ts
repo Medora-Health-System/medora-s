@@ -41,6 +41,12 @@ const RESULT_CATEGORIES: Record<DigitalCareUiLanguage, Record<"LAB_TEST" | "IMAG
   es: { LAB_TEST: "Laboratorio", IMAGING_STUDY: "Imagen", OTHER: "Otro" },
 };
 
+const PRINT_LABELS = {
+  en: { test: "Test", result: "Result", reference: "Reference", flag: "Flag", impression: "Impression", attachment: "attachment" },
+  fr: { test: "Analyse", result: "Résultat", reference: "Référence", flag: "Indicateur", impression: "Impression", attachment: "pièce jointe" },
+  es: { test: "Prueba", result: "Resultado", reference: "Referencia", flag: "Marca", impression: "Impresión", attachment: "archivo adjunto" },
+} satisfies Record<DigitalCareUiLanguage, Record<string, string>>;
+
 /**
  * API result titles are clinical data when a catalog/manual label exists, but older
  * records may carry an English generic fallback. Only those known generic fallbacks
@@ -72,4 +78,8 @@ export function localizeDigitalCareResultCategory(
   if (!text) return undefined;
   if (/^(other|otro|autre)$/i.test(text)) return RESULT_CATEGORIES[locale].OTHER;
   return text;
+}
+
+export function digitalCarePrintLabels(language: string | null | undefined = currentDigitalCareUiLanguage()) {
+  return PRINT_LABELS[normalizeLanguage(language)];
 }
