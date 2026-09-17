@@ -136,5 +136,28 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("fetchDigitalCareWorkspace(facilityId, patientId)");
     expect(workspace).toContain("releaseDigitalCareResult");
     expect(workspace).toContain("createDigitalCareStaffThread");
+    expect(workspace).toContain("DigitalCarePatientAppAccess");
+    expect(workspace).toContain("issuePatientPortalActivation");
+    expect(workspace).toContain("revokePatientPortalAccess");
+    expect(workspace).toContain("canActivatePortal");
+    expect(workspace).toContain("roles.includes(\"ADMIN\") || roles.includes(\"MEDORA_SUPER_ADMIN\")");
+    expect(workspace).toContain("digitalCareVisitStatusPresentation");
+    expect(workspace).not.toContain("localStorage");
+    expect(workspace).not.toContain("sessionStorage");
+    expect(workspace).not.toContain("console.log");
+  });
+
+  it("keeps activation UI on the existing staff activation endpoints", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    const api = readFileSync(join(__dirname, "../../lib/patientPortalAdminApi.ts"), "utf8");
+    expect(access).toContain("digitalCare.appAccess.activate");
+    expect(access).toContain("digitalCare.appAccess.regenerate");
+    expect(access).toContain("digitalCare.appAccess.copy");
+    expect(access).toContain("role=\"dialog\"");
+    expect(access).toContain("issuedCode");
+    expect(workspace).toContain("fetchPatientPortalAccess(facilityId, patientId)");
+    expect(api).toContain("/patient-portal-admin/v1/patients/");
+    expect(api).toContain("/activation");
   });
 });

@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  countDigitalCareRoster,
   digitalCareInitials,
   digitalCareIsActive,
   digitalCareIsDischarged,
   digitalCareSafeLabel,
+  digitalCareVisitStatusPresentation,
   digitalCareVisibleTabs,
   filterDigitalCareRoster,
   fillCountTemplate,
   mapDigitalCareUserError,
+  mapPatientAppAccessStatus,
 } from "./digitalCareWorkspaceView";
 import type { DigitalCareRosterPatient } from "@/lib/digitalCareStaffWorkspaceApi";
 
@@ -49,14 +52,44 @@ describe("Digital Care workspace view helpers", () => {
     ];
     expect(filterDigitalCareRoster(rows, "UNREAD")).toHaveLength(1);
     expect(filterDigitalCareRoster(rows, "OBSERVATION").map((row) => row.displayName)).toEqual(["Obs"]);
+    expect(filterDigitalCareRoster(rows, "DISCHARGED")[0]?.displayName).toBe("Out");
+    expect(filterDigitalCareRoster(rows, "ACTIVE").every((row) => row.displayName !== "Out")).toBe(true);
     expect(filterDigitalCareRoster(rows, "ACTIVE").map((row) => row.displayName)).not.toContain("Closed Obs");
     expect(filterDigitalCareRoster(rows, "DISCHARGED").map((row) => row.displayName)).toEqual(["Out", "Closed Obs"]);
+    expect(filterDigitalCareRoster(rows, "ALL")).toHaveLength(4);
   });
 
-  it("treats CLOSED as discharged even when legacy dischargedAt is missing", () => {
-    const legacyClosed = patient({ visitStatus: "CLOSED", dischargedAt: null });
-    expect(digitalCareIsDischarged(legacyClosed)).toBe(true);
-    expect(digitalCareIsActive(legacyClosed)).toBe(false);
+  it("treats CLOSED encounters as discharged even without dischargedAt", () => {
+    const closed = patient({ visitStatus: "CLOSED", dischargedAt: null, displayName: "Closed" });
+    expect(digitalCareIsDischarged(closed)).toBe(true);
+    expect(digitalCareIsActive(closed)).toBe(false);
+    expect(filterDigitalCareRoster([closed], "ACTIVE")).toHaveLength(0);
+    expect(filterDigitalCareRoster([closed], "DISCHARGED")[0]?.displayName).toBe("Closed");
+    expect(digitalCareVisitStatusPresentation(closed)).toEqual(
+      expect.objectContaining({ discharged: true, statusKey: "digitalCare.status.discharged", marker: "#94a3b8" }),
+    );
+    expect(digitalCareVisitStatusPresentation(closed).statusKey).not.toBe("digitalCare.status.activeVisit");
+  });
+
+  it("keeps observation visits labeled observation while still marking discharge", () => {
+    const activeObs = patient({ visitType: "OBSERVATION", visitStatus: "OPEN", dischargedAt: null });
+    const dischargedObs = patient({ visitType: "OBSERVATION", visitStatus: "CLOSED", dischargedAt: "2026-09-14T00:00:00.000Z" });
+    expect(filterDigitalCareRoster([activeObs, dischargedObs], "OBSERVATION")).toEqual([activeObs]);
+    expect(digitalCareVisitStatusPresentation(activeObs)).toEqual(
+      expect.objectContaining({ observation: true, discharged: false, statusKey: "digitalCare.status.activeVisit" }),
+    );
+    expect(digitalCareVisitStatusPresentation(dischargedObs).statusKey).toBe("digitalCare.status.discharged");
+  });
+
+  it("counts loaded roster filters without extra queries", () => {
+    const rows = [
+      patient({ visitStatus: "OPEN", dischargedAt: null }),
+      patient({ id: "obs", visitType: "OBSERVATION", visitStatus: "OPEN", dischargedAt: null }),
+      patient({ id: "out", visitStatus: "CLOSED", dischargedAt: "2026-09-14T00:00:00.000Z" }),
+    ];
+    expect(countDigitalCareRoster(rows)).toEqual(
+      expect.objectContaining({ ALL: 3, ACTIVE: 2, OBSERVATION: 1, DISCHARGED: 1 }),
+    );
   });
 
   it("fills patient count copy without exposing identifiers", () => {
@@ -74,6 +107,20 @@ describe("Digital Care workspace view helpers", () => {
     expect(mapDigitalCareUserError(Object.assign(new Error("Patient not found"), { status: 404 }))).toBe("patientNotFound");
     expect(mapDigitalCareUserError(Object.assign(new Error("Internal server error."), { status: 500 }))).toBe("generic");
     expect(mapDigitalCareUserError(new Error("Secure messaging storage is unavailable."))).toBe("messagingUnavailable");
+    expect(mapDigitalCareUserError(Object.assign(new Error("Access denied"), { status: 403 }))).toBe("notAuthorized");
+    expect(mapDigitalCareUserError(new Error("Activation code invalid or expired"))).toBe("activationExpired");
+    expect(mapDigitalCareUserError(new Error("failed to fetch"))).toBe("network");
+  });
+
+  it("maps authoritative portal access fields into Patient App Access states", () => {
+    expect(mapPatientAppAccessStatus(null)).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: null })).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "PENDING" } })).toBe("PENDING");
+    expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "EXPIRED" } })).toBe("EXPIRED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", revokedAt: null, latestActivation: { state: "USED" } })).toBe("ACTIVE");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", latestActivation: { state: "PENDING" } })).toBe("ACTIVE");
+    expect(mapPatientAppAccessStatus({ accessStatus: "REVOKED", revokedAt: "2026-09-14T00:00:00.000Z" })).toBe("REVOKED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "USED" } })).toBe("NOT_ACTIVATED");
   });
 
   it("hides Digital Care tabs that the facility configuration disabled", () => {

@@ -15,6 +15,7 @@ import {
   RequireRoles,
   RolesGuard,
 } from "../../common/guards/roles.guard";
+import { resolveAuthorizedFacilityId } from "../../common/http/request-facility";
 import { PatientPortalActivationService } from "./patient-portal-activation.service";
 
 @Controller("patient-portal-admin/v1")
@@ -23,9 +24,9 @@ export class PatientPortalStaffActivationController {
   constructor(private readonly activation: PatientPortalActivationService) {}
 
   private staffContext(req: any) {
-    const facilityId = req.facilityId || req.user?.facilityId || req.headers?.["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     const userId = req.user?.userId;
-    if (!facilityId || typeof facilityId !== "string") {
+    if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
     if (!userId || typeof userId !== "string") {
@@ -35,7 +36,7 @@ export class PatientPortalStaffActivationController {
   }
 
   @Get("patients/:patientId/access")
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN, RoleCode.PROVIDER, RoleCode.RN)
   @AllowPlatformPrincipalWithFacilityContext()
   async access(@Param("patientId") patientId: string, @Req() req: any) {
     const { facilityId } = this.staffContext(req);
