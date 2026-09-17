@@ -14,5 +14,7 @@ import { FacilityLifecyclePreflightService } from "./facility-lifecycle-prefligh
 import { FacilityLifecyclePreflightController } from "./facility-lifecycle-preflight.controller";
 import { PlatformStaffAccountService } from "./platform-staff-account.service";
 import { PlatformStaffAccountController } from "./platform-staff-account.controller";
-@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController, FacilityLifecyclePreflightController, PlatformStaffAccountController], providers: [PlatformStaffService, PrivilegedActionService, GovernanceBootstrapService, FacilityLifecyclePreflightService, PlatformStaffAccountService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
+import { CorporateWorkforceService } from "./corporate-workforce.service";
+import { CorporateWorkforceController } from "./corporate-workforce.controller";
+@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController, FacilityLifecyclePreflightController, PlatformStaffAccountController, CorporateWorkforceController], providers: [PlatformStaffService, PrivilegedActionService, GovernanceBootstrapService, FacilityLifecyclePreflightService, PlatformStaffAccountService, CorporateWorkforceService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
 export class PlatformStaffModule {}
