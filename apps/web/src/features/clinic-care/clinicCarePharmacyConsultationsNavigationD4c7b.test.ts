@@ -117,7 +117,7 @@ describe("MEDUI.D4C.7B clinic pharmacy + consultations navigation", () => {
     );
   });
 
-  it("D — Consultations nav opens ambulatory projection; role-aware workspace; no ED auto-open", () => {
+  it("D — Clinic consultations use the ambulatory projection while the retired generic menu stays absent", () => {
     const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
       roleCodes: ["PROVIDER"],
       profile: {
@@ -126,7 +126,6 @@ describe("MEDUI.D4C.7B clinic pharmacy + consultations navigation", () => {
         facilityServiceLines: null,
       },
     });
-    expect(filtered.some((i) => i.href === "/app/clinic-care/encounters")).toBe(true);
     expect(filtered.some((i) => i.href === "/app/encounters")).toBe(false);
     expect(
       resolveConsultationsListHref({ clinicCareEnabled: true, edEnabled: false })
@@ -147,8 +146,8 @@ describe("MEDUI.D4C.7B clinic pharmacy + consultations navigation", () => {
     expect(providerOpen).not.toContain("workspace=ed");
 
     const gate = readApp("encounters/page.tsx");
-    expect(gate).toContain("resolveConsultationsListHrefFromCapabilities");
-    expect(gate).toContain("EncountersLegacyOpenList");
+    expect(gate).toContain('redirect("/app")');
+    expect(gate).not.toContain("EncountersLegacyOpenList");
   });
 
   it("E — consultation projection empty vs error keys + ambulatory list source", () => {
@@ -167,18 +166,10 @@ describe("MEDUI.D4C.7B clinic pharmacy + consultations navigation", () => {
     expect(existsSync(join(featureDir, "ClinicEncounterList.tsx"))).toBe(false);
   });
 
-  it("F — legacy generic encounters retained for ED-only; clinic uses typed resolver", () => {
-    expect(existsSync(join(appRoot, "encounters/EncountersLegacyOpenList.tsx"))).toBe(true);
-    const edNav = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
-      roleCodes: ["PROVIDER"],
-      profile: {
-        roleCodes: ["PROVIDER"],
-        facilityType: "FREESTANDING_ER",
-        facilityServiceLines: ["EMERGENCY"],
-      },
-    });
-    // Freestanding ER may strip some items; generic encounters href remains unresolved to clinic-care
-    // when clinicCare is off:
+  it("F — legacy generic encounters board is retired while canonical encounter detail remains", () => {
+    expect(existsSync(join(appRoot, "encounters/EncountersLegacyOpenList.tsx"))).toBe(false);
+    expect(existsSync(join(appRoot, "encounters/[id]/page.tsx"))).toBe(true);
+    expect(existsSync(join(appRoot, "encounters/[id]/layout.tsx"))).toBe(true);
     expect(
       resolveConsultationsListHref({
         clinicCareEnabled: false,
@@ -186,7 +177,7 @@ describe("MEDUI.D4C.7B clinic pharmacy + consultations navigation", () => {
         edEnabled: true,
       })
     ).toBe("/app/encounters");
-    void edNav;
+    expect(readApp("encounters/page.tsx")).toContain('redirect("/app")');
     expect(readWeb("features/navigation/navigationVisibility.ts")).toContain(
       "applyClinicCareAwareSidebarHrefs"
     );
