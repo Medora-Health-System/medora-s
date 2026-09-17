@@ -20,6 +20,7 @@ import {
   PATIENT_EMAIL_REQUIRED_MESSAGE,
   PATIENT_PORTAL_ACTIVATION_CHANNEL,
   buildPatientInvitationUrl,
+  invitationEmailsMatch,
   maskPatientEmail,
   type PatientPortalActivationChannel,
 } from "./patient-portal-activation.constants";
@@ -224,6 +225,13 @@ export class PatientPortalActivationService {
     const activation = await this.activations.findUsableActivation(activationId);
     if (!activation || !(await argon2.verify(activation.secretHash, secret))) {
       throw new ForbiddenException("Activation code invalid or expired");
+    }
+
+    if (activation.channel === PATIENT_PORTAL_ACTIVATION_CHANNEL.EMAIL_INVITATION) {
+      const patientEmail = await this.activations.getPatientEmail(activation.patientId, activation.facilityId);
+      if (!invitationEmailsMatch(patientEmail, account.email)) {
+        throw new ForbiddenException("Activation code invalid or expired");
+      }
     }
 
     const consumed = await this.activations.consumeAndLink({

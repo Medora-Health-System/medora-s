@@ -24,3 +24,18 @@ export function buildPatientInvitationUrl(baseUrl: string, activationCode: strin
   const origin = baseUrl.replace(/\/$/, "");
   return `${origin}/activate?code=${encodeURIComponent(activationCode)}`;
 }
+
+
+export function canonicalizeEmail(value: string | null | undefined): string | null {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return normalized.includes("@") ? normalized : null;
+}
+
+export function invitationEmailsMatch(
+  patientEmail: string | null | undefined,
+  accountEmail: string | null | undefined,
+): boolean {
+  const left = canonicalizeEmail(patientEmail);
+  const right = canonicalizeEmail(accountEmail);
+  return Boolean(left && right && left === right);
+}

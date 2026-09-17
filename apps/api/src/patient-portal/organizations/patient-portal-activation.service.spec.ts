@@ -337,7 +337,7 @@ describe("PatientPortalActivationService staff access", () => {
       patientId: "patient-a",
       facilityId: "facility-a",
       secretHash: "hash",
-      channel: "EMAIL_INVITATION",
+      channel: "MANUAL_CODE",
     });
     activations.consumeAndLink.mockResolvedValue(false);
 
@@ -396,5 +396,227 @@ describe("PatientPortalActivationService staff access", () => {
         activationCode: "11111111-1111-4111-8111-111111111111.abc",
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("redeems EMAIL_INVITATION when the portal account email matches Patient.email", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: "marie@clinic.ht",
+      phone: null,
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie@clinic.ht");
+    activations.consumeAndLink.mockResolvedValue(true);
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).resolves.toEqual({ activated: true, accountId: "acct-1", facilityId: "facility-a" });
+    expect(activations.getPatientEmail).toHaveBeenCalledWith("patient-a", "facility-a");
+    expect(activations.consumeAndLink).toHaveBeenCalled();
+  });
+
+  it("redeems EMAIL_INVITATION when emails match after trim and case-insensitive canonicalization", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: "  Marie.Toussaint@Clinic.HT ",
+      phone: "+5091111",
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie.toussaint@clinic.ht");
+    activations.consumeAndLink.mockResolvedValue(true);
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).resolves.toEqual({ activated: true, accountId: "acct-1", facilityId: "facility-a" });
+    expect(activations.consumeAndLink).toHaveBeenCalled();
+  });
+
+  it("rejects EMAIL_INVITATION when the portal account email differs and does not consume the invitation", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: "attacker@example.com",
+      phone: null,
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie@clinic.ht");
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).rejects.toEqual(expect.objectContaining({ message: "Activation code invalid or expired" }));
+    expect(activations.consumeAndLink).not.toHaveBeenCalled();
+    expect(JSON.stringify(activations.getPatientEmail.mock.results)).not.toContain("attacker@example.com");
+  });
+
+  it("rejects EMAIL_INVITATION for a phone-only portal account without consuming the invitation", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: null,
+      phone: "+5095550000",
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie@clinic.ht");
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(activations.consumeAndLink).not.toHaveBeenCalled();
+  });
+
+  it("does not reveal the expected Patient.email on EMAIL_INVITATION mismatch", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: "other@example.com",
+      phone: null,
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie@clinic.ht");
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).rejects.toEqual(expect.objectContaining({ message: "Activation code invalid or expired" }));
+    try {
+      await service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      });
+    } catch (error) {
+      const text = `${error} ${JSON.stringify(error)}`;
+      expect(text).not.toContain("marie@clinic.ht");
+      expect(text).not.toContain("Patient.email");
+    }
+  });
+
+  it("does not bind MANUAL_CODE to Patient.email and still allows a phone-only account", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: null,
+      phone: "+5095550000",
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "MANUAL_CODE",
+    });
+    activations.consumeAndLink.mockResolvedValue(true);
+
+    await expect(
+      service.activate({
+        accountId: "acct-1",
+        password: "secret",
+        activationCode: "11111111-1111-4111-8111-111111111111.abc",
+      }),
+    ).resolves.toEqual({ activated: true, accountId: "acct-1", facilityId: "facility-a" });
+    expect(activations.getPatientEmail).not.toHaveBeenCalled();
+    expect(activations.consumeAndLink).toHaveBeenCalledWith({
+      activationId: "11111111-1111-4111-8111-111111111111",
+      portalAccountId: "acct-1",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+    });
+  });
+
+  it("looks up EMAIL_INVITATION Patient.email from the activation patient+facility, not a client-supplied facility", async () => {
+    portalRepo.findAccountById.mockResolvedValue({
+      id: "acct-1",
+      status: "PENDING_VERIFICATION",
+      passwordHash: "hash",
+      email: "marie@clinic.ht",
+    });
+    jest.spyOn(argon2, "verify").mockResolvedValue(true as never);
+    activations.findUsableActivation.mockResolvedValue({
+      id: "11111111-1111-4111-8111-111111111111",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      secretHash: "hash",
+      channel: "EMAIL_INVITATION",
+    });
+    activations.getPatientEmail.mockResolvedValue("marie@clinic.ht");
+    activations.consumeAndLink.mockResolvedValue(true);
+
+    await service.activate({
+      accountId: "acct-1",
+      password: "secret",
+      activationCode: "11111111-1111-4111-8111-111111111111.abc",
+    });
+    expect(activations.getPatientEmail).toHaveBeenCalledWith("patient-a", "facility-a");
+    expect(activations.getPatientEmail).not.toHaveBeenCalledWith("patient-a", "facility-b");
   });
 });
