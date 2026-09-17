@@ -10,5 +10,6 @@ import { PlatformOperationsController } from "./platform-operations.controller";
 import { AdminModule } from "../admin/admin.module";
 import { QueuesModule } from "../queues/queues.module";
 import { GovernanceBootstrapService } from "./governance-bootstrap.service";
-@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController], providers: [PlatformStaffService, PrivilegedActionService, GovernanceBootstrapService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
+import { FacilityLifecyclePreflightService } from "./facility-lifecycle-preflight.service";
+@Module({ imports: [PrismaModule, AdminModule, QueuesModule], controllers: [PlatformStaffController, PrivilegedActionController, PlatformOperationsController], providers: [PlatformStaffService, PrivilegedActionService, GovernanceBootstrapService, FacilityLifecyclePreflightService, PlatformCapabilitiesGuard, AuditService], exports: [PlatformCapabilitiesGuard] })
 export class PlatformStaffModule {}
