@@ -156,6 +156,37 @@ describe("DigitalCareStaffWorkspaceService", () => {
     await expect(service.workspace(actorA, PATIENT_ID)).rejects.toThrow("Soins numériques désactivés");
   });
 
+  it("CASE D: authorized Facility B search id opens the Digital Care workspace for that same patient", async () => {
+    const prisma = buildPrisma({ patient: patientRow, facilityId: FACILITY_B });
+    const releases = { list: jest.fn().mockResolvedValue([{ id: "item-a", patientId: PATIENT_ID, kind: "LAB_TEST", title: "CBC", resultText: null, resultData: null, criticalValue: false, collectedAt: null, clinicalAt: null, released: false }]) };
+    const service = new DigitalCareStaffWorkspaceService(prisma, { log: jest.fn() } as any, releases as any);
+    const bundle = await service.workspace(actorB, PATIENT_ID);
+    expect(prisma.patient.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: PATIENT_ID, facilityId: FACILITY_B } }),
+    );
+    expect(bundle.identity.id).toBe(PATIENT_ID);
+    expect(bundle.results.every((row) => row.patientId === PATIENT_ID)).toBe(true);
+    expect(releases.list).toHaveBeenCalledWith(actorB, PATIENT_ID);
+  });
+
+  it("CASE E: the same Patient.id requested under unauthorized Facility A does not return the patient", async () => {
+    const prisma = buildPrisma({ patient: patientRow, facilityId: FACILITY_B });
+    const service = new DigitalCareStaffWorkspaceService(prisma, { log: jest.fn() } as any, { list: jest.fn() } as any);
+    await expect(service.workspace(actorA, PATIENT_ID)).rejects.toThrow("Patient not found");
+  });
+
+  it("does not swallow unrelated SQL failures as optional portal storage", async () => {
+    const prisma = buildPrisma({ patient: patientRow });
+    prisma.$queryRaw = jest.fn().mockRejectedValue({
+      code: "P2010",
+      message: "Raw query failed. Code: `42601`. Message: `syntax error at or near SELECT`",
+    });
+    const service = new DigitalCareStaffWorkspaceService(prisma, { log: jest.fn() } as any, { list: jest.fn() } as any);
+    await expect(service.workspace(actorA, PATIENT_ID)).rejects.toEqual(
+      expect.objectContaining({ code: "P2010", message: expect.stringContaining("syntax error") }),
+    );
+  });
+
   it("does not return a facility B patient on a facility A roster", async () => {
     const prisma = buildPrisma({ patient: { ...patientRow, id: "22222222-2222-4222-8222-222222222222" } });
     prisma.patient.findMany = jest.fn().mockImplementation(async ({ where }: { where: { facilityId: string } }) => {
