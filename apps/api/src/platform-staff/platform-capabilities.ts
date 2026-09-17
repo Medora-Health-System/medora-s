@@ -5,6 +5,14 @@ export const PLATFORM_CAPABILITY_CODES = [
   "COMPLIANCE_AUDIT_VIEW", "COMPLIANCE_ROI_MONITOR", "COMPLIANCE_EXPORT_MONITOR", "COMPLIANCE_CONTROLS_MANAGE",
   "BILLING_RCM_VIEW", "BILLING_RCM_MANAGE", "CATALOG_CONFIG_VIEW", "CATALOG_CONFIG_MANAGE",
   "SYSTEM_HEALTH_VIEW", "SYSTEM_BACKUP_READINESS_VIEW", "SYSTEM_GOLIVE_MONITOR", "AUDIT_EXPORT",
+  // Phase 18E — explicit, owner-selectable Technology / IT care-workspace authority.
+  // These are never implied by department identity. Runtime authority still comes from
+  // an active PlatformCapabilityGrant so the platform owner decides exactly what each
+  // corporate IT employee may see/use.
+  "IT_CARE_PATIENT_RECORDS", "IT_CARE_ORDERS", "IT_CARE_EMERGENCY", "IT_CARE_URGENT_CARE",
+  "IT_CARE_CLINIC", "IT_CARE_OBSERVATION", "IT_CARE_INPATIENT_HOSPITAL", "IT_CARE_LABORATORY",
+  "IT_CARE_RADIOLOGY", "IT_CARE_PHARMACY", "IT_CARE_DIGITAL_CARE", "IT_CARE_PATIENT_PORTAL",
+  "IT_CARE_SCHEDULING", "IT_CARE_TELEMEDICINE", "IT_CARE_AI", "IT_CARE_BILLING",
 ] as const;
 export type PlatformCapabilityCode = typeof PLATFORM_CAPABILITY_CODES[number];
 
