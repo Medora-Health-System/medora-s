@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { BadRequestException } from "@nestjs/common";
 import { RoleCode } from "@prisma/client";
 import { PatientPortalStaffActivationController } from "./patient-portal-staff-activation.controller";
@@ -35,6 +37,14 @@ describe("PatientPortalStaffActivationController", () => {
     expect(roles).not.toContain(RoleCode.FRONT_DESK);
     expect(roles).not.toContain(RoleCode.PROVIDER);
     expect(roles).not.toContain(RoleCode.RN);
+  });
+
+  it("keeps MEDORA_SUPER_ADMIN on the staff activation API as platform-principal-with-facility-context, not Digital Care workspace membership", () => {
+    const source = readFileSync(resolve(__dirname, "./patient-portal-staff-activation.controller.ts"), "utf8");
+    expect(source).toContain("@AllowPlatformPrincipalWithFacilityContext()");
+    expect(source).toContain("resolveAuthorizedFacilityId");
+    expect(Reflect.getMetadata("roles", controller.issue)).toContain(RoleCode.MEDORA_SUPER_ADMIN);
+    expect(Reflect.getMetadata("roles", controller.revoke)).toContain(RoleCode.MEDORA_SUPER_ADMIN);
   });
 
   it("uses the RolesGuard-authorized facility, not a raw x-facility-id header", async () => {

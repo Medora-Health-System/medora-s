@@ -42,6 +42,9 @@ describe("Digital Care runtime registration", () => {
     expect(messaging).not.toContain("RoleCode.FRONT_DESK");
     expect(results).not.toContain("RoleCode.FRONT_DESK");
     expect(workspace).not.toContain("RoleCode.FRONT_DESK");
+    expect(messaging).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
+    expect(results).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
+    expect(workspace).not.toContain("RoleCode.MEDORA_SUPER_ADMIN");
   });
 
   it("resolves Digital Care and patient search facility from the authorized request context", () => {

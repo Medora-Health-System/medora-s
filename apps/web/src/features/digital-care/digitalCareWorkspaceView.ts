@@ -110,12 +110,17 @@ export type PatientAppAccessSnapshot = {
   latestActivation?: { state?: string | null } | null;
 };
 
+/** Canonical PatientPortalAccountStatus. Portal auth only accepts ACTIVE. */
+const USABLE_PORTAL_ACCOUNT_STATUS = "ACTIVE";
+
 export function mapPatientAppAccessStatus(access: PatientAppAccessSnapshot | null | undefined): PatientAppAccessKind {
   if (!access) return "NOT_ACTIVATED";
   const link = String(access.accessStatus ?? "NOT_LINKED");
   const revoked = Boolean(access.revokedAt) || link === "REVOKED";
-  if (link === "VERIFIED" && !access.revokedAt) return "ACTIVE";
   if (revoked) return "REVOKED";
+  if (link === "VERIFIED") {
+    return access.accountStatus === USABLE_PORTAL_ACCOUNT_STATUS ? "ACTIVE" : "NOT_ACTIVATED";
+  }
   const state = String(access.latestActivation?.state ?? "NONE");
   if (state === "EXPIRED") return "EXPIRED";
   if (state === "PENDING") return "PENDING";

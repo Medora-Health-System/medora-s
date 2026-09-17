@@ -117,9 +117,13 @@ describe("Digital Care workspace view helpers", () => {
     expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: null })).toBe("NOT_ACTIVATED");
     expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "PENDING" } })).toBe("PENDING");
     expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "EXPIRED" } })).toBe("EXPIRED");
-    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", revokedAt: null, latestActivation: { state: "USED" } })).toBe("ACTIVE");
-    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", latestActivation: { state: "PENDING" } })).toBe("ACTIVE");
-    expect(mapPatientAppAccessStatus({ accessStatus: "REVOKED", revokedAt: "2026-09-14T00:00:00.000Z" })).toBe("REVOKED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: "ACTIVE", revokedAt: null, latestActivation: { state: "USED" } })).toBe("ACTIVE");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: "ACTIVE", latestActivation: { state: "PENDING" } })).toBe("ACTIVE");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: "DISABLED", latestActivation: { state: "PENDING" } })).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: "LOCKED" })).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: "PENDING_VERIFICATION" })).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: null })).toBe("NOT_ACTIVATED");
+    expect(mapPatientAppAccessStatus({ accessStatus: "REVOKED", accountStatus: "ACTIVE", revokedAt: "2026-09-14T00:00:00.000Z" })).toBe("REVOKED");
     expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "USED" } })).toBe("NOT_ACTIVATED");
   });
 
