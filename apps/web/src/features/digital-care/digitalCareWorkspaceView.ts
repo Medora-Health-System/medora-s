@@ -34,6 +34,17 @@ export function digitalCareFormatDay(iso: string | null | undefined): string {
 
 export type DigitalCareRosterFilter = "ALL" | "RECENT" | "ACTIVE" | "OBSERVATION" | "DISCHARGED" | "UNREAD";
 
+/** Encounter state is authoritative over the visual visit type. A CLOSED encounter is
+ * discharged even when an older record did not persist dischargedAt. Conversely an
+ * observation encounter is only active observation while it is still OPEN. */
+export function digitalCareIsDischarged(patient: DigitalCareRosterPatient): boolean {
+  return Boolean(patient.dischargedAt) || patient.visitStatus === "CLOSED";
+}
+
+export function digitalCareIsActive(patient: DigitalCareRosterPatient): boolean {
+  return patient.visitStatus === "OPEN" && !digitalCareIsDischarged(patient);
+}
+
 export function filterDigitalCareRoster(
   patients: DigitalCareRosterPatient[],
   filter: DigitalCareRosterFilter,
@@ -44,11 +55,11 @@ export function filterDigitalCareRoster(
       case "RECENT":
         return Boolean(patient.arrivedAt && now - new Date(patient.arrivedAt).getTime() <= 72 * 60 * 60 * 1000);
       case "ACTIVE":
-        return patient.visitStatus === "OPEN" && !patient.dischargedAt;
+        return digitalCareIsActive(patient);
       case "OBSERVATION":
-        return patient.visitType === "OBSERVATION";
+        return patient.visitType === "OBSERVATION" && digitalCareIsActive(patient);
       case "DISCHARGED":
-        return Boolean(patient.dischargedAt) || patient.visitStatus === "CLOSED";
+        return digitalCareIsDischarged(patient);
       case "UNREAD":
         return patient.unreadCount > 0;
       default:
