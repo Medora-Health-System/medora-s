@@ -8,11 +8,13 @@ describe("Phase 10 corporate workforce model",()=>{
     expect(EMPLOYEE_TYPES).toContain("CONTRACTOR");
     expect(EMPLOYMENT_STATUSES).toEqual(expect.arrayContaining(["ACTIVE","LEAVE","SUSPENDED","TERMINATED"]));
   });
-  it("persists workforce identity without a facility foreign key",()=>{
+  it("persists workforce identity without facility authority or a dependency on later staff migrations",()=>{
     const sql=fs.readFileSync(path.join(process.cwd(),"prisma/migrations/20260917133000_phase10_corporate_workforce_model/migration.sql"),"utf8");
     expect(sql).toContain('CREATE TABLE "MedoraWorkforceProfile"');
-    expect(sql).toContain('"staffProfileId" UUID NOT NULL');
-    expect(sql).toContain('"managerUserId" UUID');
+    expect(sql).toContain('"userId" TEXT NOT NULL');
+    expect(sql).toContain('"managerUserId" TEXT');
+    expect(sql).toContain('REFERENCES "User"("id")');
+    expect(sql).not.toContain('REFERENCES "MedoraStaffProfile"');
     expect(sql).not.toContain('"facilityId"');
     expect(sql).toContain('ON DELETE RESTRICT');
     expect(sql).toContain('MedoraWorkforceProfile_dates_check');
