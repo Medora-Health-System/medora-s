@@ -5,6 +5,7 @@ import {
   digitalCareVisibleTabs,
   filterDigitalCareRoster,
   fillCountTemplate,
+  mapDigitalCareUserError,
 } from "./digitalCareWorkspaceView";
 import type { DigitalCareRosterPatient } from "@/lib/digitalCareStaffWorkspaceApi";
 
@@ -50,6 +51,19 @@ describe("Digital Care workspace view helpers", () => {
 
   it("fills patient count copy without exposing identifiers", () => {
     expect(fillCountTemplate("Showing {shown} of {total} patients", 8, 142)).toBe("Showing 8 of 142 patients");
+  });
+
+  it("ALL includes facility patients without a recent arrival", () => {
+    const stale = patient({ arrivedAt: "2020-01-01T00:00:00.000Z" });
+    expect(filterDigitalCareRoster([stale], "RECENT")).toHaveLength(0);
+    expect(filterDigitalCareRoster([stale], "ALL")).toHaveLength(1);
+  });
+
+  it("maps portal-inactive and 500s without calling them patient-not-found", () => {
+    expect(mapDigitalCareUserError(new Error("Patient portal is not active for this patient."))).toBe("portalInactive");
+    expect(mapDigitalCareUserError(Object.assign(new Error("Patient not found"), { status: 404 }))).toBe("patientNotFound");
+    expect(mapDigitalCareUserError(Object.assign(new Error("Internal server error."), { status: 500 }))).toBe("generic");
+    expect(mapDigitalCareUserError(new Error("Secure messaging storage is unavailable."))).toBe("messagingUnavailable");
   });
 
   it("hides Digital Care tabs that the facility configuration disabled", () => {

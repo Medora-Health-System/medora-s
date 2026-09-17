@@ -3,6 +3,7 @@ import { AuditAction, Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { AuditService } from "../../common/services/audit.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { isOptionalPortalStorageError } from "../portal-storage.util";
 
 export type DiagnosticResultStaffActor = { userId: string; facilityId: string; ip?: string | null; userAgent?: string | null };
 
@@ -44,9 +45,16 @@ export class PatientDiagnosticResultReleaseService {
       take: patientId ? 80 : 250,
     });
     const ids = orders.flatMap((o) => o.items.filter((i) => (i.catalogItemType === "LAB_TEST" || i.catalogItemType === "IMAGING_STUDY") && i.result?.verifiedAt).map((i) => i.id));
-    const releases = ids.length ? await this.prisma.$queryRaw<Array<{ orderItemId: string; releasedAt: Date; revokedAt: Date | null }>>(Prisma.sql`
-      SELECT "orderItemId", "releasedAt", "revokedAt" FROM "PatientDiagnosticResultRelease" WHERE "facilityId" = ${actor.facilityId} AND "orderItemId" IN (${Prisma.join(ids)})
-    `) : [];
+    let releases: Array<{ orderItemId: string; releasedAt: Date; revokedAt: Date | null }> = [];
+    if (ids.length) {
+      try {
+        releases = await this.prisma.$queryRaw<Array<{ orderItemId: string; releasedAt: Date; revokedAt: Date | null }>>(Prisma.sql`
+          SELECT "orderItemId", "releasedAt", "revokedAt" FROM "PatientDiagnosticResultRelease" WHERE "facilityId" = ${actor.facilityId} AND "orderItemId" IN (${Prisma.join(ids)})
+        `);
+      } catch (error) {
+        if (!isOptionalPortalStorageError(error)) throw error;
+      }
+    }
     const byId = new Map(releases.map((r) => [r.orderItemId, r]));
     return orders.flatMap((order) => order.items.filter((item) => (item.catalogItemType === "LAB_TEST" || item.catalogItemType === "IMAGING_STUDY") && item.result?.verifiedAt).map((item) => {
       const release = byId.get(item.id); const result = item.result!;

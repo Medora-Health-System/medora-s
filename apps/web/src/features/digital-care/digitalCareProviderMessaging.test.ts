@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SIDEBAR_NAV_ITEMS } from "@/components/app-shell/sidebarNavConfig";
 import { filterSidebarNavItemsForSession } from "@/features/navigation/navigationVisibility";
@@ -124,5 +126,15 @@ describe("Digital Care provider messaging workspace", () => {
     expect(resolveClinicalUiMessage("en", "digitalCare.tab.results")).toBe("Patient results");
     expect(resolveClinicalUiMessage("fr", "digitalCare.tab.messages")).toBe("Messages");
     expect(digitalCareOverlayKeyParity()).toEqual([]);
+  });
+
+  it("selects Digital Care patients by PatientSearchHitV1.id and defaults the roster to all facility patients", () => {
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    expect(workspace).toContain("PatientSearchAndSelect");
+    expect(workspace).toContain("onSelect={(patient) => setSelectedId(patient.id)}");
+    expect(workspace).toContain('useState<DigitalCareRosterFilter>("ALL")');
+    expect(workspace).toContain("fetchDigitalCareWorkspace(facilityId, patientId)");
+    expect(workspace).toContain("releaseDigitalCareResult");
+    expect(workspace).toContain("createDigitalCareStaffThread");
   });
 });

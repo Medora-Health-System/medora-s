@@ -11,6 +11,7 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
+import { resolveAuthorizedFacilityId } from "../../common/http/request-facility";
 import type { DiagnosticResultStaffActor } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { DigitalCareStaffWorkspaceService } from "./digital-care-staff-workspace.service";
 
@@ -22,7 +23,7 @@ export class DigitalCareStaffWorkspaceController {
 
   private actor(req: any): DiagnosticResultStaffActor {
     const userId = req.user?.userId as string | undefined;
-    const facilityId = (req.user?.facilityId || req.headers?.["x-facility-id"]) as string | undefined;
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!userId) throw new UnauthorizedException("Staff identity missing");
     if (!facilityId) throw new BadRequestException("Facility is required");
     return { userId, facilityId, ip: req.ip, userAgent: req.headers?.["user-agent"] };

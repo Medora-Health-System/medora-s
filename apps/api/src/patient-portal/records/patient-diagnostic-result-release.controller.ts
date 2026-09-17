@@ -2,6 +2,7 @@ import { BadRequestException, Controller, Delete, Get, Param, Post, Req, Unautho
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
+import { resolveAuthorizedFacilityId } from "../../common/http/request-facility";
 import { PatientDiagnosticResultReleaseService, type DiagnosticResultStaffActor } from "./patient-diagnostic-result-release.service";
 
 @Controller("patient-portal/v1/staff/results")
@@ -11,7 +12,7 @@ export class PatientDiagnosticResultReleaseController {
   constructor(private readonly releases: PatientDiagnosticResultReleaseService) {}
   private actor(req: any): DiagnosticResultStaffActor {
     const userId = req.user?.userId as string | undefined;
-    const facilityId = (req.user?.facilityId || req.headers?.["x-facility-id"]) as string | undefined;
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!userId) throw new UnauthorizedException("Staff identity missing");
     if (!facilityId) throw new BadRequestException("Facility is required");
     return { userId, facilityId, ip: req.ip, userAgent: req.headers?.["user-agent"] };

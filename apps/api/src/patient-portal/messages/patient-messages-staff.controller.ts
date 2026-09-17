@@ -13,6 +13,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { z } from "zod";
 import { RequireRoles, RolesGuard } from "../../common/guards/roles.guard";
+import { resolveAuthorizedFacilityId } from "../../common/http/request-facility";
 import {
   createPatientMessageThreadSchema,
   patientMessageReplySchema,
@@ -29,9 +30,7 @@ export class PatientMessagesStaffController {
 
   private actor(req: any): PatientPortalStaffMessagingActor {
     const userId = req.user?.userId as string | undefined;
-    const facilityId = (req.user?.facilityId || req.headers?.["x-facility-id"]) as
-      | string
-      | undefined;
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!userId) throw new UnauthorizedException("Staff identity missing");
     if (!facilityId) throw new BadRequestException("Facility is required");
     return {

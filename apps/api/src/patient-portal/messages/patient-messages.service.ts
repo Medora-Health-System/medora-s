@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, Optional, ForbiddenException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, Optional, ForbiddenException, UnprocessableEntityException, ServiceUnavailableException } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { AuditService } from "../../common/services/audit.service";
@@ -6,6 +6,12 @@ import { PrismaService } from "../../prisma/prisma.service";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
 import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
+import {
+  PATIENT_PORTAL_INACTIVE_MESSAGE,
+  SECURE_MESSAGING_STORAGE_UNAVAILABLE_MESSAGE,
+  isHttpLikeError,
+  isOptionalPortalStorageError,
+} from "../portal-storage.util";
 import type {
   CreatePatientMessageThreadInput,
   PatientMessageReplyInput,
@@ -389,72 +395,85 @@ export class PatientMessagesService {
     if (this.facilityConfiguration) {
       await this.facilityConfiguration.assertMessaging(actor.facilityId, "STAFF");
     }
-    return this.prisma.$transaction(async (tx) => {
-      const links = await tx.$queryRaw<Array<{ portalAccountId: string }>>(Prisma.sql`
-        SELECT l."portalAccountId"
-        FROM "PatientPortalLink" l
-        INNER JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
-        INNER JOIN "Patient" p ON p."id" = l."patientId"
-        WHERE l."patientId" = ${patientId}
-          AND l."facilityId" = ${actor.facilityId}
-          AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
-          AND l."revokedAt" IS NULL
-          AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
-          AND p."facilityId" = ${actor.facilityId}
-        LIMIT 1
-      `);
-      const portalAccountId = links[0]?.portalAccountId;
-      if (!portalAccountId) throw new NotFoundException("Active patient portal link not found");
-
-      const threadId = randomUUID();
-      const messageId = randomUUID();
-      const threadRows = await tx.$queryRaw<ThreadRow[]>(Prisma.sql`
-        INSERT INTO "PatientPortalMessageThread" (
-          "id", "portalAccountId", "patientId", "facilityId", "category", "subject"
-        ) VALUES (
-          ${threadId}, ${portalAccountId}, ${patientId}, ${actor.facilityId},
-          ${input.category}::"PatientPortalMessageCategory", ${input.subject}
-        )
-        RETURNING
-          "id", "portalAccountId", "patientId", "facilityId",
-          "category"::text AS "category", "subject", "status"::text AS "status",
-          "lastMessageAt", "closedAt", "createdAt", "updatedAt"
-      `);
-      const messageRows = await tx.$queryRaw<MessageRow[]>(Prisma.sql`
-        INSERT INTO "PatientPortalMessage" (
-          "id", "threadId", "senderType", "senderPortalAccountId", "senderUserId", "body"
-        ) VALUES (
-          ${messageId}, ${threadId}, 'STAFF'::"PatientPortalMessageSenderType",
-          NULL, ${actor.userId}, ${input.message}
-        )
-        RETURNING
-          "id", "threadId", "senderType"::text AS "senderType",
-          "senderPortalAccountId", "senderUserId", "body", "createdAt"
-      `);
-
-      await this.staffAudit.log(AuditAction.CREATE, "PATIENT_PORTAL_MESSAGE_THREAD", {
-        tx,
-        critical: true,
-        userId: actor.userId,
-        facilityId: actor.facilityId,
-        patientId,
-        entityId: threadId,
-        ip: actor.ip ?? undefined,
-        userAgent: actor.userAgent ?? undefined,
-        metadata: {
-          category: input.category,
-          subjectLength: input.subject.length,
-          messageLength: input.message.length,
-          senderType: "STAFF",
-        },
-      });
-
-      return {
-        ...this.staffThreadView(threadRows[0]!),
-        messages: [this.staffMessageView(messageRows[0]!)],
-        messagesTruncated: false,
-      };
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, facilityId: actor.facilityId },
+      select: { id: true },
     });
+    if (!patient) throw new NotFoundException("Patient not found");
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const links = await tx.$queryRaw<Array<{ portalAccountId: string }>>(Prisma.sql`
+          SELECT l."portalAccountId"
+          FROM "PatientPortalLink" l
+          INNER JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
+          INNER JOIN "Patient" p ON p."id" = l."patientId"
+          WHERE l."patientId" = ${patientId}
+            AND l."facilityId" = ${actor.facilityId}
+            AND l."status" = 'VERIFIED'::"PatientPortalLinkStatus"
+            AND l."revokedAt" IS NULL
+            AND a."status" = 'ACTIVE'::"PatientPortalAccountStatus"
+            AND p."facilityId" = ${actor.facilityId}
+          LIMIT 1
+        `);
+        const portalAccountId = links[0]?.portalAccountId;
+        if (!portalAccountId) throw new UnprocessableEntityException(PATIENT_PORTAL_INACTIVE_MESSAGE);
+
+        const threadId = randomUUID();
+        const messageId = randomUUID();
+        const threadRows = await tx.$queryRaw<ThreadRow[]>(Prisma.sql`
+          INSERT INTO "PatientPortalMessageThread" (
+            "id", "portalAccountId", "patientId", "facilityId", "category", "subject"
+          ) VALUES (
+            ${threadId}, ${portalAccountId}, ${patientId}, ${actor.facilityId},
+            ${input.category}::"PatientPortalMessageCategory", ${input.subject}
+          )
+          RETURNING
+            "id", "portalAccountId", "patientId", "facilityId",
+            "category"::text AS "category", "subject", "status"::text AS "status",
+            "lastMessageAt", "closedAt", "createdAt", "updatedAt"
+        `);
+        const messageRows = await tx.$queryRaw<MessageRow[]>(Prisma.sql`
+          INSERT INTO "PatientPortalMessage" (
+            "id", "threadId", "senderType", "senderPortalAccountId", "senderUserId", "body"
+          ) VALUES (
+            ${messageId}, ${threadId}, 'STAFF'::"PatientPortalMessageSenderType",
+            NULL, ${actor.userId}, ${input.message}
+          )
+          RETURNING
+            "id", "threadId", "senderType"::text AS "senderType",
+            "senderPortalAccountId", "senderUserId", "body", "createdAt"
+        `);
+
+        await this.staffAudit.log(AuditAction.CREATE, "PATIENT_PORTAL_MESSAGE_THREAD", {
+          tx,
+          critical: true,
+          userId: actor.userId,
+          facilityId: actor.facilityId,
+          patientId,
+          entityId: threadId,
+          ip: actor.ip ?? undefined,
+          userAgent: actor.userAgent ?? undefined,
+          metadata: {
+            category: input.category,
+            subjectLength: input.subject.length,
+            messageLength: input.message.length,
+            senderType: "STAFF",
+          },
+        });
+
+        return {
+          ...this.staffThreadView(threadRows[0]!),
+          messages: [this.staffMessageView(messageRows[0]!)],
+          messagesTruncated: false,
+        };
+      });
+    } catch (error) {
+      if (isHttpLikeError(error)) throw error;
+      if (isOptionalPortalStorageError(error)) {
+        throw new ServiceUnavailableException(SECURE_MESSAGING_STORAGE_UNAVAILABLE_MESSAGE);
+      }
+      throw error;
+    }
   }
 
   async listStaffThreads(actor: PatientPortalStaffMessagingActor) {

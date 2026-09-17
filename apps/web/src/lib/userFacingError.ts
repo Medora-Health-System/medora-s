@@ -57,6 +57,16 @@ const RULES: Array<{ test: (s: string) => boolean } & LocaleErrorCopy> = [
     en: ENCOUNTER_NOT_FOUND_EN,
     es: ENCOUNTER_NOT_FOUND_ES,
   },
+  {
+    test: (s) => /patient portal is not active/i.test(s),
+    fr: "Le portail patient n’est pas actif pour ce patient.",
+    en: "Patient portal is not active for this patient.",
+  },
+  {
+    test: (s) => /secure messaging storage is unavailable|secure messaging is unavailable/i.test(s),
+    fr: "La messagerie sécurisée est indisponible.",
+    en: "Secure messaging is unavailable.",
+  },
   { test: (s) => /patient not found/i.test(s), fr: "Patient introuvable.", en: "Patient not found." },
   {
     test: (s) =>

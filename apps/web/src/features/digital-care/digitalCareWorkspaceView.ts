@@ -68,6 +68,25 @@ export function medicationsByBucket(items: DigitalCareWorkspaceMedication[], buc
   return items.filter((item) => item.bucket === bucket);
 }
 
+export function mapDigitalCareUserError(
+  error: unknown,
+): "portalInactive" | "patientNotFound" | "messagingUnavailable" | "generic" | "passthrough" {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const status =
+    error && typeof error === "object" && "status" in error ? Number((error as { status?: unknown }).status) : 0;
+  if (/portal is not active|portail patient n.est pas actif|portal del paciente no está activo|lien portail actif|vínculo de portal activo/i.test(message)) {
+    return "portalInactive";
+  }
+  if (/messaging storage is unavailable|messagerie sécurisée est indisponible|mensajería segura no está disponible/i.test(message)) {
+    return "messagingUnavailable";
+  }
+  if (status === 404 || /patient not found|patient introuvable|paciente no encontrado/i.test(message)) {
+    return "patientNotFound";
+  }
+  if (status >= 500 || /internal server error|erreur interne du serveur/i.test(message)) return "generic";
+  return message.trim() ? "passthrough" : "generic";
+}
+
 export function fillCountTemplate(template: string, shown: number, total: number): string {
   return template.replace("{shown}", String(shown)).replace("{total}", String(total));
 }
