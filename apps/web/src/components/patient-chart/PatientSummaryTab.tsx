@@ -109,7 +109,7 @@ function ResultCard({ enc, item }: { enc: ChartSummaryEncounter; item: ChartSumm
     <div style={{ border: `1px solid ${critical ? "#fecaca" : "#e2e8f0"}`, background: critical ? "#fff7f7" : "#fff", borderRadius: 10, padding: "12px 14px" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
         <strong style={{ fontSize: 13, color: "#0f172a" }}>{title}</strong>
-        {critical ? <MedoraCardBadge label="Critical" tone="danger" /> : null}
+        {critical ? <MedoraCardBadge soft={{ bg: "#fee2e2", text: "#b91c1c", border: "#fecaca" }}>Critical</MedoraCardBadge> : null}
         <span style={{ marginLeft: "auto", fontSize: 11, color: "#64748b" }}>{formatEncounterChromeDateTime(when, language)}</span>
       </div>
       {item.result?.resultText?.trim() ? (
