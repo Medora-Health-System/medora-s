@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../../prisma/prisma.service";
+import type { PatientPortalActivationChannel } from "../organizations/patient-portal-activation.constants";
 
 export type PatientPortalActivationRow = {
   id: string;
@@ -13,6 +14,7 @@ export type PatientPortalActivationRow = {
   expiresAt: Date;
   usedAt: Date | null;
   revokedAt: Date | null;
+  channel: string;
 };
 
 export type PatientPortalStaffAccessRow = {
@@ -26,6 +28,8 @@ export type PatientPortalStaffAccessRow = {
   activationExpiresAt: Date | null;
   activationUsedAt: Date | null;
   activationRevokedAt: Date | null;
+  activationChannel: string | null;
+  patientEmail: string | null;
 };
 
 @Injectable()
@@ -43,6 +47,18 @@ export class PatientPortalActivationRepository {
     return rows.length === 1;
   }
 
+  async getPatientEmail(patientId: string, facilityId: string): Promise<string | null> {
+    const rows = await this.prisma.$queryRaw<Array<{ email: string | null }>>(Prisma.sql`
+      SELECT "email"
+      FROM "Patient"
+      WHERE "id" = ${patientId}
+        AND "facilityId" = ${facilityId}
+      LIMIT 1
+    `);
+    const email = rows[0]?.email?.trim() ?? "";
+    return email ? email : null;
+  }
+
   async createActivation(input: {
     id: string;
     patientId: string;
@@ -50,6 +66,7 @@ export class PatientPortalActivationRepository {
     secretHash: string;
     createdByUserId: string;
     expiresAt: Date;
+    channel: PatientPortalActivationChannel;
   }): Promise<PatientPortalActivationRow> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw(Prisma.sql`
@@ -63,24 +80,34 @@ export class PatientPortalActivationRepository {
 
       const rows = await tx.$queryRaw<PatientPortalActivationRow[]>(Prisma.sql`
         INSERT INTO "PatientPortalActivation" (
-          "id", "patientId", "facilityId", "secretHash", "createdByUserId", "expiresAt"
+          "id", "patientId", "facilityId", "secretHash", "createdByUserId", "expiresAt", "channel"
         ) VALUES (
           ${input.id}, ${input.patientId}, ${input.facilityId}, ${input.secretHash},
-          ${input.createdByUserId}, ${input.expiresAt}
+          ${input.createdByUserId}, ${input.expiresAt}, ${input.channel}
         )
         RETURNING
           "id", "patientId", "facilityId", "secretHash", "createdByUserId",
-          "createdAt", "expiresAt", "usedAt", "revokedAt"
+          "createdAt", "expiresAt", "usedAt", "revokedAt", "channel"
       `);
       return rows[0]!;
     });
+  }
+
+  async revokeUnusedActivation(id: string): Promise<void> {
+    await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE "PatientPortalActivation"
+      SET "revokedAt" = CURRENT_TIMESTAMP
+      WHERE "id" = ${id}
+        AND "usedAt" IS NULL
+        AND "revokedAt" IS NULL
+    `);
   }
 
   async findUsableActivation(id: string): Promise<PatientPortalActivationRow | null> {
     const rows = await this.prisma.$queryRaw<PatientPortalActivationRow[]>(Prisma.sql`
       SELECT
         "id", "patientId", "facilityId", "secretHash", "createdByUserId",
-        "createdAt", "expiresAt", "usedAt", "revokedAt"
+        "createdAt", "expiresAt", "usedAt", "revokedAt", "channel"
       FROM "PatientPortalActivation"
       WHERE "id" = ${id}
         AND "usedAt" IS NULL
@@ -103,8 +130,13 @@ export class PatientPortalActivationRepository {
         act."createdAt" AS "activationCreatedAt",
         act."expiresAt" AS "activationExpiresAt",
         act."usedAt" AS "activationUsedAt",
-        act."revokedAt" AS "activationRevokedAt"
+        act."revokedAt" AS "activationRevokedAt",
+        act."channel" AS "activationChannel",
+        p."email" AS "patientEmail"
       FROM (SELECT 1) seed
+      LEFT JOIN "Patient" p
+        ON p."id" = ${patientId}
+        AND p."facilityId" = ${facilityId}
       LEFT JOIN LATERAL (
         SELECT *
         FROM "PatientPortalLink"
@@ -115,7 +147,7 @@ export class PatientPortalActivationRepository {
       ) l ON TRUE
       LEFT JOIN "PatientPortalAccount" a ON a."id" = l."portalAccountId"
       LEFT JOIN LATERAL (
-        SELECT "id", "createdAt", "expiresAt", "usedAt", "revokedAt"
+        SELECT "id", "createdAt", "expiresAt", "usedAt", "revokedAt", "channel"
         FROM "PatientPortalActivation"
         WHERE "patientId" = ${patientId}
           AND "facilityId" = ${facilityId}
@@ -135,6 +167,8 @@ export class PatientPortalActivationRepository {
       activationExpiresAt: null,
       activationUsedAt: null,
       activationRevokedAt: null,
+      activationChannel: null,
+      patientEmail: null,
     };
   }
 

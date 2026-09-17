@@ -22,6 +22,8 @@ Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DR
 | `CHART_EXPORT_SIGNING_SECRET` | **yes** | HMAC key for immutable chart export signatures; missing in prod fails closed on snapshot create/read paths. **Rotation** invalidates verification for rows signed with the old secret unless a dual-key strategy is introduced (not in MVP). |
 | `MFA_SECRET_ENCRYPTION_KEY` | **yes** | Base64-encoded **32-byte** key for AES-256-GCM of stored TOTP secrets. **Rotation without a migration plan** makes existing encrypted secrets unreadable — treat as a controlled data migration. |
 | `RESET_PASSWORD_BASE_URL` | **yes** (if password reset is used) | Public base URL for reset links (must match the web origin users reach). |
+| `PATIENT_APP_BASE_URL` | **yes** (if patient email invitation is used) | Public origin of the patient app used in invitation links. Must not be localhost in production. |
+| `SENDGRID_API_KEY` / `MAIL_FROM` | **yes** (if patient email invitation is used) | Existing named SendGrid integration. Invitation send fails closed when unset. |
 
 ---
 

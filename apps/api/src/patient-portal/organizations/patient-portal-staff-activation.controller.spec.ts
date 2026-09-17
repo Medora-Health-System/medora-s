@@ -8,6 +8,7 @@ describe("PatientPortalStaffActivationController", () => {
   const activation = {
     getAccessForStaff: jest.fn(),
     issueForStaff: jest.fn(),
+    inviteForStaff: jest.fn(),
     revokeForStaff: jest.fn(),
   };
   const controller = new PatientPortalStaffActivationController(activation as never);
@@ -107,6 +108,44 @@ describe("PatientPortalStaffActivationController", () => {
       facilityId: "facility-a",
     });
     expect(activation.issueForStaff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientId: "patient-a",
+        facilityId: "facility-a",
+        createdByUserId: "admin-1",
+      }),
+    );
+  });
+
+  it("lets FRONT_DESK, ADMIN, and MEDORA_SUPER_ADMIN send invitations, not PROVIDER/RN", () => {
+    const roles = Reflect.getMetadata("roles", controller.invite) as RoleCode[];
+    expect(roles).toEqual([RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN]);
+    expect(roles).not.toContain(RoleCode.PROVIDER);
+    expect(roles).not.toContain(RoleCode.RN);
+  });
+
+  it("sends an invitation against the authorized facility and does not accept a spoofed header", async () => {
+    activation.inviteForStaff.mockResolvedValue({
+      status: "SENT",
+      delivery: "EMAIL",
+      maskedEmail: "m***@clinic.ht",
+      expiresAt: "2026-09-18T12:00:00.000Z",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+    });
+    const req = {
+      facilityId: "facility-a",
+      user: { userId: "admin-1", facilityId: "stale-jwt-facility" },
+      headers: { "x-facility-id": "spoofed" },
+    };
+    await expect(controller.invite("patient-a", req)).resolves.toEqual({
+      status: "SENT",
+      delivery: "EMAIL",
+      maskedEmail: "m***@clinic.ht",
+      expiresAt: "2026-09-18T12:00:00.000Z",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+    });
+    expect(activation.inviteForStaff).toHaveBeenCalledWith(
       expect.objectContaining({
         patientId: "patient-a",
         facilityId: "facility-a",

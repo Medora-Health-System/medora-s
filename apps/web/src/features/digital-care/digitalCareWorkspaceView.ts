@@ -141,10 +141,16 @@ export function medicationsByBucket(items: DigitalCareWorkspaceMedication[], buc
 
 export function mapDigitalCareUserError(
   error: unknown,
-): "portalInactive" | "patientNotFound" | "messagingUnavailable" | "notAuthorized" | "activationExpired" | "activationUsed" | "portalUnavailable" | "network" | "generic" | "passthrough" {
+): "portalInactive" | "patientNotFound" | "messagingUnavailable" | "notAuthorized" | "activationExpired" | "activationUsed" | "portalUnavailable" | "network" | "missingEmail" | "invitationFailed" | "generic" | "passthrough" {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const status =
     error && typeof error === "object" && "status" in error ? Number((error as { status?: unknown }).status) : 0;
+  if (/does not have an email address on file|n.a pas d.adresse e-mail|no tiene una direcci[oó]n de correo/i.test(message)) {
+    return "missingEmail";
+  }
+  if (/couldn.t send invitation|impossible d.envoyer l.invitation|no se pudo enviar la invitaci/i.test(message)) {
+    return "invitationFailed";
+  }
   if (/portal is not active|portail patient n.est pas actif|portal del paciente no está activo|lien portail actif|vínculo de portal activo/i.test(message)) {
     return "portalInactive";
   }
@@ -179,6 +185,8 @@ export function digitalCarePortalAccessMessageKey(error: unknown): string {
   if (kind === "notAuthorized") return "digitalCare.error.notAuthorized";
   if (kind === "network") return "digitalCare.error.network";
   if (kind === "portalUnavailable") return "digitalCare.error.portalUnavailable";
+  if (kind === "missingEmail") return "digitalCare.appAccess.missingEmail";
+  if (kind === "invitationFailed") return "digitalCare.appAccess.inviteError";
   return "digitalCare.appAccess.loadError";
 }
 

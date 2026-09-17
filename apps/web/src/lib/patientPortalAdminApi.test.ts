@@ -17,5 +17,7 @@ describe("patientPortalAdminApi facility context", () => {
     expect(source).toContain("/patient-portal-admin/v1/patients/");
     expect(source).toContain("/access");
     expect(source).toContain("/activation");
+    expect(source).toContain("/invitation");
+    expect(source).toContain("sendPatientPortalInvitation");
   });
 });

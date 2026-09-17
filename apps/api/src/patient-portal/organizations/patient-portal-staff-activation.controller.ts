@@ -58,6 +58,21 @@ export class PatientPortalStaffActivationController {
     });
   }
 
+  @Post("patients/:patientId/invitation")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @AllowPlatformPrincipalWithFacilityContext()
+  async invite(@Param("patientId") patientId: string, @Req() req: any) {
+    const { facilityId, userId } = this.staffContext(req);
+
+    return this.activation.inviteForStaff({
+      patientId,
+      facilityId,
+      createdByUserId: userId,
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
+  }
+
   @Delete("patients/:patientId/access")
   @RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
   @AllowPlatformPrincipalWithFacilityContext()

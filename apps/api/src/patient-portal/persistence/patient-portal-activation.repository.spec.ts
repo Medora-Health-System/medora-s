@@ -38,4 +38,17 @@ describe("PatientPortalActivationRepository security contract", () => {
     expect(source).toContain('"facilityId" = ${input.facilityId}');
     expect(source).toContain('VERIFIED\'::"PatientPortalLinkStatus"');
   });
+
+  it("reads authoritative Patient.email for the same patient+facility pair", () => {
+    expect(source).toContain("async getPatientEmail");
+    expect(source).toContain('SELECT "email"');
+    expect(source).toContain('FROM "Patient"');
+    expect(source).toContain('AND "facilityId" = ${facilityId}');
+  });
+
+  it("persists activation channel and can revoke an unused invitation after delivery failure", () => {
+    expect(source).toContain('"channel"');
+    expect(source).toContain("${input.channel}");
+    expect(source).toContain("revokeUnusedActivation");
+  });
 });

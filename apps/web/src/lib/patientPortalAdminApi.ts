@@ -7,8 +7,11 @@ export type PatientPortalAccessStatus = {
   accountStatus: string | null;
   verifiedAt: string | null;
   revokedAt: string | null;
+  hasEmail?: boolean;
+  maskedEmail?: string | null;
   latestActivation: {
     state: "NONE" | "PENDING" | "USED" | "EXPIRED" | "REVOKED" | string;
+    channel?: string | null;
     createdAt: string | null;
     expiresAt: string | null;
   } | null;
@@ -16,6 +19,15 @@ export type PatientPortalAccessStatus = {
 
 export type PatientPortalActivationIssue = {
   activationCode: string;
+  expiresAt: string;
+  patientId: string;
+  facilityId: string;
+};
+
+export type PatientPortalInvitationIssue = {
+  status: "SENT" | string;
+  delivery: "EMAIL" | string;
+  maskedEmail: string;
   expiresAt: string;
   patientId: string;
   facilityId: string;
@@ -39,6 +51,16 @@ export async function issuePatientPortalActivation(
     `/patient-portal-admin/v1/patients/${encodeURIComponent(patientId)}/activation`,
     { method: "POST", facilityId }
   ) as Promise<PatientPortalActivationIssue>;
+}
+
+export async function sendPatientPortalInvitation(
+  facilityId: string,
+  patientId: string
+): Promise<PatientPortalInvitationIssue> {
+  return apiFetch(
+    `/patient-portal-admin/v1/patients/${encodeURIComponent(patientId)}/invitation`,
+    { method: "POST", facilityId }
+  ) as Promise<PatientPortalInvitationIssue>;
 }
 
 export async function revokePatientPortalAccess(

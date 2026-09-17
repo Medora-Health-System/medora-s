@@ -45,7 +45,9 @@ import {
   fetchPatientPortalAccess,
   issuePatientPortalActivation,
   revokePatientPortalAccess,
+  sendPatientPortalInvitation,
   type PatientPortalAccessStatus,
+  type PatientPortalInvitationIssue,
 } from "@/lib/patientPortalAdminApi";
 import { digitalCareResultPrintHtml, digitalCareWorkspacePrintHtml, openDigitalCarePrintDocument } from "./digitalCareWorkspacePrint";
 import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
@@ -127,6 +129,7 @@ export function DigitalCareProviderWorkspace() {
   const [portalError, setPortalError] = useState<string | null>(null);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
   const [issuedExpiresAt, setIssuedExpiresAt] = useState<string | null>(null);
+  const [issuedInvitation, setIssuedInvitation] = useState<PatientPortalInvitationIssue | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   const loadRoster = useCallback(
@@ -176,6 +179,7 @@ export function DigitalCareProviderWorkspace() {
           setPortalAccess(null);
           setIssuedCode(null);
           setIssuedExpiresAt(null);
+          setIssuedInvitation(null);
           setPortalError(t(digitalCarePortalAccessMessageKey(accessError)));
         }
       } catch (e) {
@@ -208,6 +212,7 @@ export function DigitalCareProviderWorkspace() {
     if (selectedId) {
       setIssuedCode(null);
       setIssuedExpiresAt(null);
+      setIssuedInvitation(null);
       setCopiedCode(false);
       void loadWorkspace(selectedId);
     } else {
@@ -215,6 +220,7 @@ export function DigitalCareProviderWorkspace() {
       setPortalError(null);
       setIssuedCode(null);
       setIssuedExpiresAt(null);
+      setIssuedInvitation(null);
     }
   }, [selectedId, loadWorkspace]);
 
@@ -308,6 +314,26 @@ export function DigitalCareProviderWorkspace() {
     }
   }
 
+  async function sendPortalInvitation() {
+    if (!facilityId || !selectedId || !canActivatePortal) return;
+    setBusy(true);
+    setPortalError(null);
+    try {
+      const issued = await sendPatientPortalInvitation(facilityId, selectedId);
+      setIssuedInvitation(issued);
+      setIssuedCode(null);
+      setIssuedExpiresAt(null);
+      setCopiedCode(false);
+      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
+      return issued;
+    } catch (e) {
+      setIssuedInvitation(null);
+      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function issuePortalActivation() {
     if (!facilityId || !selectedId || !canActivatePortal) return;
     setBusy(true);
@@ -316,6 +342,7 @@ export function DigitalCareProviderWorkspace() {
       const issued = await issuePatientPortalActivation(facilityId, selectedId);
       setIssuedCode(issued.activationCode);
       setIssuedExpiresAt(issued.expiresAt);
+      setIssuedInvitation(null);
       setCopiedCode(false);
       setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
       return issued;
@@ -336,6 +363,7 @@ export function DigitalCareProviderWorkspace() {
       await revokePatientPortalAccess(facilityId, selectedId);
       setIssuedCode(null);
       setIssuedExpiresAt(null);
+      setIssuedInvitation(null);
       setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
     } catch (e) {
       setPortalError(t(digitalCarePortalAccessMessageKey(e)));
@@ -711,9 +739,11 @@ export function DigitalCareProviderWorkspace() {
               busy={busy}
               issuedCode={issuedCode}
               issuedExpiresAt={issuedExpiresAt}
+              invitation={issuedInvitation}
               copied={copiedCode}
               lookupFailed={Boolean(portalError)}
               lookupError={portalError}
+              onInvite={sendPortalInvitation}
               onActivate={issuePortalActivation}
               onRevoke={revokePortalAccessAction}
               onCopy={copyActivationCode}

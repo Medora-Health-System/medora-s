@@ -9,7 +9,25 @@ describe("Digital Care runtime registration", () => {
   it("registers staff DigitalCareModule independently of PATIENT_PORTAL_ENABLED", () => {
     const appModule = source("src/app.module.ts");
     expect(appModule).toContain("DigitalCareModule");
-    expect(appModule).toMatch(/DigitalCareModule,\s*\n\s*\.\.\.\(process\.env\.PATIENT_PORTAL_ENABLED === "true" \? \[PatientPortalModule\] : \[\]\)/);
+    expect(appModule).toContain("PatientPortalOnboardingModule");
+    expect(appModule).toMatch(/process\.env\.PATIENT_PORTAL_ENABLED === "true"[\s\S]*\? \[PatientPortalModule\][\s\S]*: \[PatientPortalOnboardingModule\]/);
+  });
+
+  it("keeps register, login, and invitation redemption available while the broader patient portal is disabled", () => {
+    const onboarding = source("src/patient-portal/patient-portal-onboarding.module.ts");
+    const auth = source("src/patient-portal/auth/patient-portal-auth.controller.ts");
+    const activation = source("src/patient-portal/organizations/patient-portal-activation.controller.ts");
+    expect(onboarding).toContain("PatientPortalAuthController");
+    expect(onboarding).toContain("PatientPortalActivationController");
+    expect(auth).toContain('@Controller("patient/v1/auth")');
+    expect(auth).toContain('@Post("register")');
+    expect(auth).toContain('@Post("login")');
+    expect(activation).toContain('@Controller("patient/v1/organizations")');
+    expect(activation).toContain('@Post("activate")');
+    expect(onboarding).not.toContain("PatientDashboardController");
+    expect(onboarding).not.toContain("PatientRecordsController");
+    expect(onboarding).not.toContain("PatientDiagnosticResultsController");
+    expect(onboarding).not.toContain("PatientMessagesController");
   });
 
   it("mounts patient Digital Care routes when the patient portal is enabled", () => {
