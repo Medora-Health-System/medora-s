@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import type { PatientPortalAccessStatus, PatientPortalActivationIssue } from "@/lib/patientPortalAdminApi";
-import { digitalCareFormatWhen, mapPatientAppAccessStatus, type PatientAppAccessKind } from "./digitalCareWorkspaceView";
+import { digitalCareFormatWhen, digitalCarePortalAccessActions, type PatientAppAccessKind } from "./digitalCareWorkspaceView";
 
 const card: CSSProperties = {
   padding: 16,
@@ -37,6 +37,8 @@ export function DigitalCarePatientAppAccess({
   issuedCode,
   issuedExpiresAt,
   copied,
+  lookupFailed,
+  lookupError,
   onActivate,
   onRevoke,
   onCopy,
@@ -51,17 +53,25 @@ export function DigitalCarePatientAppAccess({
   issuedCode: string | null;
   issuedExpiresAt: string | null;
   copied: boolean;
+  lookupFailed?: boolean;
+  lookupError?: string | null;
   onActivate: () => Promise<PatientPortalActivationIssue | void>;
   onRevoke: () => Promise<void>;
   onCopy: () => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
   const [confirm, setConfirm] = useState<"activate" | "revoke" | null>(null);
-  const kind = mapPatientAppAccessStatus(access);
+  const actions = digitalCarePortalAccessActions({
+    canActivate,
+    canRevoke,
+    access,
+    lookupFailed: Boolean(lookupFailed),
+  });
+  const kind = actions.kind;
   const tone = KIND_TONE[kind];
-  const showRegenerate = canActivate && (kind === "PENDING" || kind === "EXPIRED");
-  const showActivate = canActivate && kind !== "ACTIVE" && kind !== "PENDING" && kind !== "EXPIRED";
-  const showRevoke = canRevoke && (kind === "ACTIVE" || kind === "PENDING");
+  const showRegenerate = actions.showRegenerate;
+  const showActivate = actions.showActivate;
+  const showRevoke = actions.showRevoke;
 
   async function runActivate() {
     setConfirm(null);
@@ -76,22 +86,29 @@ export function DigitalCarePatientAppAccess({
   return (
     <div style={card} data-testid="digital-care-patient-app-access">
       <strong>{t("digitalCare.appAccess.title")}</strong>
-      <div
-        style={{
-          marginTop: 10,
-          display: "inline-flex",
-          alignItems: "center",
-          borderRadius: 999,
-          padding: "4px 10px",
-          fontSize: 12,
-          fontWeight: 800,
-          background: tone.bg,
-          color: tone.text,
-          border: `1px solid ${tone.border}`,
-        }}
-      >
-        {t(`digitalCare.appAccess.status.${kind}`)}
-      </div>
+      {lookupFailed ? (
+        <div data-testid="digital-care-patient-app-access-error" role="alert" style={{ marginTop: 10, padding: 10, borderRadius: 12, background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca" }}>
+          <p style={{ margin: 0, fontWeight: 700 }}>{lookupError || t("digitalCare.appAccess.loadError")}</p>
+        </div>
+      ) : null}
+      {actions.showStatus ? (
+        <div
+          style={{
+            marginTop: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            borderRadius: 999,
+            padding: "4px 10px",
+            fontSize: 12,
+            fontWeight: 800,
+            background: tone.bg,
+            color: tone.text,
+            border: `1px solid ${tone.border}`,
+          }}
+        >
+          {t(`digitalCare.appAccess.status.${kind}`)}
+        </div>
+      ) : null}
       {access?.latestActivation?.expiresAt && kind === "PENDING" ? (
         <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
           {t("digitalCare.appAccess.expiresAt")}: {digitalCareFormatWhen(access.latestActivation.expiresAt)}
@@ -134,10 +151,10 @@ export function DigitalCarePatientAppAccess({
           onClick={() => void onRefresh()}
           style={{ ...buttonBase, border: "1px solid #cbd5e1", background: "white", color: "#0f172a" }}
         >
-          {t("digitalCare.refresh")}
+          {lookupFailed ? t("digitalCare.appAccess.retry") : t("digitalCare.refresh")}
         </button>
       </div>
-      {issuedCode ? (
+      {issuedCode && !lookupFailed ? (
         <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
           <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{t("digitalCare.appAccess.codeLabel")}</div>
           <code style={{ display: "block", marginTop: 6, fontSize: 13, wordBreak: "break-all" }}>{issuedCode}</code>
@@ -156,7 +173,7 @@ export function DigitalCarePatientAppAccess({
           </button>
         </div>
       ) : null}
-      {confirm ? (
+      {confirm && !lookupFailed ? (
         <div
           role="dialog"
           aria-modal="true"

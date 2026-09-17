@@ -69,4 +69,49 @@ describe("PatientPortalStaffActivationController", () => {
     await expect(controller.access("patient-a", req)).rejects.toBeInstanceOf(BadRequestException);
     expect(activation.getAccessForStaff).not.toHaveBeenCalled();
   });
+
+  it("returns access for a Facility A patient using the authorized Facility A context", async () => {
+    activation.getAccessForStaff.mockResolvedValue({
+      patientId: "patient-a",
+      facilityId: "facility-a",
+      accessStatus: "NOT_LINKED",
+      accountStatus: null,
+    });
+    const req = {
+      facilityId: "facility-a",
+      user: { userId: "staff-1", facilityId: "stale-jwt-facility" },
+      headers: { "x-facility-id": "spoofed" },
+    };
+    await expect(controller.access("patient-a", req)).resolves.toEqual(
+      expect.objectContaining({ patientId: "patient-a", facilityId: "facility-a" }),
+    );
+    expect(activation.getAccessForStaff).toHaveBeenCalledWith({ patientId: "patient-a", facilityId: "facility-a" });
+  });
+
+  it("issues an activation code against the same authorized facility used for access lookup", async () => {
+    activation.issueForStaff.mockResolvedValue({
+      activationCode: "11111111-1111-4111-8111-111111111111.secret",
+      expiresAt: "2026-09-17T12:15:00.000Z",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+    });
+    const req = {
+      facilityId: "facility-a",
+      user: { userId: "admin-1", facilityId: "stale-jwt-facility" },
+      headers: { "x-facility-id": "spoofed" },
+    };
+    await expect(controller.issue("patient-a", req)).resolves.toEqual({
+      activationCode: "11111111-1111-4111-8111-111111111111.secret",
+      expiresAt: "2026-09-17T12:15:00.000Z",
+      patientId: "patient-a",
+      facilityId: "facility-a",
+    });
+    expect(activation.issueForStaff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientId: "patient-a",
+        facilityId: "facility-a",
+        createdByUserId: "admin-1",
+      }),
+    );
+  });
 });

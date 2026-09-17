@@ -134,4 +134,27 @@ describe("RolesGuard facility selection", () => {
     };
     await expect(guard.canActivate(context(request))).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it("binds the selected facility for activation GET the same way as Digital Care workspace", async () => {
+    class ActivationAccess {
+      @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+      access() {}
+    }
+    const { guard } = buildGuard([
+      { facilityId: FACILITY_A, role: RoleCode.ADMIN },
+      { facilityId: FACILITY_B, role: RoleCode.ADMIN },
+    ]);
+    const request = {
+      user: { userId: USER_ID, facilityId: FACILITY_A },
+      headers: { "x-facility-id": FACILITY_B },
+    };
+    const activationContext = {
+      getHandler: () => ActivationAccess.prototype.access,
+      getClass: () => ActivationAccess,
+      switchToHttp: () => ({ getRequest: () => request }),
+    } as never;
+    await expect(guard.canActivate(activationContext)).resolves.toBe(true);
+    expect(request).toEqual(expect.objectContaining({ facilityId: FACILITY_B, userRole: RoleCode.ADMIN }));
+    expect(resolveAuthorizedFacilityId(request)).toBe(FACILITY_B);
+  });
 });

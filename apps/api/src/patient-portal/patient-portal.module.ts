@@ -20,7 +20,6 @@ import { PatientOrganizationsController } from "./organizations/patient-organiza
 import { PatientOrganizationsService } from "./organizations/patient-organizations.service";
 import { PatientPortalActivationController } from "./organizations/patient-portal-activation.controller";
 import { PatientPortalActivationService } from "./organizations/patient-portal-activation.service";
-import { PatientPortalStaffActivationController } from "./organizations/patient-portal-staff-activation.controller";
 import { PatientPortalAuditService } from "./patient-portal-audit.service";
 import { PatientPortalActivationRepository } from "./persistence/patient-portal-activation.repository";
 import { PatientPortalRepository } from "./persistence/patient-portal.repository";
@@ -45,12 +44,13 @@ import { PatientSessionSecurityController } from "./security/patient-session-sec
 import { PatientSessionSecurityService } from "./security/patient-session-security.service";
 
 /**
- * Patient-facing portal runtime. Staff Digital Care messaging/results controllers
- * live in DigitalCareModule so they are available independently of this feature flag.
+ * Patient-facing portal runtime. Staff Digital Care messaging/results/activation
+ * controllers live in DigitalCareModule so they are available independently of
+ * this feature flag.
  */
 @Module({
   imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({}), FacilityConfigurationModule],
-  controllers: [PatientPortalAuthController,PatientOrganizationsController,PatientPortalActivationController,PatientPortalStaffActivationController,PatientDashboardController,PatientRecordsController,PatientDocumentsController,PatientDocumentReleaseController,PatientDiagnosticResultsController,PatientMedicationsController,PatientAppointmentsController,PatientProfileController,PatientMessagesController,PatientServiceRequestsController,PatientServiceRequestsStaffController,PatientSessionSecurityController],
+  controllers: [PatientPortalAuthController,PatientOrganizationsController,PatientPortalActivationController,PatientDashboardController,PatientRecordsController,PatientDocumentsController,PatientDocumentReleaseController,PatientDiagnosticResultsController,PatientMedicationsController,PatientAppointmentsController,PatientProfileController,PatientMessagesController,PatientServiceRequestsController,PatientServiceRequestsStaffController,PatientSessionSecurityController],
   providers: [PatientPortalRepository,PatientPortalActivationRepository,PatientPortalAuditService,PatientPortalAuthService,PatientPortalJwtStrategy,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientOrganizationsService,PatientPortalActivationService,PatientDashboardService,PatientRecordsService,PatientDocumentsService,PatientDocumentReleaseService,PatientDiagnosticResultsService,PatientDiagnosticResultReleaseService,PatientMedicationsService,PatientAppointmentsService,PatientProfileService,PatientMessagesService,PatientPortalMessagingFacade,PatientServiceRequestsService,PatientSessionSecurityService,AuditService],
   exports: [PatientPortalRepository,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientPortalMessagingFacade],
 })

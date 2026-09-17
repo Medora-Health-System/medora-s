@@ -173,6 +173,47 @@ export function mapDigitalCareUserError(
   return message.trim() ? "passthrough" : "generic";
 }
 
+/** Access/activation failures must not reuse the workspace "Patient not found" banner. */
+export function digitalCarePortalAccessMessageKey(error: unknown): string {
+  const kind = mapDigitalCareUserError(error);
+  if (kind === "notAuthorized") return "digitalCare.error.notAuthorized";
+  if (kind === "network") return "digitalCare.error.network";
+  if (kind === "portalUnavailable") return "digitalCare.error.portalUnavailable";
+  return "digitalCare.appAccess.loadError";
+}
+
+export function digitalCarePortalAccessActions(input: {
+  canActivate: boolean;
+  canRevoke: boolean;
+  access: PatientAppAccessSnapshot | null | undefined;
+  lookupFailed: boolean;
+}): {
+  kind: PatientAppAccessKind;
+  showStatus: boolean;
+  showActivate: boolean;
+  showRegenerate: boolean;
+  showRevoke: boolean;
+} {
+  if (input.lookupFailed || !input.access) {
+    return {
+      kind: "NOT_ACTIVATED",
+      showStatus: false,
+      showActivate: false,
+      showRegenerate: false,
+      showRevoke: false,
+    };
+  }
+  const kind = mapPatientAppAccessStatus(input.access);
+  const operable = input.canActivate;
+  return {
+    kind,
+    showStatus: true,
+    showActivate: operable && kind !== "ACTIVE" && kind !== "PENDING" && kind !== "EXPIRED",
+    showRegenerate: operable && (kind === "PENDING" || kind === "EXPIRED"),
+    showRevoke: input.canRevoke && (kind === "ACTIVE" || kind === "PENDING"),
+  };
+}
+
 export function fillCountTemplate(template: string, shown: number, total: number): string {
   return template.replace("{shown}", String(shown)).replace("{total}", String(total));
 }
