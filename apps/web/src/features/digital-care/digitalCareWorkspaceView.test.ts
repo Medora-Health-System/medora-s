@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   digitalCareInitials,
+  digitalCareIsActive,
+  digitalCareIsDischarged,
   digitalCareSafeLabel,
   digitalCareVisibleTabs,
   filterDigitalCareRoster,
@@ -38,15 +40,23 @@ describe("Digital Care workspace view helpers", () => {
     expect(digitalCareInitials("Marie Toussaint")).toBe("MT");
   });
 
-  it("filters roster sections from live identity fields", () => {
+  it("filters roster sections from authoritative encounter state", () => {
     const rows = [
       patient({ unreadCount: 2 }),
       patient({ id: "a", visitType: "OBSERVATION", displayName: "Obs" }),
       patient({ id: "b", visitStatus: "CLOSED", dischargedAt: "2026-09-14T00:00:00.000Z", arrivedAt: "2026-09-01T00:00:00.000Z", displayName: "Out" }),
+      patient({ id: "c", visitType: "OBSERVATION", visitStatus: "CLOSED", dischargedAt: null, displayName: "Closed Obs" }),
     ];
     expect(filterDigitalCareRoster(rows, "UNREAD")).toHaveLength(1);
-    expect(filterDigitalCareRoster(rows, "OBSERVATION")[0]?.displayName).toBe("Obs");
-    expect(filterDigitalCareRoster(rows, "DISCHARGED")[0]?.displayName).toBe("Out");
+    expect(filterDigitalCareRoster(rows, "OBSERVATION").map((row) => row.displayName)).toEqual(["Obs"]);
+    expect(filterDigitalCareRoster(rows, "ACTIVE").map((row) => row.displayName)).not.toContain("Closed Obs");
+    expect(filterDigitalCareRoster(rows, "DISCHARGED").map((row) => row.displayName)).toEqual(["Out", "Closed Obs"]);
+  });
+
+  it("treats CLOSED as discharged even when legacy dischargedAt is missing", () => {
+    const legacyClosed = patient({ visitStatus: "CLOSED", dischargedAt: null });
+    expect(digitalCareIsDischarged(legacyClosed)).toBe(true);
+    expect(digitalCareIsActive(legacyClosed)).toBe(false);
   });
 
   it("fills patient count copy without exposing identifiers", () => {
