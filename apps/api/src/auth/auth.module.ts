@@ -6,6 +6,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
 import { FailedLoginTracker } from "./failed-login-tracker";
+import { TechnologyItAwareAuthService } from "./technology-it-aware-auth.service";
 
 @Module({
   imports: [
@@ -14,8 +15,11 @@ import { FailedLoginTracker } from "./failed-login-tracker";
     JwtModule.register({}) // secrets set in AuthService at sign time
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, FailedLoginTracker],
+  providers: [
+    { provide: AuthService, useClass: TechnologyItAwareAuthService },
+    JwtStrategy,
+    FailedLoginTracker,
+  ],
   exports: [AuthService]
 })
 export class AuthModule {}
-
