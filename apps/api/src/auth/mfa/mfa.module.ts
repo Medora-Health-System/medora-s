@@ -7,10 +7,11 @@ import { AuthModule } from "../auth.module";
 import { MfaController } from "./mfa.controller";
 import { MfaService } from "./mfa.service";
 import { MfaChallengeGuard, MfaEnrollmentGuard } from "./mfa-grant.guard";
+import { TrustedMfaController } from "./trusted-mfa.controller";
 
 @Module({
   imports: [PrismaModule, PassportModule, JwtModule.register({}), AuthModule],
-  controllers: [MfaController],
+  controllers: [MfaController, TrustedMfaController],
   providers: [MfaService, AuditService, MfaChallengeGuard, MfaEnrollmentGuard],
   exports: [MfaService],
 })
