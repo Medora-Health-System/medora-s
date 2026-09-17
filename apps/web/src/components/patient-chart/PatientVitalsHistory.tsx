@@ -15,30 +15,25 @@ import { useI18n } from "@/lib/i18n";
 const emptyStateStyle: React.CSSProperties = {
   padding: "16px 14px",
   fontSize: 14,
-  color: "#555",
-  backgroundColor: "#fafafa",
-  border: "1px solid #eee",
-  borderRadius: 6,
+  color: "#64748b",
+  backgroundColor: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
 };
 
-export function PatientVitalsHistory({
-  items,
-  loading,
-}: {
-  items: PatientTriageVitalsSnapshot[];
-  loading: boolean;
-}) {
+const labels = {
+  en: { temperature: "Temperature", heartRate: "Heart rate", bloodPressure: "Blood pressure", respiratoryRate: "Respiratory rate", spo2: "SpO₂", weight: "Weight", height: "Height", allergy: "Allergy" },
+  fr: { temperature: "Température", heartRate: "Fréquence cardiaque", bloodPressure: "Tension artérielle", respiratoryRate: "Fréquence respiratoire", spo2: "SpO₂", weight: "Poids", height: "Taille", allergy: "Allergie" },
+  es: { temperature: "Temperatura", heartRate: "Frecuencia cardíaca", bloodPressure: "Presión arterial", respiratoryRate: "Frecuencia respiratoria", spo2: "SpO₂", weight: "Peso", height: "Estatura", allergy: "Alergia" },
+} as const;
+
+export function PatientVitalsHistory({ items, loading }: { items: PatientTriageVitalsSnapshot[]; loading: boolean }) {
   const { t, language } = useI18n();
   const loc = encounterBcp47(language);
-  const vh = (k: string) => t(`patientChartUi.vitalsHistory.${k}`);
+  const l = labels[language as keyof typeof labels] ?? labels.en;
 
-  if (loading && items.length === 0) {
-    return <div style={emptyStateStyle}>{vh("loading")}</div>;
-  }
-
-  if (items.length === 0) {
-    return <div style={emptyStateStyle}>{vh("empty")}</div>;
-  }
+  if (loading && items.length === 0) return <div style={emptyStateStyle}>Loading vital signs…</div>;
+  if (items.length === 0) return <div style={emptyStateStyle}>No recorded vital signs.</div>;
 
   const num = (x: unknown): number | null => {
     if (x == null || x === "") return null;
@@ -53,55 +48,31 @@ export function PatientVitalsHistory({
         const tempN = num(v.tempC);
         const weightN = num(v.weightKg);
         const heightN = num(v.heightCm);
-        const dateHeure = snap.triageCompleteAt ?? snap.updatedAt;
-        const formatDateTime = (s: string) =>
-          new Date(s).toLocaleString(loc, { dateStyle: "short", timeStyle: "short" });
+        const when = snap.triageCompleteAt ?? snap.updatedAt;
         const row = (label: string, val: string | number | null | undefined) =>
           val != null && val !== "" ? (
-            <div key={label} style={{ display: "flex", gap: 8, fontSize: 13 }}>
-              <span style={{ color: "#666", minWidth: 150 }}>{label}</span>
-              <span>{val}</span>
+            <div key={label} style={{ display: "grid", gridTemplateColumns: "minmax(130px, 180px) 1fr", gap: 10, fontSize: 13 }}>
+              <span style={{ color: "#64748b", fontWeight: 600 }}>{label}</span>
+              <span style={{ color: "#0f172a" }}>{val}</span>
             </div>
           ) : null;
         return (
-          <div
-            key={`${snap.triageId}-${snap.updatedAt}`}
-            style={{
-              padding: "10px 12px",
-              backgroundColor: "#fafafa",
-              borderRadius: 6,
-              border: "1px solid #eee",
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#37474f" }}>
-              <Link href={`/app/encounters/${snap.encounterId}`}>{tEncounterType(t, snap.encounterType)}</Link>
-              {" — "}
-              {formatDateTime(dateHeure)}
+          <div key={`${snap.triageId}-${snap.updatedAt}`} style={{ padding: "12px 14px", backgroundColor: "#fff", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <Link href={`/app/encounters/${snap.encounterId}`} style={{ color: "#0f172a", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>{tEncounterType(t, snap.encounterType)}</Link>
+              <span style={{ color: "#94a3b8" }}>•</span>
+              <span style={{ fontSize: 12, color: "#64748b" }}>{new Date(when).toLocaleString(loc, { dateStyle: "short", timeStyle: "short" })}</span>
             </div>
-            <div style={{ fontSize: 13, marginBottom: 8, color: "#263238", fontFamily: "ui-monospace, monospace" }}>
-              {formatVitalsHeaderLineForLocale(v, language) || "—"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {row(vh("rowTemperature"), tempN != null ? formatTemperatureDualLine(tempN, language) : null)}
-              {row(vh("rowHeartRate"), v.hr != null && v.hr !== "" ? `${v.hr}/min` : null)}
-              {row(
-                vh("rowBloodPressure"),
-                v.bpSys != null && v.bpDia != null && (v.bpSys !== "" || v.bpDia !== "")
-                  ? `${v.bpSys}/${v.bpDia} mmHg`
-                  : null
-              )}
-              {row(vh("rowRespiratoryRate"), v.rr != null && v.rr !== "" ? `${v.rr} /min` : null)}
-              {row(vh("rowSpo2"), v.spo2 != null && v.spo2 !== "" ? `${v.spo2} %` : null)}
-              {row(vh("rowWeight"), weightN != null ? formatWeightDualLine(weightN, language) : null)}
-              {row(vh("rowHeight"), heightN != null ? formatHeightDualLine(heightN, language) : null)}
-              {v.allergyNote && String(v.allergyNote).trim() !== "" ? (
-                <div style={{ display: "flex", gap: 8, fontSize: 13 }}>
-                  <span style={{ color: "#c62828", fontWeight: 700, minWidth: 150 }}>{vh("allergy")}</span>
-                  <span style={{ color: "#c62828", fontWeight: 700 }}>
-                    {v.allergyNote}
-                  </span>
-                </div>
-              ) : null}
+            <div style={{ fontSize: 13, marginBottom: 10, color: "#0f172a", fontFamily: "ui-monospace, SFMono-Regular, monospace", fontWeight: 600 }}>{formatVitalsHeaderLineForLocale(v, language) || "—"}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {row(l.temperature, tempN != null ? formatTemperatureDualLine(tempN, language) : null)}
+              {row(l.heartRate, v.hr != null && v.hr !== "" ? `${v.hr}/min` : null)}
+              {row(l.bloodPressure, v.bpSys != null && v.bpDia != null && (v.bpSys !== "" || v.bpDia !== "") ? `${v.bpSys}/${v.bpDia} mmHg` : null)}
+              {row(l.respiratoryRate, v.rr != null && v.rr !== "" ? `${v.rr}/min` : null)}
+              {row(l.spo2, v.spo2 != null && v.spo2 !== "" ? `${v.spo2}%` : null)}
+              {row(l.weight, weightN != null ? formatWeightDualLine(weightN, language) : null)}
+              {row(l.height, heightN != null ? formatHeightDualLine(heightN, language) : null)}
+              {v.allergyNote && String(v.allergyNote).trim() !== "" ? row(l.allergy, String(v.allergyNote)) : null}
             </div>
           </div>
         );
