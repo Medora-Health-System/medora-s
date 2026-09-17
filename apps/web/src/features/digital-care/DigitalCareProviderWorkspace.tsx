@@ -32,6 +32,7 @@ import {
   digitalCareVisibleTabs,
   fillCountTemplate,
   filterDigitalCareRoster,
+  mapDigitalCareUserError,
   medicationsByBucket,
   type DigitalCareMainTab,
   type DigitalCareRosterFilter,
@@ -57,6 +58,15 @@ const chipBase: CSSProperties = {
   letterSpacing: 0.2,
 };
 
+function digitalCareCaughtError(error: unknown, t: (key: string) => string): string {
+  const kind = mapDigitalCareUserError(error);
+  if (kind === "portalInactive") return t("digitalCare.messages.needPortal");
+  if (kind === "patientNotFound") return t("digitalCare.error.patientNotFound");
+  if (kind === "messagingUnavailable") return t("digitalCare.messages.unavailable");
+  if (kind === "generic") return t("digitalCare.error");
+  return error instanceof Error && error.message.trim() ? error.message : t("digitalCare.error");
+}
+
 function Chip({ label, tone }: { label: string; tone: "green" | "red" | "amber" | "blue" | "slate" | "purple" }) {
   const colors: Record<string, { bg: string; text: string; border: string }> = {
     green: { bg: "#dcfce7", text: "#166534", border: "#86efac" },
@@ -75,7 +85,7 @@ export function DigitalCareProviderWorkspace() {
   const { facilityId, roles, ready } = useFacilityAndRoles();
   const canUse = roles.includes("ADMIN") || roles.includes("PROVIDER") || roles.includes("RN");
   const [tab, setTab] = useState<DigitalCareMainTab>("results");
-  const [rosterFilter, setRosterFilter] = useState<DigitalCareRosterFilter>("RECENT");
+  const [rosterFilter, setRosterFilter] = useState<DigitalCareRosterFilter>("ALL");
   const [rosterQuery, setRosterQuery] = useState("");
   const [patients, setPatients] = useState<DigitalCareRosterPatient[]>([]);
   const [rosterTotal, setRosterTotal] = useState(0);
@@ -107,7 +117,7 @@ export function DigitalCareProviderWorkspace() {
         if (data.configuration) setConfiguration(data.configuration);
         setSelectedId((current) => current ?? data.patients[0]?.id ?? null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : t("digitalCare.error"));
+        setError(digitalCareCaughtError(e, t));
       } finally {
         setBusy(false);
       }
@@ -124,13 +134,18 @@ export function DigitalCareProviderWorkspace() {
         const bundle = await fetchDigitalCareWorkspace(facilityId, patientId);
         setWorkspace(bundle);
         if (bundle.configuration) setConfiguration(bundle.configuration);
+        setPatients((prev) => {
+          if (prev.some((row) => row.id === bundle.identity.id)) return prev;
+          const { insurance: _omit, ...row } = bundle.identity;
+          return [row, ...prev];
+        });
         setSelectedResult(bundle.results[0] ?? null);
         setResultDetail(null);
         const openThread = bundle.threads.find((row) => row.status === "OPEN") ?? bundle.threads[0];
         if (openThread) setThread(await fetchDigitalCareStaffThread(facilityId, openThread.id));
         else setThread(null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : t("digitalCare.error"));
+        setError(digitalCareCaughtError(e, t));
       } finally {
         setBusy(false);
       }
@@ -194,7 +209,7 @@ export function DigitalCareProviderWorkspace() {
     try {
       setResultDetail(await fetchDigitalCareResultDetail(facilityId, result.id, "VIEW"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("digitalCare.error"));
+      setError(digitalCareCaughtError(e, t));
     }
   }
 
@@ -208,7 +223,7 @@ export function DigitalCareProviderWorkspace() {
       else await releaseDigitalCareResult(facilityId, result.id);
       if (selectedId) await loadWorkspace(selectedId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("digitalCare.error"));
+      setError(digitalCareCaughtError(e, t));
     } finally {
       setBusy(false);
     }
@@ -222,7 +237,7 @@ export function DigitalCareProviderWorkspace() {
       setReply("");
       setThread(await fetchDigitalCareStaffThread(facilityId, thread.id));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("digitalCare.error"));
+      setError(digitalCareCaughtError(e, t));
     } finally {
       setBusy(false);
     }
@@ -242,7 +257,7 @@ export function DigitalCareProviderWorkspace() {
       setThread(created);
       if (selectedId) await loadWorkspace(selectedId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("digitalCare.messages.needPortal"));
+      setError(digitalCareCaughtError(e, t));
     } finally {
       setBusy(false);
     }
@@ -278,7 +293,7 @@ export function DigitalCareProviderWorkspace() {
       const detail = await fetchDigitalCareResultDetail(facilityId, selectedResult.id, "DOWNLOAD");
       openDigitalCarePrintDocument(digitalCareSafeLabel(detail.title), digitalCareResultPrintHtml(workspace?.identity.displayName ?? "", workspace?.identity.mrn ?? "", detail));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("digitalCare.error"));
+      setError(digitalCareCaughtError(e, t));
     }
   }
 
@@ -595,11 +610,11 @@ export function DigitalCareProviderWorkspace() {
               <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#ecfdf5", color: "#166534", fontSize: 13 }}>
                 {t("digitalCare.header.portalOn")}
               </div>
-            ) : (
+            ) : identity ? (
               <div style={{ marginTop: 12, padding: 10, borderRadius: 12, background: "#fff7ed", color: "#9a3412", fontSize: 13 }}>
                 {t("digitalCare.header.portalOff")}
               </div>
-            )}
+            ) : null}
           </div>
           <div style={{ ...card, padding: 16, background: "#f0fdf4" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -815,10 +830,18 @@ function MessagesPanel({
       <div style={{ ...card, minHeight: 360 }}>
         {!thread ? (
           <div style={{ padding: 16 }}>
-            <p style={{ color: "#64748b" }}>{t("digitalCare.messages.empty")}</p>
-            <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder={t("digitalCare.messages.newSubject")} style={{ width: "100%", boxSizing: "border-box", marginBottom: 8, padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
-            <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder={t("digitalCare.messages.newBody")} rows={4} style={{ width: "100%", boxSizing: "border-box", padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
-            <button type="button" disabled={busy || !newSubject.trim() || !newBody.trim()} onClick={onStart} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, border: 0, background: "#0f766e", color: "white", fontWeight: 800 }}>{t("digitalCare.messages.start")}</button>
+            {workspace && workspace.messagingStorageAvailable === false ? (
+              <p style={{ color: "#991b1b" }}>{t("digitalCare.messages.unavailable")}</p>
+            ) : workspace && workspace.identity.portalActive === false ? (
+              <p style={{ color: "#9a3412" }}>{t("digitalCare.messages.needPortal")}</p>
+            ) : (
+              <>
+                <p style={{ color: "#64748b" }}>{t("digitalCare.messages.empty")}</p>
+                <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder={t("digitalCare.messages.newSubject")} style={{ width: "100%", boxSizing: "border-box", marginBottom: 8, padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+                <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder={t("digitalCare.messages.newBody")} rows={4} style={{ width: "100%", boxSizing: "border-box", padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+                <button type="button" disabled={busy || !newSubject.trim() || !newBody.trim()} onClick={onStart} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, border: 0, background: "#0f766e", color: "white", fontWeight: 800 }}>{t("digitalCare.messages.start")}</button>
+              </>
+            )}
           </div>
         ) : (
           <>

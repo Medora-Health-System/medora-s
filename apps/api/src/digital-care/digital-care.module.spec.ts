@@ -41,5 +41,17 @@ describe("Digital Care runtime registration", () => {
     expect(workspace).toContain("RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN");
     expect(messaging).not.toContain("RoleCode.FRONT_DESK");
     expect(results).not.toContain("RoleCode.FRONT_DESK");
+    expect(workspace).not.toContain("RoleCode.FRONT_DESK");
+  });
+
+  it("resolves Digital Care and patient search facility from the authorized request context", () => {
+    const workspace = source("src/digital-care/staff/digital-care-staff-workspace.controller.ts");
+    const patients = source("src/patients/patients.controller.ts");
+    const messaging = source("src/patient-portal/messages/patient-messages-staff.controller.ts");
+    const results = source("src/patient-portal/records/patient-diagnostic-result-release.controller.ts");
+    expect(workspace).toContain("resolveAuthorizedFacilityId");
+    expect(patients).toContain("resolveAuthorizedFacilityId");
+    expect(messaging).toContain("resolveAuthorizedFacilityId");
+    expect(results).toContain("resolveAuthorizedFacilityId");
   });
 });

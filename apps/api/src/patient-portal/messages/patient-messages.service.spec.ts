@@ -52,6 +52,7 @@ describe("PatientMessagesService", () => {
     const prisma = {
       $queryRaw: jest.fn(),
       $transaction: jest.fn(async (callback: any) => callback(tx)),
+      patient: { findFirst: jest.fn().mockResolvedValue({ id: "patient-a" }) },
     } as any;
     const patientAudit = { record: jest.fn().mockResolvedValue(undefined) } as any;
     const staffAudit = { log: jest.fn().mockResolvedValue(undefined) } as any;
@@ -280,5 +281,64 @@ describe("PatientMessagesService", () => {
         attachmentId: "file-not-allowed-in-v1",
       }).success,
     ).toBe(false);
+  });
+
+  it("does not report an existing patient with an inactive portal as not found", async () => {
+    const { prisma, tx, service } = build();
+    tx.$queryRaw.mockResolvedValueOnce([]);
+
+    await expect(
+      service.createAsStaff(actor, "patient-a", {
+        category: "CLINICAL",
+        subject: "Follow-up",
+        message: "Please reply when you can.",
+      }),
+    ).rejects.toEqual(expect.objectContaining({ message: "Patient portal is not active for this patient." }));
+    expect(prisma.patient.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "patient-a", facilityId: "facility-a" } }),
+    );
+  });
+
+  it("returns Patient not found only when the Patient record is missing in the facility", async () => {
+    const { prisma, service } = build();
+    prisma.patient.findFirst.mockResolvedValueOnce(null);
+    await expect(
+      service.createAsStaff(actor, "patient-missing", {
+        category: "CLINICAL",
+        subject: "Follow-up",
+        message: "Hello",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("creates staff threads through PatientPortalMessageThread storage", async () => {
+    const { tx, staffAudit, service } = build();
+    tx.$queryRaw
+      .mockResolvedValueOnce([{ portalAccountId: "portal-a" }])
+      .mockResolvedValueOnce([thread])
+      .mockResolvedValueOnce([
+        {
+          ...patientMessage,
+          id: "message-staff",
+          senderType: "STAFF",
+          senderPortalAccountId: null,
+          senderUserId: "staff-a",
+          body: "Care team response",
+        },
+      ]);
+
+    const created = await service.createAsStaff(actor, "patient-a", {
+      category: "CLINICAL",
+      subject: "Follow-up",
+      message: "Care team response",
+    });
+    expect(created.id).toBe("thread-a");
+    const insertSql = tx.$queryRaw.mock.calls[1][0];
+    expect(insertSql.strings.join(" ")).toContain('INSERT INTO "PatientPortalMessageThread"');
+    expect(staffAudit.log).toHaveBeenCalledWith(
+      AuditAction.CREATE,
+      "PATIENT_PORTAL_MESSAGE_THREAD",
+      expect.objectContaining({ facilityId: "facility-a", patientId: "patient-a" }),
+    );
   });
 });

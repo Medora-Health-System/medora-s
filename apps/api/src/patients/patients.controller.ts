@@ -18,6 +18,7 @@ import {
   RequireRoles,
   AllowBreakGlassForPatientParam,
 } from "../common/guards/roles.guard";
+import { resolveAuthorizedFacilityId } from "../common/http/request-facility";
 import { PatientsService } from "./patients.service";
 import { PatientInsuranceService } from "./patient-insurance.service";
 import { PatientClinicalHistoryService } from "./patient-clinical-history.service";
@@ -61,7 +62,7 @@ export class PatientsController {
     @Query() query: { q?: string; mrn?: string; phone?: string; dob?: string; limit?: string },
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -84,7 +85,7 @@ export class PatientsController {
   @Post()
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async create(@Body() body: unknown, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -108,7 +109,7 @@ export class PatientsController {
     @Query() query: Record<string, string | undefined>,
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -135,7 +136,7 @@ export class PatientsController {
     @Query() query: Record<string, string | undefined>,
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -158,7 +159,7 @@ export class PatientsController {
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async getClinicalHistoryProfile(@Param("id") id: string, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -174,7 +175,7 @@ export class PatientsController {
     @Body() body: Record<string, unknown>,
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -202,7 +203,7 @@ export class PatientsController {
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async patchClinicalHistorySection(@Param("id") id: string, @Param("section") section: string, @Body() body: unknown, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     const actorUserId = req.user?.userId;
     if (!facilityId || !actorUserId) throw new BadRequestException("Authentication and facility required");
     const raw = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
@@ -223,7 +224,7 @@ export class PatientsController {
     @Query("locale") locale: string | undefined,
     @Req() req: any,
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -247,7 +248,7 @@ export class PatientsController {
     @Query("latest") latest: string | undefined,
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -274,7 +275,7 @@ export class PatientsController {
     RoleCode.BILLING
   )
   async listInsurance(@Param("id") id: string, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -298,7 +299,7 @@ export class PatientsController {
     RoleCode.BILLING
   )
   async upsertPrimaryInsurance(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -324,7 +325,7 @@ export class PatientsController {
     RoleCode.BILLING
   )
   async upsertSecondaryInsurance(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -350,7 +351,7 @@ export class PatientsController {
     RoleCode.BILLING
   )
   async getFacesheet(@Param("id") id: string, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -368,7 +369,7 @@ export class PatientsController {
   @AllowBreakGlassForPatientParam("id")
   @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async findOne(@Param("id") id: string, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -386,7 +387,7 @@ export class PatientsController {
   @Patch(":id")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async update(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
@@ -414,7 +415,7 @@ export class PatientsController {
     @Query() query: Record<string, string>,
     @Req() req: any
   ) {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    const facilityId = resolveAuthorizedFacilityId(req);
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }

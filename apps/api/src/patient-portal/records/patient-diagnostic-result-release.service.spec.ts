@@ -34,6 +34,32 @@ describe("PatientDiagnosticResultReleaseService", () => {
     );
   });
 
+  it("keeps listing verified results when optional release storage is missing", async () => {
+    const { prisma, service } = build();
+    prisma.order.findMany.mockResolvedValue([
+      {
+        id: "order-a",
+        patientId: "patient-a",
+        encounterId: "enc-a",
+        prescriberName: "Dr A",
+        orderedBy: "staff-a",
+        items: [
+          {
+            id: "item-a",
+            catalogItemType: "LAB_TEST",
+            manualLabel: "CBC",
+            documentedCollectedAt: null,
+            effectiveCollectedAt: null,
+            result: { criticalValue: false, resultText: "ok", verifiedAt: new Date(), effectiveResultedAt: new Date(), effectiveFinalizedAt: null },
+          },
+        ],
+      },
+    ]);
+    prisma.$queryRaw.mockRejectedValue({ code: "P2010", message: 'relation "PatientDiagnosticResultRelease" does not exist' });
+    const listed = await service.list(actor, "patient-a");
+    expect(listed).toEqual([expect.objectContaining({ id: "item-a", patientId: "patient-a", released: false })]);
+  });
+
   it("releases with an explicit audited RELEASE operation", async () => {
     const { audit, service } = build();
     const result = await service.release("item-a", actor);

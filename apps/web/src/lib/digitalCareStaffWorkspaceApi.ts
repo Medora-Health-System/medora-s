@@ -85,6 +85,7 @@ export type DigitalCareWorkspaceMedication = {
 export type DigitalCareWorkspaceBundle = {
   identity: DigitalCareRosterPatient & { insurance: string | null };
   configuration?: FacilityRuntimeConfiguration | null;
+  messagingStorageAvailable?: boolean;
   results: DigitalCareWorkspaceResult[];
   threads: Array<{ id: string; subject: string; status: string; category: string; lastMessageAt: string }>;
   medications: { ordered: DigitalCareWorkspaceMedication[]; homeSummary: string | null; reconComplete: boolean };
@@ -148,6 +149,7 @@ export async function fetchDigitalCareRoster(
     offset: number;
     limit: number;
     configuration?: FacilityRuntimeConfiguration | null;
+    messagingStorageAvailable?: boolean;
   }>;
 }
 

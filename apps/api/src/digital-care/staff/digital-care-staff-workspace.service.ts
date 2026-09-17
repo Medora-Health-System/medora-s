@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, Optional } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { AuditService } from "../../common/services/audit.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { isOptionalPortalStorageError } from "../../patient-portal/portal-storage.util";
 import type { DiagnosticResultStaffActor } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { PatientDiagnosticResultReleaseService } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
@@ -46,16 +47,10 @@ export class DigitalCareStaffWorkspaceService {
     const offset = Math.max(query?.offset ?? 0, 0);
     const needle = (query?.q ?? "").trim().toLowerCase();
     if (digitalCareLooksLikeUuid(needle)) {
-      return { patients: [], total: 0, offset, limit, configuration };
+      return { patients: [], total: 0, offset, limit, configuration, messagingStorageAvailable: true };
     }
 
-    const [threadPatients, resultOrders, recentEncounters] = await Promise.all([
-      this.prisma.$queryRaw<Array<{ patientId: string }>>(Prisma.sql`
-        SELECT DISTINCT "patientId" FROM "PatientPortalMessageThread"
-        WHERE "facilityId" = ${actor.facilityId}
-        ORDER BY "patientId"
-        LIMIT 200
-      `),
+    const [resultOrders, recentEncounters, encounterPatients, threadPatients] = await Promise.all([
       this.prisma.order.findMany({
         where: { facilityId: actor.facilityId, cancelledAt: null },
         select: { patientId: true },
@@ -66,14 +61,35 @@ export class DigitalCareStaffWorkspaceService {
         where: { facilityId: actor.facilityId, status: { in: ["OPEN", "CLOSED"] } },
         select: { patientId: true },
         orderBy: { createdAt: "desc" },
-        take: 120,
+        take: 200,
       }),
+      this.prisma.patient.findMany({
+        where: {
+          facilityId: actor.facilityId,
+          encounters: { some: { status: { in: ["OPEN", "CLOSED"] } } },
+        },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+        take: 200,
+      }),
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<Array<{ patientId: string }>>(Prisma.sql`
+            SELECT DISTINCT "patientId" FROM "PatientPortalMessageThread"
+            WHERE "facilityId" = ${actor.facilityId}
+            ORDER BY "patientId"
+            LIMIT 200
+          `),
+        [] as Array<{ patientId: string }>,
+      ),
     ]);
 
     const idSet = new Set<string>();
-    for (const row of threadPatients) idSet.add(row.patientId);
     for (const row of resultOrders) idSet.add(row.patientId);
     for (const row of recentEncounters) idSet.add(row.patientId);
+    for (const row of encounterPatients) idSet.add(row.id);
+    for (const row of threadPatients.value) idSet.add(row.patientId);
+    const messagingStorageAvailable = threadPatients.available;
 
     if (needle) {
       const dob = digitalCareParseSearchDate(needle);
@@ -102,7 +118,7 @@ export class DigitalCareStaffWorkspaceService {
         facilityId: actor.facilityId,
         metadata: { count: 0 },
       });
-      return { patients: [], total: 0, offset, limit, configuration };
+      return { patients: [], total: 0, offset, limit, configuration, messagingStorageAvailable };
     }
 
     const [patients, encounters, portalRows, unreadRows] = await Promise.all([
@@ -140,33 +156,42 @@ export class DigitalCareStaffWorkspaceService {
         },
         orderBy: { createdAt: "desc" },
       }),
-      this.prisma.$queryRaw<Array<{ patientId: string; status: string }>>(Prisma.sql`
-        SELECT l."patientId", l."status"::text AS "status"
-        FROM "PatientPortalLink" l
-        WHERE l."facilityId" = ${actor.facilityId}
-          AND l."patientId" IN (${Prisma.join(patientIds)})
-          AND l."revokedAt" IS NULL
-      `),
-      this.prisma.$queryRaw<Array<{ patientId: string; unread: number }>>(Prisma.sql`
-        SELECT t."patientId", COUNT(*)::int AS unread
-        FROM "PatientPortalMessageThread" t
-        INNER JOIN "PatientPortalMessage" m ON m."threadId" = t."id"
-        WHERE t."facilityId" = ${actor.facilityId}
-          AND t."status" = 'OPEN'
-          AND m."senderType" = 'PATIENT'
-          AND m."createdAt" = (
-            SELECT MAX(m2."createdAt") FROM "PatientPortalMessage" m2 WHERE m2."threadId" = t."id"
-          )
-        GROUP BY t."patientId"
-      `),
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<Array<{ patientId: string; status: string }>>(Prisma.sql`
+            SELECT l."patientId", l."status"::text AS "status"
+            FROM "PatientPortalLink" l
+            WHERE l."facilityId" = ${actor.facilityId}
+              AND l."patientId" IN (${Prisma.join(patientIds)})
+              AND l."revokedAt" IS NULL
+          `),
+        [] as Array<{ patientId: string; status: string }>,
+      ),
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<Array<{ patientId: string; unread: number }>>(Prisma.sql`
+            SELECT t."patientId", COUNT(*)::int AS unread
+            FROM "PatientPortalMessageThread" t
+            INNER JOIN "PatientPortalMessage" m ON m."threadId" = t."id"
+            WHERE t."facilityId" = ${actor.facilityId}
+              AND t."status" = 'OPEN'
+              AND m."senderType" = 'PATIENT'
+              AND m."createdAt" = (
+                SELECT MAX(m2."createdAt") FROM "PatientPortalMessage" m2 WHERE m2."threadId" = t."id"
+              )
+            GROUP BY t."patientId"
+          `),
+        [] as Array<{ patientId: string; unread: number }>,
+      ),
     ]);
 
     const latestEncounter = new Map<string, (typeof encounters)[number]>();
     for (const encounter of encounters) {
       if (!latestEncounter.has(encounter.patientId)) latestEncounter.set(encounter.patientId, encounter);
     }
-    const portalByPatient = new Map(portalRows.map((row) => [row.patientId, row.status === "VERIFIED"]));
-    const unreadByPatient = new Map(unreadRows.map((row) => [row.patientId, row.unread]));
+    const portalByPatient = new Map(portalRows.value.map((row) => [row.patientId, row.status === "VERIFIED"]));
+    const unreadByPatient = new Map(unreadRows.value.map((row) => [row.patientId, row.unread]));
+    const portalMetadataAvailable = messagingStorageAvailable && portalRows.available && unreadRows.available;
 
     const mapped = patients.map((patient) => {
       const encounter = latestEncounter.get(patient.id) ?? null;
@@ -215,7 +240,7 @@ export class DigitalCareStaffWorkspaceService {
     await this.audit.log(AuditAction.VIEW, "DIGITAL_CARE_ROSTER", {
       userId: actor.userId,
       facilityId: actor.facilityId,
-      metadata: { count: filtered.length, qLength: needle.length },
+      metadata: { count: filtered.length, qLength: needle.length, messagingStorageAvailable: portalMetadataAvailable },
     });
 
     return {
@@ -224,10 +249,14 @@ export class DigitalCareStaffWorkspaceService {
       offset,
       limit,
       configuration,
+      messagingStorageAvailable: portalMetadataAvailable,
     };
   }
 
   async workspace(actor: DiagnosticResultStaffActor, patientId: string) {
+    if (!digitalCareLooksLikeUuid(patientId)) {
+      throw new BadRequestException("Patient identity is required");
+    }
     const configuration = this.facilityConfiguration
       ? await this.facilityConfiguration.assertStaffDigitalCare(actor.facilityId).then((settings) =>
           projectFacilityRuntimeConfiguration(actor.facilityId, settings),
@@ -291,42 +320,60 @@ export class DigitalCareStaffWorkspaceService {
         },
         orderBy: { createdAt: "desc" },
       }),
-      this.prisma.$queryRaw<Array<{ status: string }>>(Prisma.sql`
-        SELECT l."status"::text AS "status"
-        FROM "PatientPortalLink" l
-        WHERE l."facilityId" = ${actor.facilityId}
-          AND l."patientId" = ${patientId}
-          AND l."revokedAt" IS NULL
-        LIMIT 1
-      `),
-      this.prisma.$queryRaw<Array<{ unread: number }>>(Prisma.sql`
-        SELECT COUNT(*)::int AS unread
-        FROM "PatientPortalMessageThread" t
-        INNER JOIN "PatientPortalMessage" m ON m."threadId" = t."id"
-        WHERE t."facilityId" = ${actor.facilityId}
-          AND t."patientId" = ${patientId}
-          AND t."status" = 'OPEN'
-          AND m."senderType" = 'PATIENT'
-          AND m."createdAt" = (
-            SELECT MAX(m2."createdAt") FROM "PatientPortalMessage" m2 WHERE m2."threadId" = t."id"
-          )
-      `),
-      this.releases.list(actor, patientId),
-      this.prisma.$queryRaw<
-        Array<{
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<Array<{ status: string }>>(Prisma.sql`
+            SELECT l."status"::text AS "status"
+            FROM "PatientPortalLink" l
+            WHERE l."facilityId" = ${actor.facilityId}
+              AND l."patientId" = ${patientId}
+              AND l."revokedAt" IS NULL
+            LIMIT 1
+          `),
+        [] as Array<{ status: string }>,
+      ),
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<Array<{ unread: number }>>(Prisma.sql`
+            SELECT COUNT(*)::int AS unread
+            FROM "PatientPortalMessageThread" t
+            INNER JOIN "PatientPortalMessage" m ON m."threadId" = t."id"
+            WHERE t."facilityId" = ${actor.facilityId}
+              AND t."patientId" = ${patientId}
+              AND t."status" = 'OPEN'
+              AND m."senderType" = 'PATIENT'
+              AND m."createdAt" = (
+                SELECT MAX(m2."createdAt") FROM "PatientPortalMessage" m2 WHERE m2."threadId" = t."id"
+              )
+          `),
+        [] as Array<{ unread: number }>,
+      ),
+      this.optionalReleaseList(actor, patientId),
+      this.optionalPortalQuery(
+        () =>
+          this.prisma.$queryRaw<
+            Array<{
+              id: string;
+              subject: string;
+              status: string;
+              category: string;
+              lastMessageAt: Date;
+            }>
+          >(Prisma.sql`
+            SELECT "id", "subject", "status"::text AS "status", "category"::text AS "category", "lastMessageAt"
+            FROM "PatientPortalMessageThread"
+            WHERE "facilityId" = ${actor.facilityId} AND "patientId" = ${patientId}
+            ORDER BY "lastMessageAt" DESC
+            LIMIT 50
+          `),
+        [] as Array<{
           id: string;
           subject: string;
           status: string;
           category: string;
           lastMessageAt: Date;
-        }>
-      >(Prisma.sql`
-        SELECT "id", "subject", "status"::text AS "status", "category"::text AS "category", "lastMessageAt"
-        FROM "PatientPortalMessageThread"
-        WHERE "facilityId" = ${actor.facilityId} AND "patientId" = ${patientId}
-        ORDER BY "lastMessageAt" DESC
-        LIMIT 50
-      `),
+        }>,
+      ),
       this.prisma.order.findMany({
         where: { facilityId: actor.facilityId, patientId },
         select: {
@@ -441,15 +488,15 @@ export class DigitalCareStaffWorkspaceService {
       unit: encounter?.roomLabel ?? null,
       attending: encounter?.physicianAssigned ? digitalCarePatientDisplayName(encounter.physicianAssigned) : null,
       encounterId: encounter?.id ?? null,
-      portalActive: portalRows[0]?.status === "VERIFIED",
-      unreadCount: unreadRows[0]?.unread ?? 0,
+      portalActive: portalRows.value[0]?.status === "VERIFIED",
+      unreadCount: unreadRows.value[0]?.unread ?? 0,
       insurance: insurance
         .map((row) => row.payerNameFreeText || row.planName)
         .filter(Boolean)
         .join(" · ") || null,
     };
 
-    const patientResults = results.map((result) => {
+    const patientResults = results.value.map((result) => {
       const rows = digitalCareParseResultRows(result.resultData, result.resultText);
       const imaging = digitalCareImagingReport(result.resultData);
       const { resultData: _omit, ...rest } = result;
@@ -559,16 +606,21 @@ export class DigitalCareStaffWorkspaceService {
       userId: actor.userId,
       facilityId: actor.facilityId,
       patientId,
-      metadata: { resultCount: patientResults.length, threadCount: threads.length },
+      metadata: {
+        resultCount: patientResults.length,
+        threadCount: threads.value.length,
+        messagingStorageAvailable: portalRows.available && unreadRows.available && threads.available,
+      },
     });
 
     return {
       identity,
       configuration,
+      messagingStorageAvailable: portalRows.available && unreadRows.available && threads.available,
       results: !configuration || configuration.digitalCare.resultRelease ? patientResults : [],
       threads:
         !configuration || configuration.digitalCare.secureMessaging
-          ? threads.map((thread) => ({
+          ? threads.value.map((thread) => ({
               id: thread.id,
               subject: thread.subject,
               status: thread.status,
@@ -627,5 +679,27 @@ export class DigitalCareStaffWorkspaceService {
         metadata: row.metadata,
       })),
     };
+  }
+
+  private async optionalPortalQuery<T>(query: () => Promise<T>, fallback: T): Promise<{ value: T; available: boolean }> {
+    try {
+      return { value: await query(), available: true };
+    } catch (error) {
+      if (isOptionalPortalStorageError(error)) {
+        return { value: fallback, available: false };
+      }
+      throw error;
+    }
+  }
+
+  private async optionalReleaseList(actor: DiagnosticResultStaffActor, patientId: string) {
+    try {
+      return { value: await this.releases.list(actor, patientId), available: true };
+    } catch (error) {
+      if (isOptionalPortalStorageError(error)) {
+        return { value: [], available: false };
+      }
+      throw error;
+    }
   }
 }
