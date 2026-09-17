@@ -7,6 +7,7 @@ import {
   resolvePlatformPrincipalAccess,
 } from "../../auth/platform-principal";
 import { resolveRequestedFacilityId } from "../http/request-facility";
+import { tryAuthorizeTechnologyItCareSupport } from "./technology-it-care-support";
 import {
   BREAK_GLASS_PATIENT_PARAM_KEY,
   MSPP_ROLES_KEY,
@@ -117,6 +118,26 @@ export class RolesGuard implements CanActivate {
       platformPrincipalRouteAllowed &&
       requiredRoles.includes(RoleCode.MEDORA_SUPER_ADMIN) &&
       (await this.tryPlatformPrincipal(request, facilityId, userId))
+    ) {
+      return true;
+    }
+
+    /**
+     * Phase 18C — corporate Technology / IT support context.
+     *
+     * This is intentionally narrower than a real ADMIN membership: only safe, read-only
+     * administration/configuration routes may pass. Patient, encounter, order, pharmacy,
+     * diagnostics, billing, ROI, and export paths are explicitly excluded. The synthetic
+     * care-shell projection therefore never becomes clinical or financial write authority.
+     */
+    if (
+      await tryAuthorizeTechnologyItCareSupport(
+        this.prisma,
+        request,
+        facilityId,
+        userId,
+        requiredRoles
+      )
     ) {
       return true;
     }
