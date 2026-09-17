@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import type { PatientPortalAccessStatus, PatientPortalActivationIssue } from "@/lib/patientPortalAdminApi";
+import type { PatientPortalAccessStatus, PatientPortalActivationIssue, PatientPortalInvitationIssue } from "@/lib/patientPortalAdminApi";
 import { digitalCareFormatWhen, digitalCarePortalAccessActions, type PatientAppAccessKind } from "./digitalCareWorkspaceView";
 
 const card: CSSProperties = {
@@ -36,9 +36,11 @@ export function DigitalCarePatientAppAccess({
   busy,
   issuedCode,
   issuedExpiresAt,
+  invitation,
   copied,
   lookupFailed,
   lookupError,
+  onInvite,
   onActivate,
   onRevoke,
   onCopy,
@@ -52,15 +54,17 @@ export function DigitalCarePatientAppAccess({
   busy: boolean;
   issuedCode: string | null;
   issuedExpiresAt: string | null;
+  invitation: PatientPortalInvitationIssue | null;
   copied: boolean;
   lookupFailed?: boolean;
   lookupError?: string | null;
+  onInvite: () => Promise<PatientPortalInvitationIssue | void>;
   onActivate: () => Promise<PatientPortalActivationIssue | void>;
   onRevoke: () => Promise<void>;
   onCopy: () => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
-  const [confirm, setConfirm] = useState<"activate" | "revoke" | null>(null);
+  const [confirm, setConfirm] = useState<"invite" | "activate" | "revoke" | null>(null);
   const actions = digitalCarePortalAccessActions({
     canActivate,
     canRevoke,
@@ -72,6 +76,13 @@ export function DigitalCarePatientAppAccess({
   const showRegenerate = actions.showRegenerate;
   const showActivate = actions.showActivate;
   const showRevoke = actions.showRevoke;
+  const hasEmail = Boolean(access?.hasEmail);
+  const showInvite = canActivate && !lookupFailed && Boolean(access) && kind !== "ACTIVE";
+
+  async function runInvite() {
+    setConfirm(null);
+    await onInvite();
+  }
 
   async function runActivate() {
     setConfirm(null);
@@ -109,18 +120,35 @@ export function DigitalCarePatientAppAccess({
           {t(`digitalCare.appAccess.status.${kind}`)}
         </div>
       ) : null}
+      {!lookupFailed && access ? (
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
+          {hasEmail
+            ? `${t("digitalCare.appAccess.emailOnFile")}: ${access.maskedEmail}`
+            : t("digitalCare.appAccess.missingEmail")}
+        </p>
+      ) : null}
       {access?.latestActivation?.expiresAt && kind === "PENDING" ? (
         <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
           {t("digitalCare.appAccess.expiresAt")}: {digitalCareFormatWhen(access.latestActivation.expiresAt)}
         </p>
       ) : null}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        {showInvite ? (
+          <button
+            type="button"
+            disabled={busy || !hasEmail}
+            onClick={() => setConfirm("invite")}
+            style={{ ...buttonBase, border: 0, background: hasEmail ? "#0f766e" : "#94a3b8", color: "white" }}
+          >
+            {kind === "PENDING" || kind === "EXPIRED" ? t("digitalCare.appAccess.resendInvitation") : t("digitalCare.appAccess.sendInvitation")}
+          </button>
+        ) : null}
         {showActivate ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => setConfirm("activate")}
-            style={{ ...buttonBase, border: 0, background: "#0f766e", color: "white" }}
+            style={{ ...buttonBase, border: "1px solid #cbd5e1", background: "white", color: "#0f172a" }}
           >
             {t("digitalCare.appAccess.activate")}
           </button>
@@ -154,6 +182,20 @@ export function DigitalCarePatientAppAccess({
           {lookupFailed ? t("digitalCare.appAccess.retry") : t("digitalCare.refresh")}
         </button>
       </div>
+      {invitation && !lookupFailed ? (
+        <div data-testid="digital-care-patient-invitation-sent" style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#ecfdf5", border: "1px solid #86efac" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#166534" }}>{t("digitalCare.appAccess.inviteSent")}</div>
+          <div style={{ marginTop: 6, fontSize: 13, color: "#334155" }}>
+            {t("digitalCare.appAccess.invitationDelivery")}: {invitation.maskedEmail}
+          </div>
+          {invitation.expiresAt ? (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
+              {t("digitalCare.appAccess.expiresAt")}: {digitalCareFormatWhen(invitation.expiresAt)}
+            </div>
+          ) : null}
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "#166534" }}>{t("digitalCare.appAccess.inviteWarning")}</p>
+        </div>
+      ) : null}
       {issuedCode && !lookupFailed ? (
         <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
           <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{t("digitalCare.appAccess.codeLabel")}</div>
@@ -186,12 +228,21 @@ export function DigitalCarePatientAppAccess({
           }}
         >
           <p style={{ margin: 0, fontWeight: 800 }}>
-            {confirm === "activate" ? t("digitalCare.appAccess.confirmActivateTitle") : t("digitalCare.appAccess.confirmRevokeTitle")}
+            {confirm === "invite"
+              ? t("digitalCare.appAccess.confirmInviteTitle")
+              : confirm === "activate"
+                ? t("digitalCare.appAccess.confirmActivateTitle")
+                : t("digitalCare.appAccess.confirmRevokeTitle")}
           </p>
           <p style={{ margin: "8px 0 0", fontSize: 13, color: "#334155" }}>
             {t("digitalCare.appAccess.patient")}: {patientName}
           </p>
-          {confirm === "activate" ? (
+          {confirm === "invite" ? (
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "#334155" }}>
+              {t("digitalCare.appAccess.confirmInviteBody")}
+              {access?.maskedEmail ? ` ${access.maskedEmail}` : ""}
+            </p>
+          ) : confirm === "activate" ? (
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "#334155" }}>{t("digitalCare.appAccess.confirmActivateBody")}</p>
           ) : (
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "#334155" }}>{t("digitalCare.appAccess.confirmRevokeBody")}</p>
@@ -200,7 +251,7 @@ export function DigitalCarePatientAppAccess({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void (confirm === "activate" ? runActivate() : runRevoke())}
+              onClick={() => void (confirm === "invite" ? runInvite() : confirm === "activate" ? runActivate() : runRevoke())}
               style={{ ...buttonBase, border: 0, background: "#0f766e", color: "white" }}
             >
               {t("digitalCare.appAccess.confirm")}

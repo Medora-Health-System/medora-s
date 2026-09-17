@@ -164,7 +164,12 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("fetchPatientPortalAccess(facilityId, patientId)");
     expect(api).toContain("/patient-portal-admin/v1/patients/");
     expect(api).toContain("/activation");
+    expect(api).toContain("/invitation");
     expect(api).toContain("{ facilityId }");
+    expect(access).toContain("digitalCare.appAccess.sendInvitation");
+    expect(access).toContain("onInvite");
+    expect(workspace).toContain("sendPatientPortalInvitation");
+    expect(workspace).toContain("sendPortalInvitation");
   });
 
   it("keeps access lookup failures inside Patient App Access instead of a global Patient not found banner", () => {
@@ -178,6 +183,18 @@ describe("Digital Care provider messaging workspace", () => {
     expect(access).toContain("digitalCare.appAccess.loadError");
     expect(access).toContain("digitalCare.appAccess.retry");
     expect(access).toContain("digitalCarePortalAccessActions");
+  });
+
+  it("does not return or display an invitation secret after email send", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    const api = readFileSync(join(__dirname, "../../lib/patientPortalAdminApi.ts"), "utf8");
+    expect(api).toContain("PatientPortalInvitationIssue");
+    expect(api).not.toMatch(/invitation[\s\S]{0,200}activationCode/);
+    expect(workspace).toContain("setIssuedInvitation(issued)");
+    expect(workspace).toContain("setIssuedCode(null)");
+    expect(access).toContain("invitation.maskedEmail");
+    expect(access).not.toContain("invitation.activationCode");
   });
 
   it("does not show Pending or a fake code after activation POST failure", () => {

@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { OutboundMailService } from "../common/mail/outbound-mail.service";
 import { AuditService } from "../common/services/audit.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
@@ -46,6 +47,7 @@ const digitalCareImports = [
     PatientPortalAuditService,
     PatientPortalActivationRepository,
     PatientPortalActivationService,
+    OutboundMailService,
     PatientMessagesService,
     PatientDiagnosticResultReleaseService,
     DigitalCareStaffWorkspaceService,
