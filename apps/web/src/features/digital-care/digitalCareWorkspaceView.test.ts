@@ -4,6 +4,8 @@ import {
   digitalCareInitials,
   digitalCareIsActive,
   digitalCareIsDischarged,
+  digitalCarePortalAccessActions,
+  digitalCarePortalAccessMessageKey,
   digitalCareSafeLabel,
   digitalCareVisitStatusPresentation,
   digitalCareVisibleTabs,
@@ -125,6 +127,51 @@ describe("Digital Care workspace view helpers", () => {
     expect(mapPatientAppAccessStatus({ accessStatus: "VERIFIED", accountStatus: null })).toBe("NOT_ACTIVATED");
     expect(mapPatientAppAccessStatus({ accessStatus: "REVOKED", accountStatus: "ACTIVE", revokedAt: "2026-09-14T00:00:00.000Z" })).toBe("REVOKED");
     expect(mapPatientAppAccessStatus({ accessStatus: "NOT_LINKED", latestActivation: { state: "USED" } })).toBe("NOT_ACTIVATED");
+  });
+
+  it("does not treat access GET 404 as a loaded Active/Pending Patient App Access state", () => {
+    const missing = Object.assign(new Error("Cannot GET /patient-portal-admin/v1/patients/x/access"), { status: 404 });
+    const notAtFacility = Object.assign(new Error("Patient not found at this facility"), { status: 404 });
+    expect(mapDigitalCareUserError(missing)).toBe("patientNotFound");
+    expect(digitalCarePortalAccessMessageKey(missing)).toBe("digitalCare.appAccess.loadError");
+    expect(digitalCarePortalAccessMessageKey(notAtFacility)).toBe("digitalCare.appAccess.loadError");
+    expect(digitalCarePortalAccessMessageKey(Object.assign(new Error("Access denied"), { status: 403 }))).toBe(
+      "digitalCare.error.notAuthorized",
+    );
+    expect(
+      digitalCarePortalAccessActions({
+        canActivate: true,
+        canRevoke: true,
+        access: null,
+        lookupFailed: true,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        showStatus: false,
+        showActivate: false,
+        showRegenerate: false,
+        showRevoke: false,
+      }),
+    );
+  });
+
+  it("shows Activate only after a successful access lookup", () => {
+    expect(
+      digitalCarePortalAccessActions({
+        canActivate: true,
+        canRevoke: true,
+        access: { accessStatus: "NOT_LINKED", latestActivation: null },
+        lookupFailed: false,
+      }).showActivate,
+    ).toBe(true);
+    expect(
+      digitalCarePortalAccessActions({
+        canActivate: true,
+        canRevoke: false,
+        access: { accessStatus: "NOT_LINKED", latestActivation: { state: "PENDING" } },
+        lookupFailed: false,
+      }),
+    ).toEqual(expect.objectContaining({ kind: "PENDING", showActivate: false, showRegenerate: true, showRevoke: false }));
   });
 
   it("hides Digital Care tabs that the facility configuration disabled", () => {

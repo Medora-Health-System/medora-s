@@ -22,14 +22,16 @@ describe("Digital Care runtime registration", () => {
     expect(patientRuntime).toContain("FacilityConfigurationModule");
   });
 
-  it("owns staff messaging and result-release controllers so they are not duplicated in PatientPortalModule", () => {
+  it("owns staff messaging, result-release, and patient-app activation controllers so they are not gated by PATIENT_PORTAL_ENABLED", () => {
     const digitalCare = source("src/digital-care/digital-care.module.ts");
     const patientPortal = source("src/patient-portal/patient-portal.module.ts");
     expect(digitalCare).toContain("PatientMessagesStaffController");
     expect(digitalCare).toContain("PatientDiagnosticResultReleaseController");
     expect(digitalCare).toContain("DigitalCareStaffWorkspaceController");
+    expect(digitalCare).toContain("PatientPortalStaffActivationController");
     expect(patientPortal).not.toContain("PatientMessagesStaffController");
     expect(patientPortal).not.toContain("PatientDiagnosticResultReleaseController");
+    expect(patientPortal).not.toContain("PatientPortalStaffActivationController");
   });
 
   it("keeps staff Digital Care RBAC on ADMIN, PROVIDER, and RN", () => {
@@ -64,10 +66,15 @@ describe("Digital Care runtime registration", () => {
     expect(results).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
   });
 
-  it("reuses the canonical staff activation controller with authorized facility context", () => {
+  it("resolves Digital Care workspace and staff activation from the same authorized facility context", () => {
+    const workspace = source("src/digital-care/staff/digital-care-staff-workspace.controller.ts");
     const activation = source("src/patient-portal/organizations/patient-portal-staff-activation.controller.ts");
+    expect(workspace).toContain("resolveAuthorizedFacilityId");
     expect(activation).toContain("resolveAuthorizedFacilityId");
+    expect(workspace).not.toContain('req.headers?.["x-facility-id"]');
     expect(activation).not.toContain('req.headers?.["x-facility-id"]');
+    expect(workspace).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
+    expect(activation).toContain('@UseGuards(AuthGuard("jwt"), RolesGuard)');
     expect(activation).toContain("RoleCode.PROVIDER, RoleCode.RN");
     expect(activation).toContain('@RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)');
     expect(activation).toContain('@RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)');

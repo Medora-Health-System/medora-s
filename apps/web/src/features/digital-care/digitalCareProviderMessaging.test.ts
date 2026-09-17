@@ -164,5 +164,26 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("fetchPatientPortalAccess(facilityId, patientId)");
     expect(api).toContain("/patient-portal-admin/v1/patients/");
     expect(api).toContain("/activation");
+    expect(api).toContain("{ facilityId }");
+  });
+
+  it("keeps access lookup failures inside Patient App Access instead of a global Patient not found banner", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    expect(workspace).toContain("setPortalError(t(digitalCarePortalAccessMessageKey(accessError)))");
+    expect(workspace).not.toContain("setError(digitalCareCaughtError(accessError, t))");
+    expect(workspace).toContain("data-testid=\"digital-care-workspace-error\"");
+    expect(access).toContain("data-testid=\"digital-care-patient-app-access-error\"");
+    expect(access).toContain("lookupFailed");
+    expect(access).toContain("digitalCare.appAccess.loadError");
+    expect(access).toContain("digitalCare.appAccess.retry");
+    expect(access).toContain("digitalCarePortalAccessActions");
+  });
+
+  it("does not show Pending or a fake code after activation POST failure", () => {
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    expect(workspace).toContain("setIssuedCode(issued.activationCode)");
+    expect(workspace).toContain("setIssuedExpiresAt(issued.expiresAt)");
+    expect(workspace).toMatch(/catch \(e\) \{\s*setIssuedCode\(null\);\s*setIssuedExpiresAt\(null\);\s*setPortalError/);
   });
 });

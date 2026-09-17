@@ -35,6 +35,7 @@ import {
   fillCountTemplate,
   filterDigitalCareRoster,
   mapDigitalCareUserError,
+  digitalCarePortalAccessMessageKey,
   medicationsByBucket,
   type DigitalCareMainTab,
   type DigitalCareRosterFilter,
@@ -123,6 +124,7 @@ export function DigitalCareProviderWorkspace() {
   const [messageQuery, setMessageQuery] = useState("");
   const [configuration, setConfiguration] = useState<DigitalCareWorkspaceBundle["configuration"]>(null);
   const [portalAccess, setPortalAccess] = useState<PatientPortalAccessStatus | null>(null);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
   const [issuedExpiresAt, setIssuedExpiresAt] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -152,6 +154,7 @@ export function DigitalCareProviderWorkspace() {
       if (!facilityId || !canUse) return;
       setBusy(true);
       setError(null);
+      setPortalError(null);
       try {
         const bundle = await fetchDigitalCareWorkspace(facilityId, patientId);
         setWorkspace(bundle);
@@ -168,10 +171,12 @@ export function DigitalCareProviderWorkspace() {
         else setThread(null);
         try {
           setPortalAccess(await fetchPatientPortalAccess(facilityId, patientId));
+          setPortalError(null);
         } catch (accessError) {
           setPortalAccess(null);
-          const kind = mapDigitalCareUserError(accessError);
-          if (kind !== "notAuthorized") setError(digitalCareCaughtError(accessError, t));
+          setIssuedCode(null);
+          setIssuedExpiresAt(null);
+          setPortalError(t(digitalCarePortalAccessMessageKey(accessError)));
         }
       } catch (e) {
         setError(digitalCareCaughtError(e, t));
@@ -207,6 +212,7 @@ export function DigitalCareProviderWorkspace() {
       void loadWorkspace(selectedId);
     } else {
       setPortalAccess(null);
+      setPortalError(null);
       setIssuedCode(null);
       setIssuedExpiresAt(null);
     }
@@ -305,7 +311,7 @@ export function DigitalCareProviderWorkspace() {
   async function issuePortalActivation() {
     if (!facilityId || !selectedId || !canActivatePortal) return;
     setBusy(true);
-    setError(null);
+    setPortalError(null);
     try {
       const issued = await issuePatientPortalActivation(facilityId, selectedId);
       setIssuedCode(issued.activationCode);
@@ -314,7 +320,9 @@ export function DigitalCareProviderWorkspace() {
       setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
       return issued;
     } catch (e) {
-      setError(digitalCareCaughtError(e, t));
+      setIssuedCode(null);
+      setIssuedExpiresAt(null);
+      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
     } finally {
       setBusy(false);
     }
@@ -323,14 +331,14 @@ export function DigitalCareProviderWorkspace() {
   async function revokePortalAccessAction() {
     if (!facilityId || !selectedId || !canRevokePortal) return;
     setBusy(true);
-    setError(null);
+    setPortalError(null);
     try {
       await revokePatientPortalAccess(facilityId, selectedId);
       setIssuedCode(null);
       setIssuedExpiresAt(null);
       setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
     } catch (e) {
-      setError(digitalCareCaughtError(e, t));
+      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
     } finally {
       setBusy(false);
     }
@@ -475,7 +483,7 @@ export function DigitalCareProviderWorkspace() {
         ))}
       </div>
 
-      {error ? <div role="alert" style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 12 }}>{error}</div> : null}
+      {error ? <div data-testid="digital-care-workspace-error" role="alert" style={{ padding: 12, background: "#fee2e2", color: "#991b1b", borderRadius: 12 }}>{error}</div> : null}
 
       <div
         style={{
@@ -704,6 +712,8 @@ export function DigitalCareProviderWorkspace() {
               issuedCode={issuedCode}
               issuedExpiresAt={issuedExpiresAt}
               copied={copiedCode}
+              lookupFailed={Boolean(portalError)}
+              lookupError={portalError}
               onActivate={issuePortalActivation}
               onRevoke={revokePortalAccessAction}
               onCopy={copyActivationCode}
