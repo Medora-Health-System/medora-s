@@ -50,6 +50,9 @@ jobs:
       - name: Prisma validate
         run: pnpm --filter @medora/api exec prisma validate
 
+      - name: Railway deployment contract
+        run: node apps/api/scripts/validate-railway-deploy-config.cjs
+
       - name: Prisma migrate deploy
         run: pnpm --filter @medora/api exec prisma migrate deploy
 
