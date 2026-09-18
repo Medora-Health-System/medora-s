@@ -8,6 +8,8 @@ import {
   fetchPatientPortalAccess,
   issuePatientPortalActivation,
   revokePatientPortalAccess,
+  sendPatientPortalInvitation,
+  type PatientPortalInvitationIssue,
   type PatientPortalAccessStatus,
 } from "@/lib/patientPortalAdminApi";
 
@@ -20,6 +22,7 @@ export function DigitalCarePatientActivationPanel() {
   const [access, setAccess] = useState<PatientPortalAccessStatus | null>(null);
   const [activationCode, setActivationCode] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [invitation, setInvitation] = useState<PatientPortalInvitationIssue | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +39,7 @@ export function DigitalCarePatientActivationPanel() {
       reissue: "Crear nuevo código",
       copy: "Copiar código",
       copied: "Código copiado.",
+      invite: "Enviar invitación por correo",
       revoke: "Revocar acceso",
       warning: "Comparta este código únicamente con el paciente verificado. Medora no conserva el código visible después de salir de esta pantalla.",
       adminOnly: "Solo ADMIN puede revocar el acceso.",
@@ -51,6 +55,7 @@ export function DigitalCarePatientActivationPanel() {
       reissue: "Créer un nouveau code",
       copy: "Copier le code",
       copied: "Code copié.",
+      invite: "Envoyer l’invitation par e-mail",
       revoke: "Révoquer l’accès",
       warning: "Partagez ce code uniquement avec le patient vérifié. Medora ne conserve pas le code visible après avoir quitté cet écran.",
       adminOnly: "Seul ADMIN peut révoquer l’accès.",
@@ -66,13 +71,14 @@ export function DigitalCarePatientActivationPanel() {
       reissue: "Create new code",
       copy: "Copy code",
       copied: "Code copied.",
+      invite: "Send email invitation",
       revoke: "Revoke access",
       warning: "Share this code only with the verified patient. Medora does not retain the visible code after you leave this screen.",
       adminOnly: "Only ADMIN can revoke access.",
     };
   }, [language]);
 
-  const canIssue = roles.includes("ADMIN") || roles.includes("FRONT_DESK") || roles.includes("MEDORA_SUPER_ADMIN");
+  const canIssue = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const canRevoke = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
 
   const loadAccess = useCallback(async (selected: SelectedPatient) => {
@@ -80,6 +86,7 @@ export function DigitalCarePatientActivationPanel() {
     setPatient(selected);
     setActivationCode(null);
     setExpiresAt(null);
+    setInvitation(null);
     setNotice(null);
     setError(null);
     setBusy(true);
@@ -114,6 +121,26 @@ export function DigitalCarePatientActivationPanel() {
       setAccess(await fetchPatientPortalAccess(facilityId, patient.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to create activation code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function invite() {
+    if (!facilityId || !patient || !canIssue) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await sendPatientPortalInvitation(facilityId, patient.id);
+      setInvitation(result);
+      setActivationCode(null);
+      setExpiresAt(null);
+      setAccess(await fetchPatientPortalAccess(facilityId, patient.id));
+      setNotice(copy.invite);
+    } catch (e) {
+      setInvitation(null);
+      setError(e instanceof Error ? e.message : "Unable to send patient app invitation.");
     } finally {
       setBusy(false);
     }
@@ -182,6 +209,7 @@ export function DigitalCarePatientActivationPanel() {
             <Status label={copy.activation} value={access?.latestActivation?.state || "NONE"} />
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            <button type="button" onClick={() => void invite()} disabled={busy} style={{ border: 0, borderRadius: 9, background: "#2563eb", color: "white", fontWeight: 800, padding: "9px 12px" }}>{copy.invite}</button>
             <button type="button" onClick={() => void issue()} disabled={busy} style={{ border: 0, borderRadius: 9, background: "#0f766e", color: "white", fontWeight: 800, padding: "9px 12px" }}>
               {access?.latestActivation ? copy.reissue : copy.issue}
             </button>
@@ -191,6 +219,8 @@ export function DigitalCarePatientActivationPanel() {
           </div>
         </div>
       ) : null}
+
+      {invitation ? <div style={{ marginTop: 12, color: "#166534", fontSize: 13 }}>{invitation.emailMasked ?? copy.invite}</div> : null}
 
       {activationCode ? (
         <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: "1px solid #f59e0b", background: "#fffbeb" }}>
