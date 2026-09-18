@@ -12,6 +12,7 @@ import {
   isHttpLikeError,
   isOptionalPortalStorageError,
 } from "../portal-storage.util";
+import { PatientNotificationsService } from "../notifications/patient-notifications.service";
 import type {
   CreatePatientMessageThreadInput,
   PatientMessageReplyInput,
@@ -60,6 +61,7 @@ export class PatientMessagesService {
     private readonly patientAudit: PatientPortalAuditService,
     private readonly staffAudit: AuditService,
     @Optional() private readonly facilityConfiguration?: FacilityConfigurationService,
+    @Optional() private readonly notifications?: PatientNotificationsService,
   ) {}
 
   private patientThreadView(thread: ThreadRow) {
@@ -529,7 +531,7 @@ export class PatientMessagesService {
     threadId: string,
     input: PatientMessageReplyInput,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const outcome = await this.prisma.$transaction(async (tx) => {
       // Historical thread viewing remains facility-scoped, but new staff content is permitted
       // only while the patient's verified link/account/facility scope remains active.
       const thread = await this.findStaffReplyableThread(actor, threadId, tx);
@@ -567,8 +569,10 @@ export class PatientMessagesService {
         },
       });
 
-      return this.staffMessageView(rows[0]!);
+      return { message: this.staffMessageView(rows[0]!), patientId: thread.patientId };
     });
+    void this.notifications?.notify(outcome.patientId, actor.facilityId, "MESSAGE", outcome.message.id, "New message from your care team", "You have a new secure message in Medora.", `/secureMessages?facilityId=${encodeURIComponent(actor.facilityId)}&threadId=${encodeURIComponent(threadId)}`).catch(() => undefined);
+    return outcome.message;
   }
 
   async closeAsStaff(actor: PatientPortalStaffMessagingActor, threadId: string) {
