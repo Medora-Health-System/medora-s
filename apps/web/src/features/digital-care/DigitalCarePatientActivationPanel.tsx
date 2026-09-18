@@ -220,7 +220,7 @@ export function DigitalCarePatientActivationPanel() {
         </div>
       ) : null}
 
-      {invitation ? <div style={{ marginTop: 12, color: "#166534", fontSize: 13 }}>{invitation.emailMasked ?? copy.invite}</div> : null}
+      {invitation ? <div style={{ marginTop: 12, color: "#166534", fontSize: 13 }}>{invitation.maskedEmail ?? copy.invite}</div> : null}
 
       {activationCode ? (
         <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: "1px solid #f59e0b", background: "#fffbeb" }}>
