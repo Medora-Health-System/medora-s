@@ -124,14 +124,18 @@ export class ChartRoiService {
     if (row.status !== ChartRoiRequestStatus.DRAFT) {
       throw new ConflictException("Only DRAFT requests can be approved");
     }
-    const updated = await this.prisma.chartRoiRequest.update({
-      where: { id },
+    const transitioned = await this.prisma.chartRoiRequest.updateMany({
+      where: { id, facilityId, status: ChartRoiRequestStatus.DRAFT },
       data: {
         status: ChartRoiRequestStatus.APPROVED,
         approvedByUserId: userId,
         approvedAt: new Date(),
       },
     });
+    if (transitioned.count !== 1) {
+      throw new ConflictException("ROI request changed concurrently; refresh and retry");
+    }
+    const updated = await this.requireRow(facilityId, id);
     await this.audit.log(AuditAction.ROI_REQUEST_APPROVE, ROI_ENTITY, {
       userId,
       facilityId,
@@ -157,14 +161,18 @@ export class ChartRoiService {
     if (row.status !== ChartRoiRequestStatus.DRAFT) {
       throw new ConflictException("Only DRAFT requests can be denied");
     }
-    const updated = await this.prisma.chartRoiRequest.update({
-      where: { id },
+    const transitioned = await this.prisma.chartRoiRequest.updateMany({
+      where: { id, facilityId, status: ChartRoiRequestStatus.DRAFT },
       data: {
         status: ChartRoiRequestStatus.DENIED,
         deniedAt: new Date(),
         denialReason: denialReason?.trim() || null,
       },
     });
+    if (transitioned.count !== 1) {
+      throw new ConflictException("ROI request changed concurrently; refresh and retry");
+    }
+    const updated = await this.requireRow(facilityId, id);
     await this.audit.log(AuditAction.ROI_REQUEST_DENY, ROI_ENTITY, {
       userId,
       facilityId,
@@ -193,14 +201,22 @@ export class ChartRoiService {
     ) {
       throw new ConflictException("Only DRAFT or APPROVED requests can be cancelled");
     }
-    const updated = await this.prisma.chartRoiRequest.update({
-      where: { id },
+    const transitioned = await this.prisma.chartRoiRequest.updateMany({
+      where: {
+        id,
+        facilityId,
+        status: { in: [ChartRoiRequestStatus.DRAFT, ChartRoiRequestStatus.APPROVED] },
+      },
       data: {
         status: ChartRoiRequestStatus.CANCELLED,
         cancelledAt: new Date(),
         cancelledReason: cancelledReason?.trim() || null,
       },
     });
+    if (transitioned.count !== 1) {
+      throw new ConflictException("ROI request changed concurrently; refresh and retry");
+    }
+    const updated = await this.requireRow(facilityId, id);
     await this.audit.log(AuditAction.ROI_REQUEST_CANCEL, ROI_ENTITY, {
       userId,
       facilityId,
@@ -272,8 +288,8 @@ export class ChartRoiService {
       encounterIdForSnapshot = snap.encounterId;
     }
 
-    const updated = await this.prisma.chartRoiRequest.update({
-      where: { id },
+    const transitioned = await this.prisma.chartRoiRequest.updateMany({
+      where: { id, facilityId, status: ChartRoiRequestStatus.APPROVED },
       data: {
         status: ChartRoiRequestStatus.FULFILLED,
         fulfilledAt: new Date(),
@@ -281,6 +297,10 @@ export class ChartRoiService {
         encounterChartExportId: snapshotId,
       },
     });
+    if (transitioned.count !== 1) {
+      throw new ConflictException("ROI request changed concurrently; disclosure was not recorded");
+    }
+    const updated = await this.requireRow(facilityId, id);
 
     await this.audit.log(AuditAction.ROI_REQUEST_FULFILL, ROI_ENTITY, {
       userId,
