@@ -165,7 +165,7 @@ export class SystemHealthService {
         where: {
           createdAt: { gte: since },
           entityType: { in: ["EXTERNAL_BILLING_EXPORT", "EXTERNAL_BILLING_AUTO_EXPORT"] },
-          OR: [{ facilityId }, { facilityId: null, entityType: "EXTERNAL_BILLING_AUTO_EXPORT" }],
+          facilityId,
         },
         select: { entityType: true, metadata: true },
         take: 800,
