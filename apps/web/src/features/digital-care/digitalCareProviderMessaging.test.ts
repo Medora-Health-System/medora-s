@@ -132,7 +132,7 @@ describe("Digital Care provider messaging workspace", () => {
     expect(digitalCareOverlayKeyParity()).toEqual([]);
   });
 
-  it("selects Digital Care patients by PatientSearchHitV1.id and defaults the roster to all facility patients", () => {
+  it("keeps provider/RN Digital Care focused on clinical messaging and removes patient app access controls", () => {
     const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
     expect(workspace).toContain("PatientSearchAndSelect");
     expect(workspace).toContain("onSelect={(patient) => setSelectedId(patient.id)}");
@@ -140,67 +140,56 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("fetchDigitalCareWorkspace(facilityId, patientId)");
     expect(workspace).toContain("releaseDigitalCareResult");
     expect(workspace).toContain("createDigitalCareStaffThread");
-    expect(workspace).toContain("DigitalCarePatientAppAccess");
-    expect(workspace).toContain("issuePatientPortalActivation");
-    expect(workspace).toContain("revokePatientPortalAccess");
-    expect(workspace).toContain("canActivatePortal");
-    expect(workspace).toContain('roles.includes("ADMIN")');
-    expect(workspace).toContain('roles.includes("MEDORA_SUPER_ADMIN")');
+    expect(workspace).not.toContain("DigitalCarePatientAppAccess");
+    expect(workspace).not.toContain("issuePatientPortalActivation");
+    expect(workspace).not.toContain("revokePatientPortalAccess");
+    expect(workspace).not.toContain("sendPatientPortalInvitation");
     expect(workspace).toContain("digitalCareVisitStatusPresentation");
     expect(workspace).not.toContain("localStorage");
     expect(workspace).not.toContain("sessionStorage");
     expect(workspace).not.toContain("console.log");
   });
 
-  it("keeps activation UI on the existing staff activation endpoints", () => {
-    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
+  it("refreshes an open message thread without requiring a browser refresh", () => {
     const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    expect(workspace).toContain('thread.status !== "OPEN"');
+    expect(workspace).toContain("fetchDigitalCareStaffThread(facilityId, thread.id).then(setThread)");
+    expect(workspace).toContain("window.setInterval(refresh, 2000)");
+    expect(workspace).toContain("window.clearInterval(timer)");
+  });
+
+  it("returns a closed conversation to new-message state for the same patient", () => {
+    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+    expect(workspace).toContain("closeDigitalCareStaffThread");
+    expect(workspace).toMatch(/closeDigitalCareStaffThread[\s\S]{0,800}setThread\(null\)/);
+  });
+
+  it("moves patient app invitation and access controls to facility administration", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientActivationPanel.tsx"), "utf8");
+    const admin = readFileSync(join(__dirname, "../../components/admin/FacilityAdminControlPanel.tsx"), "utf8");
     const api = readFileSync(join(__dirname, "../../lib/patientPortalAdminApi.ts"), "utf8");
-    expect(access).toContain("digitalCare.appAccess.activate");
-    expect(access).toContain("digitalCare.appAccess.regenerate");
-    expect(access).toContain("digitalCare.appAccess.copy");
-    expect(access).toContain("role=\"dialog\"");
-    expect(access).toContain("issuedCode");
-    expect(workspace).toContain("fetchPatientPortalAccess(facilityId, patientId)");
+    expect(admin).toContain("DigitalCarePatientActivationPanel");
+    expect(access).toContain("fetchPatientPortalAccess");
+    expect(access).toContain("issuePatientPortalActivation");
+    expect(access).toContain("revokePatientPortalAccess");
+    expect(access).toContain("sendPatientPortalInvitation");
+    expect(access).toContain('roles.includes("ADMIN")');
+    expect(access).toContain('roles.includes("MEDORA_SUPER_ADMIN")');
+    expect(access).not.toContain('roles.includes("FRONT_DESK")');
     expect(api).toContain("/patient-portal-admin/v1/patients/");
     expect(api).toContain("/activation");
     expect(api).toContain("/invitation");
     expect(api).toContain("{ facilityId }");
-    expect(access).toContain("digitalCare.appAccess.sendInvitation");
-    expect(access).toContain("onInvite");
-    expect(workspace).toContain("sendPatientPortalInvitation");
-    expect(workspace).toContain("sendPortalInvitation");
   });
 
-  it("keeps access lookup failures inside Patient App Access instead of a global Patient not found banner", () => {
-    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
-    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
-    expect(workspace).toContain("setPortalError(t(digitalCarePortalAccessMessageKey(accessError)))");
-    expect(workspace).not.toContain("setError(digitalCareCaughtError(accessError, t))");
-    expect(workspace).toContain("data-testid=\"digital-care-workspace-error\"");
-    expect(access).toContain("data-testid=\"digital-care-patient-app-access-error\"");
-    expect(access).toContain("lookupFailed");
-    expect(access).toContain("digitalCare.appAccess.loadError");
-    expect(access).toContain("digitalCare.appAccess.retry");
-    expect(access).toContain("digitalCarePortalAccessActions");
-  });
-
-  it("does not return or display an invitation secret after email send", () => {
-    const access = readFileSync(join(__dirname, "DigitalCarePatientAppAccess.tsx"), "utf8");
-    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
+  it("does not expose an invitation activation secret after email send", () => {
+    const access = readFileSync(join(__dirname, "DigitalCarePatientActivationPanel.tsx"), "utf8");
     const api = readFileSync(join(__dirname, "../../lib/patientPortalAdminApi.ts"), "utf8");
     expect(api).toContain("PatientPortalInvitationIssue");
     expect(api).not.toMatch(/invitation[\s\S]{0,200}activationCode/);
-    expect(workspace).toContain("setIssuedInvitation(issued)");
-    expect(workspace).toContain("setIssuedCode(null)");
+    expect(access).toContain("setInvitation(result)");
+    expect(access).toContain("setActivationCode(null)");
     expect(access).toContain("invitation.maskedEmail");
     expect(access).not.toContain("invitation.activationCode");
-  });
-
-  it("does not show Pending or a fake code after activation POST failure", () => {
-    const workspace = readFileSync(join(__dirname, "DigitalCareProviderWorkspace.tsx"), "utf8");
-    expect(workspace).toContain("setIssuedCode(issued.activationCode)");
-    expect(workspace).toContain("setIssuedExpiresAt(issued.expiresAt)");
-    expect(workspace).toMatch(/catch \(e\) \{\s*setIssuedCode\(null\);\s*setIssuedExpiresAt\(null\);\s*setPortalError/);
   });
 });
