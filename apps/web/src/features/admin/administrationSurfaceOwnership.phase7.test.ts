@@ -1,10 +1,11 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 
-const root = process.cwd();
+const root = join(__dirname, "../../../..");
 
 function read(relativePath: string): string {
-  return readFileSync(join(root, relativePath), "utf8");
+  return readFileSync(join(root, "apps/web", relativePath), "utf8");
 }
 
 describe("Administration Phase 7 surface ownership", () => {
