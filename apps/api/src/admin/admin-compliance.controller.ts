@@ -1,7 +1,11 @@
 import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard";
 import { AdminComplianceService } from "./admin-compliance.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }): string {
@@ -19,6 +23,7 @@ export class AdminComplianceController {
   /** S24E — PHI-safe aggregate compliance snapshot; platform operators only. */
   @Get("compliance")
   @RequireRoles(...PLATFORM_OPERATOR_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async getCompliance(@Req() req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }) {
     const facilityId = facilityIdFromReq(req);
     return this.compliance.getDashboard(facilityId);
