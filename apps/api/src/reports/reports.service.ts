@@ -948,7 +948,7 @@ export class ReportsService {
       }
     }
 
-    const mrns = await this.loadMrnMap(page.map((a) => a.patientId));
+    const mrns = await this.loadMrnMap(facilityId, page.map((a) => a.patientId));
 
     const rows = page.map((a) => {
       const oi = a.orderItem;
@@ -1088,7 +1088,7 @@ export class ReportsService {
             medLabels.set(m.id, medicationCatalogLabelForReport(m, query.language));
           }
         }
-        const mrns = await this.loadMrnMap(batch.map((a) => a.patientId));
+        const mrns = await this.loadMrnMap(facilityId, batch.map((a) => a.patientId));
         for (const a of batch) {
           const oi = a.orderItem;
           const orderedAt = oi?.order.createdAt ?? oi?.createdAt ?? a.administeredAt;
