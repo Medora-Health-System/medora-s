@@ -112,4 +112,21 @@ describe("AdminMfaController metadata", () => {
     expect(roles).not.toContain(RoleCode.LAB);
     expect(roles).not.toContain(RoleCode.FRONT_DESK);
   });
+
+  it("fails closed even for a platform role so MFA recovery must use privileged actions", async () => {
+    const controller = new AdminMfaController();
+    await expect(
+      controller.resetUserMfa(
+        { userId: "00000000-0000-4000-8000-000000000001" },
+        {
+          user: {
+            userId: "00000000-0000-4000-8000-000000000002",
+            facilityId: "00000000-0000-4000-8000-000000000003",
+          },
+          userRole: RoleCode.MEDORA_SUPER_ADMIN,
+          headers: {},
+        },
+      ),
+    ).rejects.toThrow("governed platform privileged-action workflow");
+  });
 });
