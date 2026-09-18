@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { PatientPortalAuthGuard } from "../guards/patient-portal-auth.guard";
 import { PatientPortalFacilityGuard } from "../guards/patient-portal-facility.guard";
 import type { PatientPortalAccessContext } from "../auth/patient-portal.types";
@@ -18,7 +18,7 @@ export class PatientNotificationsController {
 
   @Post("devices")
   register(@Req() req:any,@Body() body:{token?:string;platform?:string}) {
-    if(!body.token || !["IOS","ANDROID","WEB"].includes(body.platform ?? "")) throw new Error("Invalid push device");
+    if(!body.token || !["IOS","ANDROID","WEB"].includes(body.platform ?? "")) throw new BadRequestException("Invalid push device");
     return this.notifications.registerDevice(this.access(req),body.token,body.platform as "IOS"|"ANDROID"|"WEB");
   }
 
