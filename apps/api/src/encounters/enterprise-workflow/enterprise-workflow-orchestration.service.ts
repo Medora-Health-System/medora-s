@@ -113,14 +113,23 @@ export class EnterpriseWorkflowOrchestrationService {
     throw new BadRequestException(result.code);
   }
 
-  private async scanFacilityDocs(facilityId: string): Promise<
+  private async scanFacilityDocs(
+    facilityId: string,
+    options: { requireCompleteCensus?: boolean } = {}
+  ): Promise<
     Array<{ encounterId: string; patientId: string; doc: EnterpriseWorkflowOrchestrationDocV1 }>
   > {
     try {
       const census = await this.hospitalCensus.getHospitalCensus(facilityId, {
         snapshotScope: "ALL_HOSPITAL_CARE",
       });
-      const rows = (census.allHospitalPatients ?? []).slice(0, CENSUS_SCAN_LIMIT);
+      const allRows = census.allHospitalPatients ?? [];
+      if (options.requireCompleteCensus && allRows.length > CENSUS_SCAN_LIMIT) {
+        // An administration aggregate must never present a partial census as an
+        // authoritative facility metric. Fail into UNAVAILABLE instead.
+        throw new Error("ENTERPRISE_WORKFLOW_ADMIN_CENSUS_TRUNCATED");
+      }
+      const rows = allRows.slice(0, CENSUS_SCAN_LIMIT);
       const out: Array<{
         encounterId: string;
         patientId: string;
@@ -636,7 +645,7 @@ export class EnterpriseWorkflowOrchestrationService {
 
   async getAdminDashboard(facilityId: string, actorUserId: string) {
     try {
-      const scanned = await this.scanFacilityDocs(facilityId);
+      const scanned = await this.scanFacilityDocs(facilityId, { requireCompleteCensus: true });
       const dash = aggregateAdminDashboard(
         scanned.map((s) => s.doc),
         facilityId,
