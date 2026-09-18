@@ -17,6 +17,9 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../../common/guards/roles.guard";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../../common/auth/platform-operator-roles";
+import { assertFacilityAdminFacilityScope } from "../../admin/user-mutation-boundary";
+import { PrismaService } from "../../prisma/prisma.service";
 import { ClinicalRulesOrchestrationService } from "./clinical-rules-orchestration.service";
 import type {
   ClinicalRuleDefinitionV1,
@@ -36,7 +39,19 @@ function actorUserIdFromReq(req: { user?: { userId?: string; sub?: string } }): 
 @Controller("hospital-care/enterprise-clinical-rules")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class ClinicalRulesController {
-  constructor(private readonly rules: ClinicalRulesOrchestrationService) {}
+  constructor(
+    private readonly rules: ClinicalRulesOrchestrationService,
+    private readonly prisma: PrismaService
+  ) {}
+
+  private async assertAdminScope(req: {
+    user?: { facilityId?: string; userId?: string; sub?: string };
+  }): Promise<{ facilityId: string; actorUserId: string }> {
+    const facilityId = facilityIdFromReq(req);
+    const actorUserId = actorUserIdFromReq(req);
+    await assertFacilityAdminFacilityScope(this.prisma, actorUserId, facilityId);
+    return { facilityId, actorUserId };
+  }
 
   @Get("catalogs")
   @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
@@ -45,73 +60,60 @@ export class ClinicalRulesController {
   }
 
   @Get("catalog")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
-  catalog(@Req() req: { user?: { facilityId?: string } }) {
-    return this.rules.getCatalog(facilityIdFromReq(req));
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async catalog(@Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }) {
+    const { facilityId } = await this.assertAdminScope(req);
+    return this.rules.getCatalog(facilityId);
   }
 
   @Get("conflicts")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER)
-  conflicts(@Req() req: { user?: { facilityId?: string } }) {
-    return this.rules.getConflicts(facilityIdFromReq(req));
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async conflicts(@Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }) {
+    const { facilityId } = await this.assertAdminScope(req);
+    return this.rules.getConflicts(facilityId);
   }
 
   @Put("rules")
-  @RequireRoles(RoleCode.ADMIN)
-  upsertRule(
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async upsertRule(
     @Body() body: { rule: ClinicalRuleDefinitionV1; expectedVersion: number },
     @Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }
   ) {
-    return this.rules.upsertRule(
-      facilityIdFromReq(req),
-      actorUserIdFromReq(req),
-      body
-    );
+    const { facilityId, actorUserId } = await this.assertAdminScope(req);
+    return this.rules.upsertRule(facilityId, actorUserId, body);
   }
 
   @Post("rules/:ruleId/activate")
-  @RequireRoles(RoleCode.ADMIN)
-  activate(
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async activate(
     @Param("ruleId") ruleId: string,
     @Body() body: { expectedVersion: number },
     @Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }
   ) {
-    return this.rules.activateRule(
-      facilityIdFromReq(req),
-      ruleId,
-      actorUserIdFromReq(req),
-      body
-    );
+    const { facilityId, actorUserId } = await this.assertAdminScope(req);
+    return this.rules.activateRule(facilityId, ruleId, actorUserId, body);
   }
 
   @Post("rules/:ruleId/status")
-  @RequireRoles(RoleCode.ADMIN)
-  setStatus(
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async setStatus(
     @Param("ruleId") ruleId: string,
     @Body() body: { status: ClinicalRuleStatus; expectedVersion: number },
     @Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }
   ) {
-    return this.rules.setRuleStatus(
-      facilityIdFromReq(req),
-      ruleId,
-      actorUserIdFromReq(req),
-      body
-    );
+    const { facilityId, actorUserId } = await this.assertAdminScope(req);
+    return this.rules.setRuleStatus(facilityId, ruleId, actorUserId, body);
   }
 
   @Post("rules/:ruleId/rollback")
-  @RequireRoles(RoleCode.ADMIN)
-  rollback(
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async rollback(
     @Param("ruleId") ruleId: string,
     @Body() body: { toVersion: number; expectedVersion: number },
     @Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }
   ) {
-    return this.rules.rollbackRule(
-      facilityIdFromReq(req),
-      ruleId,
-      actorUserIdFromReq(req),
-      body
-    );
+    const { facilityId, actorUserId } = await this.assertAdminScope(req);
+    return this.rules.rollbackRule(facilityId, ruleId, actorUserId, body);
   }
 
   @Post("simulate")
