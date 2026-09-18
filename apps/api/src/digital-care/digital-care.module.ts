@@ -5,6 +5,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { PatientMessagesStaffController } from "../patient-portal/messages/patient-messages-staff.controller";
 import { PatientMessagesService } from "../patient-portal/messages/patient-messages.service";
+import { PatientNotificationsService } from "../patient-portal/notifications/patient-notifications.service";
 import { PatientPortalAuditService } from "../patient-portal/patient-portal-audit.service";
 import { PatientPortalRepository } from "../patient-portal/persistence/patient-portal.repository";
 import { PatientPortalActivationService } from "../patient-portal/organizations/patient-portal-activation.service";
@@ -49,6 +50,7 @@ const digitalCareImports = [
     PatientPortalActivationService,
     OutboundMailService,
     PatientMessagesService,
+    PatientNotificationsService,
     PatientDiagnosticResultReleaseService,
     DigitalCareStaffWorkspaceService,
     AuditService,
