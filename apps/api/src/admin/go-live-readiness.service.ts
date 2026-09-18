@@ -135,6 +135,7 @@ export class GoLiveReadinessService {
       }),
       this.prisma.auditLog.findMany({
         where: {
+          facilityId,
           createdAt: { gte: new Date(Date.now() - 48 * 3600_000) },
           entityType: "EXTERNAL_BILLING_AUTO_EXPORT",
         },
@@ -315,7 +316,7 @@ export class GoLiveReadinessService {
 
     checks.push({
       key: "external_billing_failures_48h",
-      label: "External billing auto-export failures (48h, all facilities)",
+      label: "External billing auto-export failures (48h, this facility)",
       status: billingFailures48h === 0 ? "pass" : "fail",
       value: billingFailures48h,
       detail: billingFailures48h > 0 ? "ext_billing_failures_hint" : null,
