@@ -461,7 +461,7 @@ export class AdminUsersService {
       actorUserId,
       userId,
       facilityId,
-      "GLOBAL_IDENTITY",
+      "FACILITY_MEMBERSHIP",
     );
     if (userId === actorUserId && dto.isActive === false) {
       throw new ForbiddenException(
@@ -497,7 +497,7 @@ export class AdminUsersService {
           });
         }
         await logSecurityAdminAudit(this.requiredAudit, AuditAction.UPDATE, {
-          event: "ADMIN_USER_GLOBAL_STATUS_CHANGED",
+          event: "FACILITY_USER_ACCESS_CHANGED",
           actorUserId,
           entityType: "User",
           entityId: userId,
@@ -523,7 +523,7 @@ export class AdminUsersService {
           data: { isActive: true },
         });
         await logSecurityAdminAudit(this.requiredAudit, AuditAction.UPDATE, {
-          event: "ADMIN_USER_GLOBAL_STATUS_CHANGED",
+          event: "FACILITY_USER_ACCESS_CHANGED",
           actorUserId,
           entityType: "User",
           entityId: userId,
