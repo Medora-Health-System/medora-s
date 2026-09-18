@@ -77,7 +77,7 @@ export class OperationalGovernanceController {
   }
 
   @Get("staff-analytics")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.ADMIN)
   staffAnalytics(
     @Query("role") role: string | undefined,
     @Req() req: { user?: { facilityId?: string } }
@@ -86,7 +86,7 @@ export class OperationalGovernanceController {
   }
 
   @Get("chart-access")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.ADMIN)
   listChartAccess(
     @Query("encounterId") encounterId: string | undefined,
     @Query("patientId") patientId: string | undefined,
@@ -138,7 +138,7 @@ export class OperationalGovernanceController {
   }
 
   @Get("audit-center")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.ADMIN)
   auditCenter(
     @Query("facet") facet: string | undefined,
     @Query("encounterId") encounterId: string | undefined,
@@ -159,7 +159,7 @@ export class OperationalGovernanceController {
   }
 
   @Get("role-timeline")
-  @RequireRoles(RoleCode.PROVIDER, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.ADMIN)
   roleTimeline(
     @Query("userId") userId: string | undefined,
     @Query("limit") limit: string | undefined,

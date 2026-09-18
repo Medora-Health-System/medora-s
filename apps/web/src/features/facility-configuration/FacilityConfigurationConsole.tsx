@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import Link from "next/link";
 import {
   FACILITY_MODULE_KEYS,
   resolveFacilityModuleLiveStatus,
@@ -26,7 +25,6 @@ import {
   DIGITAL_CARE_SWITCHES,
   FACILITY_CONSOLE_SECTIONS,
   FACILITY_MODULE_ACCENT,
-  FACILITY_OPERATIONS_LINKS,
   INTEGRATION_KEYS,
   NOTIFICATION_SWITCHES,
   PATIENT_PORTAL_SWITCHES,
@@ -109,13 +107,7 @@ function SwitchRow({
   );
 }
 
-export function FacilityConfigurationConsole({
-  facilityId,
-  canUsePlatformTools,
-}: {
-  facilityId: string;
-  canUsePlatformTools?: boolean;
-}) {
+export function FacilityConfigurationConsole({ facilityId }: { facilityId: string }) {
   const { t, language } = useI18n();
   const [document, setDocument] = useState<FacilityConfigurationDocument | null>(null);
   const [draft, setDraft] = useState<FacilityConfigurationSettings | null>(null);
@@ -626,16 +618,6 @@ export function FacilityConfigurationConsole({
           </Panel>
         ) : null}
 
-        <div style={{ ...shell, padding: 14, marginTop: 16 }}>
-          <strong>{t("facilityConfig.operations")}</strong>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-            {FACILITY_OPERATIONS_LINKS.filter((item) => !item.platformOnly || canUsePlatformTools).map((item) => (
-              <Link key={item.href} href={item.href} style={{ ...ghostBtn, textDecoration: "none" }}>
-                {t(item.labelKey)}
-              </Link>
-            ))}
-          </div>
-        </div>
       </div>
 
       <aside style={{ ...shell, padding: 14, position: "sticky", top: 16 }}>
