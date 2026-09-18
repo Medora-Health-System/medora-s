@@ -57,16 +57,6 @@ function readEnvTrim(name: string): string {
   return process.env[name]?.trim() ?? "";
 }
 
-function readAlertWebhookConfigured(): boolean {
-  return Boolean(readEnvTrim("MEDORA_ALERT_WEBHOOK_URL"));
-}
-
-function readAlertsEnabled(): boolean {
-  const raw = readEnvTrim("MEDORA_ALERT_ENABLED").toLowerCase();
-  if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
-  return true;
-}
-
 function readExternalBillingAutoExportEnabled(): boolean {
   const raw = readEnvTrim("MEDORA_EXTERNAL_BILLING_AUTO_EXPORT_ENABLED").toLowerCase();
   return raw === "true" || raw === "1" || raw === "yes";
@@ -152,8 +142,9 @@ export class SystemHealthService {
       databaseReachable = false;
     }
 
-    const alertWebhookConfigured = readAlertWebhookConfigured();
-    const alertEnabled = readAlertsEnabled();
+    const alertStatus = getMedoraAlertStatusForApi();
+    const alertWebhookConfigured = alertStatus.destinationConfigured;
+    const alertEnabled = alertStatus.enabled;
     const externalBillingAutomationEnabled = readExternalBillingAutoExportEnabled();
     const vendorWebhookConfigured = readExternalBillingVendorWebhookConfigured();
     const nodeProduction = readNodeEnvProduction();
@@ -305,14 +296,14 @@ export class SystemHealthService {
         key: "alerts",
         label: "alerts",
         status: "fail",
-        detail: "alerts_enabled_no_webhook",
+        detail: "alerts_enabled_no_destination",
       });
     } else if (!alertWebhookConfigured && !alertEnabled) {
       checks.push({
         key: "alerts",
         label: "alerts",
         status: "warn",
-        detail: "alert_webhook_not_configured",
+        detail: "alert_destination_not_configured",
       });
     } else {
       checks.push({
@@ -432,7 +423,7 @@ export class SystemHealthService {
       generatedAt,
       checks,
       metrics,
-      alertStatus: getMedoraAlertStatusForApi(),
+      alertStatus,
       backupReadiness: {
         status: backupSnap.status,
         generatedAt: backupSnap.generatedAt,
