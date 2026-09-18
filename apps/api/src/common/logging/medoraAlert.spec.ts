@@ -124,6 +124,39 @@ describe("medoraAlert S17C", () => {
     expect(Array.isArray(slack.blocks)).toBe(true);
   });
 
+  it("queues PagerDuty alerts to the fixed Events API v2 endpoint with a routing key in the JSON body", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 202,
+    } as Response);
+
+    queueMedoraAlert({
+      ...baseInput,
+      encounterId: "enc-must-not-leave-medora",
+      userId: "user-must-not-leave-medora",
+      facilityId: "facility-must-not-leave-medora",
+      requestId: "req-123",
+    });
+    await drainMedoraAlerts();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe("https://events.pagerduty.com/v2/enqueue");
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    expect(body.routing_key).toBe("routing-secret");
+    expect(body.event_action).toBe("trigger");
+    expect(body.payload.source).toBe("medora-api");
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("enc-must-not-leave-medora");
+    expect(raw).not.toContain("user-must-not-leave-medora");
+    expect(raw).not.toContain("facility-must-not-leave-medora");
+  });
+
   it("delivery uses up to 3 fetch attempts when all fail", async () => {
     const p = buildMedoraAlertPayload(baseInput);
     const fetchImpl = jest.fn().mockResolvedValue({ ok: false, status: 503 });
