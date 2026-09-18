@@ -36,7 +36,10 @@ export type SystemHealthMetrics = {
 
 export type SystemHealthAlertStatus = {
   enabled: boolean;
+  /** Backward-compatible alias for destinationConfigured. */
   webhookConfigured: boolean;
+  destinationConfigured: boolean;
+  transport: "webhook" | "pagerduty";
   format: "json" | "slack";
   environment: string;
   canSendTest: boolean;
