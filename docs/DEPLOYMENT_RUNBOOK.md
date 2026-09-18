@@ -72,8 +72,10 @@ Canonical table with rotation notes: **`docs/ENV_PRODUCTION_CHECKLIST.md`**. Sum
 | `MEDORA_BACKUP_POLICY_CONFIRMED` | yes | `true` once policy signed off. |
 | `MEDORA_DATA_RETENTION_POLICY_CONFIRMED` | yes | `true` once policy signed off. |
 | `MEDORA_LAST_RESTORE_DRILL_AT` | yes during pilot | ISO timestamp; updated after each successful drill. |
-| `MEDORA_ALERT_WEBHOOK_URL` | recommended | Receives operator alerts. |
-| `MEDORA_ALERT_ENABLED` | optional | Default on. |
+| `MEDORA_ALERT_ENABLED` | **yes in production** | Operational alert delivery must remain enabled outside a controlled maintenance exception. |
+| `MEDORA_ALERT_TRANSPORT` | recommended | Use `pagerduty` for PagerDuty Events API v2; `webhook` retains the legacy generic webhook path. |
+| `MEDORA_PAGERDUTY_ROUTING_KEY` | **yes when PagerDuty** | Secret Events API v2 routing key; never expose in logs, UI, URLs, or screenshots. |
+| `MEDORA_ALERT_WEBHOOK_URL` | only for webhook transport | Legacy generic webhook destination; do not use it as a raw PagerDuty Events API endpoint. |
 | `MEDORA_EXTERNAL_BILLING_*` | feature-dependent | Only if external billing automation is part of pilot. |
 | `API_URL` / `MEDORA_API_URL` (Vercel) | **yes** | Next.js BFF target for Railway API; see `apps/web/src/lib/server/resolveApiUrl.ts`. |
 
