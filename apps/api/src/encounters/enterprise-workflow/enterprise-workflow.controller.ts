@@ -17,6 +17,9 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { RolesGuard, RequireRoles } from "../../common/guards/roles.guard";
+import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../../common/auth/platform-operator-roles";
+import { assertFacilityAdminFacilityScope } from "../../admin/user-mutation-boundary";
+import { PrismaService } from "../../prisma/prisma.service";
 import { EnterpriseWorkflowOrchestrationService } from "./enterprise-workflow-orchestration.service";
 import type {
   ClinicalOrchestrationEventType,
@@ -45,7 +48,10 @@ const CLINICAL_ROLES = [
 @Controller("hospital-care/enterprise-workflow")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class EnterpriseWorkflowController {
-  constructor(private readonly orchestration: EnterpriseWorkflowOrchestrationService) {}
+  constructor(
+    private readonly orchestration: EnterpriseWorkflowOrchestrationService,
+    private readonly prisma: PrismaService
+  ) {}
 
   @Get("definitions")
   @RequireRoles(...CLINICAL_ROLES)
@@ -54,12 +60,14 @@ export class EnterpriseWorkflowController {
   }
 
   @Get("admin/dashboard")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
-  adminDashboard(@Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }) {
-    return this.orchestration.getAdminDashboard(
-      facilityIdFromReq(req),
-      actorUserIdFromReq(req)
-    );
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async adminDashboard(@Req() req: { user?: { facilityId?: string; userId?: string; sub?: string } }) {
+    const facilityId = facilityIdFromReq(req);
+    const actorUserId = actorUserIdFromReq(req);
+    // The Administration dashboard is an administrative facility surface.
+    // Clinical RN/PROVIDER access belongs to their worklists, not this aggregate.
+    await assertFacilityAdminFacilityScope(this.prisma, actorUserId, facilityId);
+    return this.orchestration.getAdminDashboard(facilityId, actorUserId);
   }
 
   @Get("worklists/:department")
