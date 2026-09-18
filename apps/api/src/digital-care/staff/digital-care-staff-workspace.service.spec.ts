@@ -197,4 +197,82 @@ describe("DigitalCareStaffWorkspaceService", () => {
     const result = await service.roster(actorA);
     expect(result.patients).toEqual([]);
   });
+  it("resolves catalog-backed medication names instead of the generic Medication fallback", async () => {
+    const prisma = buildPrisma({ patient: patientRow });
+    prisma.order.findMany = jest.fn().mockResolvedValue([
+      {
+        id: "order-med-1",
+        type: "MEDICATION",
+        status: "PLACED",
+        createdAt: new Date("2026-09-01T12:00:00.000Z"),
+        cancelledAt: null,
+        prescriberName: "Rajnil Shah",
+        notes: null,
+        encounter: { type: "INPATIENT" },
+        items: [
+          {
+            id: "item-med-1",
+            catalogItemId: "cat-ondansetron",
+            medicationProductId: null,
+            catalogItemType: "MEDICATION",
+            manualLabel: null,
+            manualSecondaryText: null,
+            strength: "4 mg/mL",
+            route: "IVP",
+            frequencyCode: "NOW",
+            notes: null,
+            status: "COMPLETED",
+            medicationLifecycleStatus: "ACTIVE",
+            medicationFulfillmentIntent: "ADMINISTER_CHART",
+          },
+        ],
+      },
+    ]);
+    prisma.catalogMedication = {
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: "cat-ondansetron",
+          code: "ONDANSETRON_4MG_ML_INJECTABLE",
+          name: "Ondansetron",
+          displayNameEn: "Ondansetron",
+          displayNameFr: "Ondansétron",
+          genericName: "ondansetron",
+          therapeuticClass: null,
+          administrationType: null,
+          billingClass: null,
+          strength: "4 mg/mL",
+          dosageForm: "Injection",
+          route: "IVP",
+          ndc11: null,
+          ndcDisplay: null,
+          billingUnitType: null,
+          isControlled: false,
+          controlledSchedule: null,
+          requiresWitness: false,
+          requiresDoubleSign: false,
+        },
+      ]),
+    };
+    prisma.medicationProduct = { findMany: jest.fn().mockResolvedValue([]) };
+
+    const service = new DigitalCareStaffWorkspaceService(
+      prisma,
+      { log: jest.fn().mockResolvedValue(undefined) } as any,
+      { list: jest.fn().mockResolvedValue([]) } as any,
+    );
+    const bundle = await service.workspace(actorA, PATIENT_ID);
+
+    expect(bundle.medications.ordered).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "item-med-1",
+          name: "Ondansetron",
+          strength: "4 mg/mL",
+          route: "IVP",
+        }),
+      ]),
+    );
+    expect(bundle.medications.ordered[0]?.name).not.toBe("Medication");
+  });
+
 });
