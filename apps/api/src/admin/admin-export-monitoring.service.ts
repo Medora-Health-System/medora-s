@@ -96,6 +96,7 @@ export class AdminExportMonitoringService {
       }),
       this.prisma.auditLog.findMany({
         where: {
+          facilityId,
           entityType: "EXTERNAL_BILLING_AUTO_EXPORT",
           createdAt: { gte: since48h },
         },
@@ -106,7 +107,7 @@ export class AdminExportMonitoringService {
       this.prisma.auditLog.findMany({
         where: {
           entityType: { in: [...EXPORT_ENTITY_TYPES] },
-          OR: [{ facilityId }, { facilityId: null, entityType: "EXTERNAL_BILLING_AUTO_EXPORT" }],
+          facilityId,
         },
         orderBy: { createdAt: "desc" },
         take: 400,
