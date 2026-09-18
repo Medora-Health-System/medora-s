@@ -403,7 +403,7 @@ export class PatientMessagesService {
     });
     if (!patient) throw new NotFoundException("Patient not found");
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const created = await this.prisma.$transaction(async (tx) => {
         const links = await tx.$queryRaw<Array<{ portalAccountId: string }>>(Prisma.sql`
           SELECT l."portalAccountId"
           FROM "PatientPortalLink" l
@@ -469,6 +469,11 @@ export class PatientMessagesService {
           messagesTruncated: false,
         };
       });
+      const firstMessageId = created.messages[0]?.id;
+      if (firstMessageId) {
+        void this.notifications?.notify(patientId, actor.facilityId, "MESSAGE", firstMessageId, "New message from your care team", "You have a new secure message in Medora.", `/secureMessages?facilityId=${encodeURIComponent(actor.facilityId)}&threadId=${encodeURIComponent(created.id)}`).catch(() => undefined);
+      }
+      return created;
     } catch (error) {
       if (isHttpLikeError(error)) throw error;
       if (isOptionalPortalStorageError(error)) {
