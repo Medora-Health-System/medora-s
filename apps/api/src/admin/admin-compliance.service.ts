@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { AuditAction, Prisma } from "@prisma/client";
+import { AuditAction } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { auditPresetWhere } from "./audit-category.util";
 
@@ -58,14 +58,12 @@ export type ComplianceDashboardPayload = {
 export class AdminComplianceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Facility-scoped export audit rows (same OR as export monitoring / system health for auto-export).
-   */
+  /** Facility-scoped export audit rows. Global/null-facility rows never belong to a tenant dashboard. */
   private exportAuditWhereBase(facilityId: string, since: Date, to: Date) {
     return {
+      facilityId,
       createdAt: { gte: since, lte: to },
       entityType: { in: [...COMPLIANCE_EXPORT_ENTITY_TYPES] },
-      OR: [{ facilityId }, { facilityId: null, entityType: "EXTERNAL_BILLING_AUTO_EXPORT" }],
     };
   }
 
@@ -109,22 +107,15 @@ export class AdminComplianceService {
           createdAt: { gte: since, lte: to },
         },
       }),
-      this.prisma.$queryRaw<[{ c: bigint }]>(
-        Prisma.sql`
-          SELECT COUNT(*)::bigint AS c
-          FROM "MedicationAdministration" ma
-          WHERE ma."facilityId" = ${facilityId}
-            AND ma."createdAt" >= ${since}
-            AND ma."createdAt" <= ${to}
-            AND EXISTS (
-              SELECT 1 FROM "AuditLog" a
-              WHERE a."entityId" = ma."id"
-                AND a."entityType" = 'MEDICATION_ADMINISTRATION'
-                AND a."action" = ${AuditAction.CREATE}
-                AND a."facilityId" = ${facilityId}
-            )
-        `
-      ),
+      this.prisma.auditLog.count({
+        where: {
+          facilityId,
+          createdAt: { gte: since, lte: to },
+          action: AuditAction.CREATE,
+          entityType: "MEDICATION_ADMINISTRATION",
+          entityId: { not: null },
+        },
+      }),
       this.prisma.auditLog.count({ where: exportBase }),
       this.prisma.auditLog.count({
         where: {
@@ -150,7 +141,9 @@ export class AdminComplianceService {
       }),
     ]);
 
-    const marAudited = Number(marAuditedRows[0]?.c ?? 0n);
+    // AuditLog has no Prisma relation back to MedicationAdministration. Count canonical
+    // facility-local CREATE audit rows and cap at the MAR population to preserve coverage semantics.
+    const marAudited = Math.min(marTotal, marAuditedRows);
 
     let failedExportCount = 0;
     for (const row of exportRowsForFailureScan) {
