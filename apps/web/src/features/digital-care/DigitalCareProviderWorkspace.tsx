@@ -708,6 +708,25 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function localizedDigitalCareResultTitle(t: (key: string) => string, title: string, category?: string | null): string {
+  const normalized = title.trim().toLocaleLowerCase();
+  const genericLabTitles = new Set([
+    "résultat de laboratoire", "resultat de laboratoire", "laboratory result", "lab result",
+    "resultado de laboratorio", "résultat laboratoire",
+  ]);
+  if (genericLabTitles.has(normalized) || (!normalized && category?.toUpperCase() === "LAB")) return t("digitalCare.results.labResultTitle");
+  return digitalCareSafeLabel(title);
+}
+
+function structuredResultText(resultText?: string | null): Array<{ test: string; result: string; reference: string }> | null {
+  if (!resultText?.trim()) return null;
+  const lines = resultText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 3) return null;
+  const rows = lines.map((line) => line.split(/\t+| {2,}/).map((part) => part.trim()).filter(Boolean));
+  if (rows.filter((row) => row.length >= 2).length < Math.ceil(rows.length * 0.7)) return null;
+  return rows.map((row) => ({ test: row[0] ?? "—", result: row[1] ?? "—", reference: row.slice(2).join(" · ") || "—" }));
+}
+
 function ResultsPanel({
   t, results, selected, detail, kind, query, onKind, onQuery, onOpen, onToggle, onDownload, busy,
 }: {
@@ -724,8 +743,7 @@ function ResultsPanel({
   onDownload: () => void;
   busy: boolean;
 }) {
-  const viewer = detail ?? selected;
-  const attachments = attachmentsFromResultDataAll(detail?.resultData);
+  const viewer = detail ?? selected;\n  const attachments = attachmentsFromResultDataAll(detail?.resultData);\n  const structuredTextRows = structuredResultText(viewer?.resultText);
   return (
     <>
       <div style={{ ...card, padding: 12 }}>
@@ -740,7 +758,7 @@ function ResultsPanel({
         {results.length === 0 ? <p style={{ color: "#64748b" }}>{t("digitalCare.results.empty")}</p> : results.map((row) => (
           <button key={row.id} type="button" onClick={() => onOpen(row)} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, width: "100%", textAlign: "left", padding: "12px 8px", border: 0, borderBottom: "1px solid #f1f5f9", background: selected?.id === row.id ? "#f0f9ff" : "white", cursor: "pointer" }}>
             <span>
-              <strong>{digitalCareSafeLabel(row.title)}</strong>
+              <strong>{localizedDigitalCareResultTitle(t, row.title, row.category)}</strong>
               <span style={{ display: "block", fontSize: 12, color: "#64748b" }}>{row.category} · {digitalCareFormatWhen(row.verifiedAt)}</span>
             </span>
             <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -755,7 +773,7 @@ function ResultsPanel({
         <div style={{ ...card, padding: 16, background: "#f8fafc" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
-              <h3 style={{ margin: 0 }}>{digitalCareSafeLabel(viewer.title)}</h3>
+              <h3 style={{ margin: 0, fontSize: 20, color: "#0f172a" }}>{localizedDigitalCareResultTitle(t, viewer.title, viewer.category)}</h3>
               <div style={{ fontSize: 12, color: "#64748b" }}>
                 {t("digitalCare.results.collected")}: {digitalCareFormatWhen(viewer.collectedAt ?? viewer.clinicalAt)} · {t("digitalCare.results.verified")}: {digitalCareFormatWhen(viewer.verifiedAt)}
                 {viewer.orderingProvider ? ` · ${t("digitalCare.results.orderingProvider")}: ${digitalCareSafeLabel(viewer.orderingProvider)}` : ""}
@@ -790,7 +808,28 @@ function ResultsPanel({
                 ))}
               </tbody>
             </table>
-          ) : viewer.resultText ? <pre style={{ whiteSpace: "pre-wrap" }}>{viewer.resultText}</pre> : null}
+          ) : structuredTextRows ? (
+            <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 12, background: "white" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+                <thead><tr style={{ background: "#eff6ff" }}>
+                  <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("digitalCare.results.test")}</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("digitalCare.results.value")}</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("digitalCare.results.reference")}</th>
+                </tr></thead>
+                <tbody>{structuredTextRows.map((row, index) => (
+                  <tr key={`${row.test}-${index}`}>
+                    <td style={{ padding: "9px 12px", borderTop: "1px solid #e2e8f0", fontWeight: 600 }}>{row.test}</td>
+                    <td style={{ padding: "9px 12px", borderTop: "1px solid #e2e8f0" }}>{row.result}</td>
+                    <td style={{ padding: "9px 12px", borderTop: "1px solid #e2e8f0", color: "#475569" }}>{row.reference}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : viewer.resultText ? (
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, background: "white", padding: 14, overflowX: "auto" }}>
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13, lineHeight: 1.55 }}>{viewer.resultText}</pre>
+            </div>
+          ) : null}
           {viewer.imaging?.findings ? <p><strong>{t("digitalCare.results.findings")}</strong><br />{viewer.imaging.findings}</p> : null}
           {viewer.imaging?.impression ? <p><strong>{t("digitalCare.results.impression")}</strong><br />{viewer.imaging.impression}</p> : null}
           {attachments.length > 0 ? (
