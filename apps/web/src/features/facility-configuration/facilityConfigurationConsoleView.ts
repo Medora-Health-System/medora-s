@@ -158,13 +158,3 @@ export const INTEGRATION_KEYS = [
   "pharmacy",
 ] as const;
 
-export const FACILITY_OPERATIONS_LINKS: Array<{ href: string; labelKey: string; adminOnly?: boolean; platformOnly?: boolean }> = [
-  { href: "/app/admin/users", labelKey: "adminHub.usersAndAccess" },
-  { href: "/app/admin/audit", labelKey: "adminHub.auditLogLink" },
-  { href: "/app/reports", labelKey: "adminHub.opsReportsLink" },
-  { href: "/app/admin/go-live", labelKey: "adminHub.goLiveLink" },
-  { href: "/app/admin/enterprise-workflow", labelKey: "adminHub.enterpriseWorkflowLink" },
-  { href: "/app/admin/enterprise-clinical-rules", labelKey: "adminHub.enterpriseClinicalRulesLink" },
-  { href: "/app/admin/revenue-cycle", labelKey: "adminHub.revenueCycleLink" },
-  { href: "/app/admin/integrations", labelKey: "adminHub.integrationsLink", platformOnly: true },
-];
