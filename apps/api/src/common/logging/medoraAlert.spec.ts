@@ -103,6 +103,23 @@ describe("medoraAlert S17C", () => {
     );
   });
 
+  it("fails closed when MEDORA_ALERT_TRANSPORT contains an unsupported value", () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerdutty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    process.env.MEDORA_ALERT_WEBHOOK_URL = "https://alerts.example.test/hook";
+
+    expect(getMedoraAlertStatusForApi()).toEqual(
+      expect.objectContaining({
+        transport: "invalid",
+        destinationConfigured: false,
+        webhookConfigured: false,
+        canSendTest: false,
+      })
+    );
+  });
+
   it("PagerDuty dedup key is stable for retries of the same payload", () => {
     const p = buildMedoraAlertPayload(baseInput);
     const first = buildPagerDutyEventsApiV2Body(p, "key-a");
