@@ -29,6 +29,8 @@ import {
   AUTH_THROTTLE_FORGOT_PASSWORD,
   AUTH_THROTTLE_LOGIN,
   AUTH_THROTTLE_REFRESH,
+  AUTH_THROTTLE_RESET_PASSWORD,
+  AUTH_THROTTLE_CHANGE_PASSWORD,
 } from "./auth-throttle.config";
 
 const authLog = createStructuredLogger("AuthController");
@@ -106,6 +108,8 @@ export class AuthController {
   }
 
   @Post("refresh")
+  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE_REFRESH)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const raw = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
     const token = typeof raw === "string" ? raw.trim() : "";
@@ -154,7 +158,8 @@ export class AuthController {
   }
 
   @Post("change-password")
-  @UseGuards(AuthGuard("jwt"))
+  @UseGuards(AuthGuard("jwt"), ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE_CHANGE_PASSWORD)
   async changePassword(@Req() req: any, @Body() body: any) {
     const { currentPassword, newPassword } = body;
 
@@ -177,6 +182,8 @@ export class AuthController {
   }
 
   @Post("reset-password")
+  @UseGuards(ThrottlerGuard)
+  @Throttle(AUTH_THROTTLE_RESET_PASSWORD)
   async resetPassword(@Body() body: unknown) {
     const parsed = resetPasswordDtoSchema.safeParse(body);
     if (!parsed.success) {
