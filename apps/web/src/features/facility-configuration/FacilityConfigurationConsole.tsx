@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import Link from "next/link";
 import {
   FACILITY_MODULE_KEYS,
   resolveFacilityModuleLiveStatus,
@@ -108,13 +107,7 @@ function SwitchRow({
   );
 }
 
-export function FacilityConfigurationConsole({
-  facilityId,
-  canUsePlatformTools,
-}: {
-  facilityId: string;
-  canUsePlatformTools?: boolean;
-}) {
+export function FacilityConfigurationConsole({ facilityId }: { facilityId: string }) {
   const { t, language } = useI18n();
   const [document, setDocument] = useState<FacilityConfigurationDocument | null>(null);
   const [draft, setDraft] = useState<FacilityConfigurationSettings | null>(null);
