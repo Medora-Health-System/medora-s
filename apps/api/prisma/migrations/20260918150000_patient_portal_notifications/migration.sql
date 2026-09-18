@@ -1,29 +1,32 @@
 CREATE TABLE "PatientPortalNotification" (
   "id" TEXT PRIMARY KEY,
   "portalAccountId" TEXT NOT NULL,
-  "patientId" TEXT NOT NULL,
   "facilityId" TEXT NOT NULL,
-  "type" TEXT NOT NULL,
-  "entityId" TEXT,
+  "patientId" TEXT NOT NULL,
+  "kind" TEXT NOT NULL,
+  "entityId" TEXT NOT NULL,
   "title" TEXT NOT NULL,
   "body" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "route" TEXT NOT NULL,
   "readAt" TIMESTAMP(3),
-  CONSTRAINT "PatientPortalNotification_type_check" CHECK ("type" IN ('MESSAGE','RESULT_RELEASED'))
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "PatientPortalNotification_kind_check" CHECK ("kind" IN ('MESSAGE','RESULT_RELEASED')),
+  CONSTRAINT "PatientPortalNotification_unique_event" UNIQUE ("portalAccountId","kind","entityId")
 );
 CREATE INDEX "PatientPortalNotification_inbox_idx" ON "PatientPortalNotification" ("portalAccountId","patientId","facilityId","createdAt" DESC);
 CREATE INDEX "PatientPortalNotification_unread_idx" ON "PatientPortalNotification" ("portalAccountId","patientId","facilityId","readAt");
 
-CREATE TABLE "PatientPortalPushSubscription" (
+CREATE TABLE "PatientPortalPushDevice" (
   "id" TEXT PRIMARY KEY,
   "portalAccountId" TEXT NOT NULL,
-  "patientId" TEXT NOT NULL,
   "facilityId" TEXT NOT NULL,
-  "platform" TEXT NOT NULL,
+  "patientId" TEXT NOT NULL,
   "token" TEXT NOT NULL UNIQUE,
+  "platform" TEXT NOT NULL,
+  "enabled" BOOLEAN NOT NULL DEFAULT TRUE,
+  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "revokedAt" TIMESTAMP(3),
-  CONSTRAINT "PatientPortalPushSubscription_platform_check" CHECK ("platform" IN ('ANDROID','IOS','WEB'))
+  CONSTRAINT "PatientPortalPushDevice_platform_check" CHECK ("platform" IN ('IOS','ANDROID','WEB'))
 );
-CREATE INDEX "PatientPortalPushSubscription_account_idx" ON "PatientPortalPushSubscription" ("portalAccountId","patientId","facilityId","revokedAt");
+CREATE INDEX "PatientPortalPushDevice_delivery_idx" ON "PatientPortalPushDevice" ("portalAccountId","patientId","facilityId","enabled");
