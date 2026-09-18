@@ -227,6 +227,35 @@ export class PatientPortalRepository {
     `);
   }
 
+  async disableAccountAndRevokeAccess(accountId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalSession"
+        SET "revokedAt" = COALESCE("revokedAt", CURRENT_TIMESTAMP),
+            "lastSeenAt" = CURRENT_TIMESTAMP
+        WHERE "portalAccountId" = ${accountId}
+      `);
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalLink"
+        SET "status" = 'REVOKED'::"PatientPortalLinkStatus",
+            "revokedAt" = COALESCE("revokedAt", CURRENT_TIMESTAMP),
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "portalAccountId" = ${accountId}
+          AND "status" <> 'REVOKED'::"PatientPortalLinkStatus"
+      `);
+      await tx.$executeRaw(Prisma.sql`
+        DELETE FROM "PatientPortalPushDevice"
+        WHERE "portalAccountId" = ${accountId}
+      `);
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "PatientPortalAccount"
+        SET "status" = 'DISABLED'::"PatientPortalAccountStatus",
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${accountId}
+      `);
+    });
+  }
+
   async findVerifiedFacilityLink(portalAccountId: string, facilityId: string): Promise<PatientPortalVerifiedLinkRow | null> {
     const rows = await this.prisma.$queryRaw<PatientPortalVerifiedLinkRow[]>(Prisma.sql`
       SELECT
