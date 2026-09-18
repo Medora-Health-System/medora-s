@@ -40,15 +40,6 @@ import {
   type DigitalCareMainTab,
   type DigitalCareRosterFilter,
 } from "./digitalCareWorkspaceView";
-import { DigitalCarePatientAppAccess } from "./DigitalCarePatientAppAccess";
-import {
-  fetchPatientPortalAccess,
-  issuePatientPortalActivation,
-  revokePatientPortalAccess,
-  sendPatientPortalInvitation,
-  type PatientPortalAccessStatus,
-  type PatientPortalInvitationIssue,
-} from "@/lib/patientPortalAdminApi";
 import { digitalCareResultPrintHtml, digitalCareWorkspacePrintHtml, openDigitalCarePrintDocument } from "./digitalCareWorkspacePrint";
 import { subscribeFacilityConfigurationUpdated } from "@/lib/facilityConfigurationEvents";
 
@@ -104,8 +95,6 @@ export function DigitalCareProviderWorkspace() {
   // Digital Care entry remains ADMIN/PROVIDER/RN. A platform operator does not gain workspace
   // entry from MEDORA_SUPER_ADMIN alone, but when already an authorized workspace actor the
   // existing staff activation API permits that principal to issue patient portal access.
-  const canActivatePortal = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
-  const canRevokePortal = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const [tab, setTab] = useState<DigitalCareMainTab>("results");
   const [rosterFilter, setRosterFilter] = useState<DigitalCareRosterFilter>("ALL");
   const [rosterQuery, setRosterQuery] = useState("");
@@ -126,12 +115,6 @@ export function DigitalCareProviderWorkspace() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [messageQuery, setMessageQuery] = useState("");
   const [configuration, setConfiguration] = useState<DigitalCareWorkspaceBundle["configuration"]>(null);
-  const [portalAccess, setPortalAccess] = useState<PatientPortalAccessStatus | null>(null);
-  const [portalError, setPortalError] = useState<string | null>(null);
-  const [issuedCode, setIssuedCode] = useState<string | null>(null);
-  const [issuedExpiresAt, setIssuedExpiresAt] = useState<string | null>(null);
-  const [issuedInvitation, setIssuedInvitation] = useState<PatientPortalInvitationIssue | null>(null);
-  const [copiedCode, setCopiedCode] = useState(false);
 
   const loadRoster = useCallback(
     async (offset = 0, append = false) => {
@@ -158,7 +141,6 @@ export function DigitalCareProviderWorkspace() {
       if (!facilityId || !canUse) return;
       setBusy(true);
       setError(null);
-      setPortalError(null);
       try {
         const bundle = await fetchDigitalCareWorkspace(facilityId, patientId);
         setWorkspace(bundle);
@@ -170,19 +152,9 @@ export function DigitalCareProviderWorkspace() {
         });
         setSelectedResult(bundle.results[0] ?? null);
         setResultDetail(null);
-        const openThread = bundle.threads.find((row) => row.status === "OPEN") ?? bundle.threads[0];
+        const openThread = bundle.threads.find((row) => row.status === "OPEN");
         if (openThread) setThread(await fetchDigitalCareStaffThread(facilityId, openThread.id));
         else setThread(null);
-        try {
-          setPortalAccess(await fetchPatientPortalAccess(facilityId, patientId));
-          setPortalError(null);
-        } catch (accessError) {
-          setPortalAccess(null);
-          setIssuedCode(null);
-          setIssuedExpiresAt(null);
-          setIssuedInvitation(null);
-          setPortalError(t(digitalCarePortalAccessMessageKey(accessError)));
-        }
       } catch (e) {
         setError(digitalCareCaughtError(e, t));
       } finally {
@@ -211,25 +183,16 @@ export function DigitalCareProviderWorkspace() {
 
   useEffect(() => {
     if (selectedId) {
-      setIssuedCode(null);
-      setIssuedExpiresAt(null);
-      setIssuedInvitation(null);
-      setCopiedCode(false);
-      void loadWorkspace(selectedId);
-    } else {
-      setPortalAccess(null);
-      setPortalError(null);
-      setIssuedCode(null);
-      setIssuedExpiresAt(null);
-      setIssuedInvitation(null);
     }
   }, [selectedId, loadWorkspace]);
 
   useEffect(() => {
-    if (tab !== "messages" || !facilityId || !thread) return;
-    const timer = window.setInterval(() => {
+    if (tab !== "messages" || !facilityId || !thread || thread.status !== "OPEN") return;
+    const refresh = () => {
       void fetchDigitalCareStaffThread(facilityId, thread.id).then(setThread).catch(() => undefined);
-    }, 20000);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 2000);
     return () => window.clearInterval(timer);
   }, [tab, facilityId, thread]);
 
@@ -325,70 +288,6 @@ export function DigitalCareProviderWorkspace() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function sendPortalInvitation() {
-    if (!facilityId || !selectedId || !canActivatePortal) return;
-    setBusy(true);
-    setPortalError(null);
-    try {
-      const issued = await sendPatientPortalInvitation(facilityId, selectedId);
-      setIssuedInvitation(issued);
-      setIssuedCode(null);
-      setIssuedExpiresAt(null);
-      setCopiedCode(false);
-      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
-      return issued;
-    } catch (e) {
-      setIssuedInvitation(null);
-      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function issuePortalActivation() {
-    if (!facilityId || !selectedId || !canActivatePortal) return;
-    setBusy(true);
-    setPortalError(null);
-    try {
-      const issued = await issuePatientPortalActivation(facilityId, selectedId);
-      setIssuedCode(issued.activationCode);
-      setIssuedExpiresAt(issued.expiresAt);
-      setIssuedInvitation(null);
-      setCopiedCode(false);
-      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
-      return issued;
-    } catch (e) {
-      setIssuedCode(null);
-      setIssuedExpiresAt(null);
-      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function revokePortalAccessAction() {
-    if (!facilityId || !selectedId || !canRevokePortal) return;
-    setBusy(true);
-    setPortalError(null);
-    try {
-      await revokePatientPortalAccess(facilityId, selectedId);
-      setIssuedCode(null);
-      setIssuedExpiresAt(null);
-      setIssuedInvitation(null);
-      setPortalAccess(await fetchPatientPortalAccess(facilityId, selectedId));
-    } catch (e) {
-      setPortalError(t(digitalCarePortalAccessMessageKey(e)));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function copyActivationCode() {
-    if (!issuedCode) return;
-    await navigator.clipboard.writeText(issuedCode);
-    setCopiedCode(true);
   }
 
   function openChart() {
@@ -706,8 +605,10 @@ export function DigitalCareProviderWorkspace() {
                   onClose={() => {
                     if (!thread || !facilityId) return;
                     if (!window.confirm(t("digitalCare.messages.closeThread"))) return;
-                    void closeDigitalCareStaffThread(facilityId, thread.id).then(() => {
-                      if (selectedId) void loadWorkspace(selectedId);
+                    void closeDigitalCareStaffThread(facilityId, thread.id).then(async () => {
+                      setThread(null);
+                      setReply("");
+                      if (selectedId) await loadWorkspace(selectedId);
                     });
                   }}
                   busy={busy}
@@ -742,29 +643,6 @@ export function DigitalCareProviderWorkspace() {
               </dl>
             ) : <p style={{ color: "#64748b" }}>{t("digitalCare.noPatient")}</p>}
           </div>
-          {identity ? (
-            <DigitalCarePatientAppAccess
-              t={t}
-              patientName={digitalCareSafeLabel(identity.displayName)}
-              access={portalAccess}
-              canActivate={canActivatePortal}
-              canRevoke={canRevokePortal}
-              busy={busy}
-              issuedCode={issuedCode}
-              issuedExpiresAt={issuedExpiresAt}
-              invitation={issuedInvitation}
-              copied={copiedCode}
-              lookupFailed={Boolean(portalError)}
-              lookupError={portalError}
-              onInvite={sendPortalInvitation}
-              onActivate={issuePortalActivation}
-              onRevoke={revokePortalAccessAction}
-              onCopy={copyActivationCode}
-              onRefresh={async () => {
-                if (selectedId) await loadWorkspace(selectedId);
-              }}
-            />
-          ) : null}
           <div style={{ ...card, padding: 16, background: "#f0fdf4" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <strong>{t("digitalCare.side.medications")}</strong>
@@ -1011,7 +889,15 @@ function MessagesPanel({
                 <textarea value={reply} onChange={(e) => setReply(e.target.value)} maxLength={4000} rows={3} style={{ width: "100%", boxSizing: "border-box" }} placeholder={t("digitalCare.messages.reply")} />
                 <button type="button" onClick={onSend} disabled={busy || !reply.trim()} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, border: 0, background: "#0f766e", color: "white", fontWeight: 800 }}>{t("digitalCare.messages.send")}</button>
               </div>
-            ) : null}
+            ) : (
+              <div style={{ padding: 12, borderTop: "1px solid #e2e8f0" }}>
+                <p style={{ margin: "0 0 10px", color: "#64748b" }}>{t("digitalCare.messages.closed")}</p>
+                <button type="button" onClick={onStart} disabled={busy || !newSubject.trim() || !newBody.trim()} style={{ display: "none" }} aria-hidden="true" />
+                <input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder={t("digitalCare.messages.newSubject")} style={{ width: "100%", boxSizing: "border-box", marginBottom: 8, padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+                <textarea value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder={t("digitalCare.messages.newBody")} rows={4} style={{ width: "100%", boxSizing: "border-box", padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }} />
+                <button type="button" disabled={busy || !newSubject.trim() || !newBody.trim()} onClick={onStart} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, border: 0, background: "#0f766e", color: "white", fontWeight: 800 }}>{t("digitalCare.messages.start")}</button>
+              </div>
+            )}
           </>
         )}
       </div>
