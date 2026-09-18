@@ -743,7 +743,9 @@ function ResultsPanel({
   onDownload: () => void;
   busy: boolean;
 }) {
-  const viewer = detail ?? selected;\n  const attachments = attachmentsFromResultDataAll(detail?.resultData);\n  const structuredTextRows = structuredResultText(viewer?.resultText);
+  const viewer = detail ?? selected;
+  const attachments = attachmentsFromResultDataAll(detail?.resultData);
+  const structuredTextRows = structuredResultText(viewer?.resultText);
   return (
     <>
       <div style={{ ...card, padding: 12 }}>
