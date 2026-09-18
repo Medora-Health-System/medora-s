@@ -145,7 +145,7 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("revokePatientPortalAccess");
     expect(workspace).toContain("canActivatePortal");
     expect(workspace).toContain('roles.includes("ADMIN")');
-    expect(workspace).not.toContain("roles.includes(\"MEDORA_SUPER_ADMIN\")");
+    expect(workspace).toContain('roles.includes("MEDORA_SUPER_ADMIN")');
     expect(workspace).toContain("digitalCareVisitStatusPresentation");
     expect(workspace).not.toContain("localStorage");
     expect(workspace).not.toContain("sessionStorage");
