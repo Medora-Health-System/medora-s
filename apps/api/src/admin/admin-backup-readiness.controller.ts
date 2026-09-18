@@ -1,7 +1,11 @@
 import { BadRequestException, Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard";
 import { BackupReadinessService } from "./backup-readiness.service";
 
 function facilityIdFromReq(req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }): string {
@@ -18,6 +22,7 @@ export class AdminBackupReadinessController {
 
   @Get("backup-readiness")
   @RequireRoles(...PLATFORM_OPERATOR_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   getBackupReadiness(@Req() req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }) {
     const facilityId = facilityIdFromReq(req);
     return this.backupReadiness.getSnapshot(facilityId);
