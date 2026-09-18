@@ -1,7 +1,11 @@
 import { BadRequestException, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard";
 import { sendMedoraTestAlert } from "../common/logging/medoraAlert";
 import { SystemHealthService } from "./system-health.service";
 
@@ -24,6 +28,7 @@ export class AdminSystemHealthController {
 
   @Get("system-health")
   @RequireRoles(...PLATFORM_OPERATOR_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async getSystemHealth(@Req() req: { user?: { facilityId?: string }; headers: Record<string, string | string[] | undefined> }) {
     const facilityId = facilityIdFromReq(req);
     return this.systemHealth.getSnapshot(facilityId);
@@ -32,6 +37,7 @@ export class AdminSystemHealthController {
   /** S23 — PHI-safe test alert; platform operators only. */
   @Post("system-health/test-alert")
   @RequireRoles(...PLATFORM_OPERATOR_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async postTestAlert(@Req() req: AuthedReq) {
     const facilityId = facilityIdFromReq(req);
     const userId = typeof req.user?.userId === "string" ? req.user.userId : undefined;
