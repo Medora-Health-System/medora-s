@@ -55,6 +55,7 @@ function setup(options: {
       findMany: jest.fn().mockResolvedValue([{ userId: adminA, role: { code: "ADMIN" } }]),
     },
     auditLog: {
+      count: jest.fn().mockResolvedValue((options.rows ?? [row()]).length),
       findMany: jest.fn().mockResolvedValue(options.rows ?? [row()]),
     },
   };
@@ -112,11 +113,15 @@ describe("D4SEC.1C.2A customer audit read boundary", () => {
     });
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        facilityId: facilityA,
-        userId: platformActor,
-        entityType: "USER",
-        encounterId: "8ad79eed-a07f-4810-82dc-769f7c83fb35",
-        OR: expect.any(Array),
+        AND: expect.arrayContaining([
+          expect.objectContaining({
+            facilityId: facilityA,
+            userId: platformActor,
+            entityType: "USER",
+            encounterId: "8ad79eed-a07f-4810-82dc-769f7c83fb35",
+          }),
+          expect.objectContaining({ OR: expect.any(Array) }),
+        ]),
       }),
     }));
   });
