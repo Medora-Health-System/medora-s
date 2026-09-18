@@ -155,14 +155,14 @@ export class ReportsService {
     return Boolean(cid && ekgCatalogIds.has(cid));
   }
 
-  private async loadMrnMap(patientIds: string[]): Promise<Map<string, string>> {
+  private async loadMrnMap(facilityId: string, patientIds: string[]): Promise<Map<string, string>> {
     const map = new Map<string, string>();
     const uniq = [...new Set(patientIds)].filter(Boolean);
     const chunk = 500;
     for (let i = 0; i < uniq.length; i += chunk) {
       const slice = uniq.slice(i, i + chunk);
       const rows = await this.prisma.patient.findMany({
-        where: { id: { in: slice } },
+        where: { id: { in: slice }, facilityId },
         select: { id: true, mrn: true },
       });
       for (const p of rows) map.set(p.id, p.mrn ?? "");
@@ -237,7 +237,7 @@ export class ReportsService {
 
     const truncated = rowsDb.length > limit;
     const page = truncated ? rowsDb.slice(0, limit) : rowsDb;
-    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+    const mrns = await this.loadMrnMap(facilityId, page.map((e) => e.patientId));
 
     const last = page[page.length - 1];
     const nextCursor =
@@ -319,7 +319,7 @@ export class ReportsService {
           },
         });
         if (batch.length === 0) break;
-        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        const mrns = await this.loadMrnMap(facilityId, batch.map((e) => e.patientId));
         for (const enc of batch) {
           const door = arrivalTime(enc);
           const end = enc.dischargedAt!;
@@ -447,7 +447,7 @@ export class ReportsService {
       };
     });
 
-    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+    const mrns = await this.loadMrnMap(facilityId, page.map((e) => e.patientId));
     const users = await this.loadUsersMap(rows.map((r) => r.providerUserId));
 
     const rowsOut = rows.map((r) => {
@@ -546,7 +546,7 @@ export class ReportsService {
           source: string;
           userId: string | null;
         }> = [];
-        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        const mrns = await this.loadMrnMap(facilityId, batch.map((e) => e.patientId));
         for (const enc of batch) {
           const door = arrivalTime(enc);
           const list = byEnc.get(enc.id) ?? [];
@@ -704,7 +704,7 @@ export class ReportsService {
       }),
     ]);
 
-    const mrns = await this.loadMrnMap(page.map((e) => e.patientId));
+    const mrns = await this.loadMrnMap(facilityId, page.map((e) => e.patientId));
 
     const rows = page.map((enc) => {
       const door = arrivalTime(enc);
@@ -819,7 +819,7 @@ export class ReportsService {
             select: { encounterId: true, createdAt: true, payloadJson: true },
           }),
         ]);
-        const mrns = await this.loadMrnMap(batch.map((e) => e.patientId));
+        const mrns = await this.loadMrnMap(facilityId, batch.map((e) => e.patientId));
         for (const enc of batch) {
           const door = arrivalTime(enc);
           const ekgTimes: { t: Date; source: "ORDER_ITEM" | "PROCEDURE_DOCUMENTED" }[] = [];
