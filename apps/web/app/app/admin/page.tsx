@@ -6,16 +6,13 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import LegacyAdminDashboard from "./LegacyAdminDashboard";
 
 export default function AdminPage() {
-  const { facilityId, canCreateFacilities, isPlatformOperator } = useFacilityAndRoles();
+  const { facilityId } = useFacilityAndRoles();
 
   return (
     <>
       {facilityId ? (
         <div style={{ margin: "24px 24px 0" }}>
-          <FacilityConfigurationConsole
-            facilityId={facilityId}
-            canUsePlatformTools={isPlatformOperator || canCreateFacilities}
-          />
+          <FacilityConfigurationConsole facilityId={facilityId} />
         </div>
       ) : null}
       <FacilityAdminControlPanel />
