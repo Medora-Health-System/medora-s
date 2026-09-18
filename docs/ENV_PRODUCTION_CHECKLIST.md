@@ -47,12 +47,17 @@ Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DR
 
 ---
 
-## 4. Alerts (optional but recommended)
+## 4. Alerts (required for production readiness)
 
 | Variable | Notes |
 |----------|--------|
-| `MEDORA_ALERT_WEBHOOK_URL` | If set with alerts enabled, structured alerts can be delivered. |
-| `MEDORA_ALERT_ENABLED` | Default on; set `false` / `0` / `off` to disable outbound alert delivery. |
+| `MEDORA_ALERT_ENABLED` | Default on; set `false` / `0` / `off` only for a controlled maintenance exception. Production readiness fails when alerts are disabled. |
+| `MEDORA_ALERT_TRANSPORT` | `pagerduty` for the governed PagerDuty Events API v2 transport, or `webhook` for the legacy generic webhook transport. If unset, a PagerDuty routing key auto-selects PagerDuty; otherwise Medora falls back to webhook mode. |
+| `MEDORA_PAGERDUTY_ROUTING_KEY` | **Secret.** PagerDuty Events API v2 integration/routing key. Never log it, return it from health APIs, or place it in URLs/screenshots. Required when transport is `pagerduty`. |
+| `MEDORA_ALERT_WEBHOOK_URL` | Legacy/generic webhook destination. Required only when transport is `webhook`. Do not point this directly at PagerDuty Events API v2; PagerDuty requires its own event envelope and routing key. |
+| `MEDORA_ALERT_FORMAT` | Applies only to generic webhook transport: `json` (default) or `slack`. Ignored by PagerDuty transport. |
+
+PagerDuty delivery is fixed to the official US Events API v2 endpoint `https://events.pagerduty.com/v2/enqueue`. The routing key is sent in the JSON request body, never in the URL. External PagerDuty payloads are deliberately minimized: no patient identifiers, encounter IDs, user IDs, facility IDs, clinical text, or arbitrary route values are transmitted.
 
 ---
 
@@ -73,6 +78,7 @@ Companion docs: `docs/DEPLOYMENT_RUNBOOK.md`, `docs/OPS.md`, `docs/ER_RESTORE_DR
 | `MFA_SECRET_ENCRYPTION_KEY` | Existing DB ciphertext for TOTP secrets cannot be decrypted — requires re-enrollment or a documented key-rotation migration. |
 | `CHART_EXPORT_SIGNING_SECRET` | Historical signed exports may fail integrity verification if only one secret is supported. |
 | `DATABASE_URL` (restore) | Restoring a backup without mirroring **chart export signing** and **JWT** env from the era of the backup breaks verification and sessions (`ER_RESTORE_DRILL_CHECKLIST.md`). |
+| `MEDORA_PAGERDUTY_ROUTING_KEY` | Rotate in PagerDuty and Railway together. An exposed/deleted key stops alert delivery but must never be placed in logs or client-visible configuration. |
 
 ---
 
