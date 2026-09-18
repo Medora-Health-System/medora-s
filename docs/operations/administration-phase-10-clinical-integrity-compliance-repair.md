@@ -6,14 +6,9 @@ Phase 10 starts from merged Phase 9 and opens the clinical/data-integrity progra
 
 The compliance dashboard returned HTTP 500 while aggregating MAR audit completeness. The service used a hand-written raw SQL query against `MedicationAdministration` / `AuditLog`. This path was brittle against the deployed Prisma/schema contract and bypassed the repository's typed relation semantics.
 
-The MAR audited count now uses the Prisma `medicationAdministration.count` relation predicate, requiring:
-- the selected `facilityId`;
-- the seven-day creation window;
-- a related audit row with `AuditAction.CREATE`;
-- entity type `MEDICATION_ADMINISTRATION`;
-- the same exact `facilityId`.
+The first repair attempted a Prisma relation predicate, but CI correctly exposed that `MedicationAdministration` has no `auditLogs` relation in the canonical schema. The production-safe repair now queries the canonical `AuditLog` model directly for facility-local `MEDICATION_ADMINISTRATION` / `CREATE` evidence with a non-null entity id. The audited count is capped at the facility MAR population so duplicate audit rows cannot produce coverage above 100%.
 
-This removes the raw SQL failure path and keeps the aggregate on the same typed data-access layer as the rest of the service.
+This removes the raw SQL failure path without inventing a schema relation that does not exist.
 
 ## Facility-isolation repair carried into compliance
 
@@ -35,3 +30,8 @@ A focused Phase 10 spec verifies:
 This PR deliberately repairs the live Administration failure first and establishes the typed/facility-local aggregate baseline. The remaining clinical mutation review continues across transactional state transitions, concurrency/idempotency, encounter/patient/order/MAR ownership checks, and ROI transition races.
 
 No Application Modules behavior, clinical rule semantics, or internal Medora billing behavior is changed.
+
+
+## CI correction
+
+The initial Phase 10 implementation was rejected by API typecheck with TS2353 because `MedicationAdministrationWhereInput` does not expose `auditLogs`. That failure was valid. The branch was corrected to use the actual canonical `AuditLog` schema rather than weakening type safety or adding a synthetic relation. Regression coverage now also proves duplicate audit rows cannot report more than 100% MAR coverage.
