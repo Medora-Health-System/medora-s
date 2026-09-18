@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, ForbiddenException, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { AuditAction } from "@prisma/client";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
@@ -11,6 +11,8 @@ import type { EdReportsQueryDto } from "./dto/ed-reports-query.dto";
 import { assertEdReportDateRange } from "./ed-report-range.util";
 import { parseReportTimeBoundary } from "./ed-reports-time.util";
 import { ReportsService } from "./reports.service";
+import { assertFacilityAdminFacilityScope } from "../admin/user-mutation-boundary";
+import { PrismaService } from "../prisma/prisma.service";
 
 type AuthedRequest = Request & {
   user?: { userId: string; facilityId?: string };
@@ -48,8 +50,20 @@ function assertCsvDateRange(query: EdReportsQueryDto): void {
 export class ReportsController {
   constructor(
     private readonly reports: ReportsService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly prisma: PrismaService
   ) {}
+
+  /**
+   * Report authorization is enforced adjacent to every report query.
+   * A browser-selected facility header is context only; it never grants access.
+   */
+  private async assertReportScope(req: AuthedRequest, facilityId: string): Promise<string> {
+    const actorUserId = typeof req.user?.userId === "string" ? req.user.userId.trim() : "";
+    if (!actorUserId) throw new ForbiddenException("Authentication required");
+    await assertFacilityAdminFacilityScope(this.prisma, actorUserId, facilityId);
+    return actorUserId;
+  }
 
   private async logCsvExport(
     req: AuthedRequest,
@@ -89,6 +103,7 @@ export class ReportsController {
       throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", { cause: parsed.error });
     }
     const facilityId = facilityIdFromReq(req);
+    await this.assertReportScope(req, facilityId);
     if (parsed.data.format === "csv") {
       assertCsvDateRange(parsed.data);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -112,6 +127,7 @@ export class ReportsController {
       throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", { cause: parsed.error });
     }
     const facilityId = facilityIdFromReq(req);
+    await this.assertReportScope(req, facilityId);
     if (parsed.data.format === "csv") {
       assertCsvDateRange(parsed.data);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -135,6 +151,7 @@ export class ReportsController {
       throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", { cause: parsed.error });
     }
     const facilityId = facilityIdFromReq(req);
+    await this.assertReportScope(req, facilityId);
     if (parsed.data.format === "csv") {
       assertCsvDateRange(parsed.data);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -158,6 +175,7 @@ export class ReportsController {
       throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", { cause: parsed.error });
     }
     const facilityId = facilityIdFromReq(req);
+    await this.assertReportScope(req, facilityId);
     if (parsed.data.format === "csv") {
       assertCsvDateRange(parsed.data);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
