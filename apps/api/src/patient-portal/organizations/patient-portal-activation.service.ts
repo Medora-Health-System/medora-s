@@ -86,18 +86,13 @@ export class PatientPortalActivationService {
     });
 
     const invitationUrl = buildPatientInvitationUrl(baseUrl, issued.activationCode);
+    const language = await this.invitationLanguage(input.facilityId);
+    const message = this.invitationEmail(language, invitationUrl);
     try {
       await this.mail.send({
         to: email,
-        subject: "Activate your Medora Patient account",
-        text: [
-          "You have been invited to activate your Medora Patient account.",
-          "",
-          "Open this link to continue:",
-          invitationUrl,
-          "",
-          "This invitation expires in 24 hours. If you did not expect this message, you can ignore it.",
-        ].join("\n"),
+        subject: message.subject,
+        text: message.text,
       });
     } catch (error) {
       await this.activations.revokeUnusedActivation(issued.activationId);
