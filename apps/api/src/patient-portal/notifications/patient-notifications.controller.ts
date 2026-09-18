@@ -8,7 +8,11 @@ import { PatientNotificationsService } from "./patient-notifications.service";
 @UseGuards(PatientPortalAuthGuard, PatientPortalFacilityGuard)
 export class PatientNotificationsController {
   constructor(private readonly notifications: PatientNotificationsService) {}
-  private access(req:any): PatientPortalAccessContext {\n    const access=req.patientAccess as PatientPortalAccessContext|undefined;\n    if(!access) throw new BadRequestException(\"Patient access context missing\");\n    return access;\n  }
+  private access(req:any): PatientPortalAccessContext {
+    const access=req.patientAccess as PatientPortalAccessContext|undefined;
+    if(!access) throw new BadRequestException("Patient access context missing");
+    return access;
+  }
 
   @Get()
   list(@Req() req:any) { return this.notifications.list(this.access(req)); }
