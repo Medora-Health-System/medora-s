@@ -111,6 +111,9 @@ export default function AdminUsersPage() {
 
   const isFacilityOrPlatformAdmin =
     ready && (roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN"));
+  // Global identity and credential mutations are intentionally platform-only.
+  // Facility ADMIN manages facility membership/roles/access, not the shared User identity.
+  const isPlatformAdmin = ready && roles.includes("MEDORA_SUPER_ADMIN");
   const currentFacilityName =
     facilities.find((f) => f.id === facilityId)?.name ?? t("common.dash");
 
@@ -378,7 +381,7 @@ export default function AdminUsersPage() {
                 </td>
                 <td style={{ padding: 10 }}>{accessStatusColumn(u, t)}</td>
                 <td style={{ padding: 10, textAlign: "right", whiteSpace: "nowrap" }}>
-                  <button
+                  {isPlatformAdmin ? (<button
                     type="button"
                     onClick={() => setProfileUser(u)}
                     style={{
@@ -392,7 +395,7 @@ export default function AdminUsersPage() {
                     }}
                   >
                     {t("common.edit")}
-                  </button>
+                  </button>) : null}
                   <button
                     type="button"
                     onClick={() => setEditUser(u)}
@@ -408,7 +411,7 @@ export default function AdminUsersPage() {
                   >
                     {t("adminUsers.manageRoles")}
                   </button>
-                  {u.id !== currentUserId ? (
+                  {isPlatformAdmin && u.id !== currentUserId ? (
                     <button
                       type="button"
                       onClick={() => setResetPasswordUser(u)}
@@ -559,7 +562,7 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {profileUser && facilityId && isFacilityOrPlatformAdmin && (
+      {profileUser && facilityId && isPlatformAdmin && (
         <EditProfileModal
           facilityId={facilityId}
           user={profileUser}
@@ -627,7 +630,7 @@ export default function AdminUsersPage() {
         />
       ) : null}
 
-      {resetPasswordUser && facilityId && isFacilityOrPlatformAdmin && (
+      {resetPasswordUser && facilityId && isPlatformAdmin && (
         <ResetPasswordModal
           facilityId={facilityId}
           facilityDisplayName={currentFacilityName}

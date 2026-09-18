@@ -39,8 +39,6 @@ type FacilityAdminCopy = {
   staffText: string;
   auditTitle: string;
   auditText: string;
-  mfaTitle: string;
-  mfaText: string;
   reportsTitle: string;
   reportsText: string;
   billingTitle: string;
@@ -79,8 +77,6 @@ const COPY: Record<"en" | "fr" | "es", FacilityAdminCopy> = {
     staffText: "Manage users and permissions for this facility.",
     auditTitle: "Audit log",
     auditText: "Review administrative and clinical audit activity.",
-    mfaTitle: "MFA administration",
-    mfaText: "Manage staff multi-factor authentication recovery.",
     reportsTitle: "Operational reports",
     reportsText: "Monitor facility operations and reporting.",
     billingTitle: "Billing governance",
@@ -117,8 +113,6 @@ const COPY: Record<"en" | "fr" | "es", FacilityAdminCopy> = {
     staffText: "Gérez les utilisateurs et les autorisations de cet établissement.",
     auditTitle: "Journal d’audit",
     auditText: "Consultez l’activité d’audit administrative et clinique.",
-    mfaTitle: "Administration de l’A2F",
-    mfaText: "Gérez la récupération de l’authentification multifacteur du personnel.",
     reportsTitle: "Rapports opérationnels",
     reportsText: "Suivez les opérations et les rapports de l’établissement.",
     billingTitle: "Gouvernance de la facturation",
@@ -155,8 +149,6 @@ const COPY: Record<"en" | "fr" | "es", FacilityAdminCopy> = {
     staffText: "Administre usuarios y permisos de este establecimiento.",
     auditTitle: "Registro de auditoría",
     auditText: "Revise la actividad administrativa y clínica de auditoría.",
-    mfaTitle: "Administración de MFA",
-    mfaText: "Administre la recuperación de autenticación multifactor del personal.",
     reportsTitle: "Informes operativos",
     reportsText: "Supervise las operaciones e informes del establecimiento.",
     billingTitle: "Gobernanza de facturación",
@@ -339,7 +331,6 @@ export function FacilityAdminControlPanel() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
           <Card href="/app/admin/users" title={copy.staffTitle} text={copy.staffText} icon="●" tone="#2563eb" />
           <Card href="/app/admin/audit" title={copy.auditTitle} text={copy.auditText} icon="▤" tone="#16a34a" />
-          <Card href="/app/admin/mfa" title={copy.mfaTitle} text={copy.mfaText} icon="◇" tone="#7c3aed" />
           <Card href="/app/reports" title={copy.reportsTitle} text={copy.reportsText} icon="▥" tone="#ea580c" />
         </div>
       </div>

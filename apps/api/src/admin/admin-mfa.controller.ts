@@ -16,6 +16,7 @@
 
 import {
   BadRequestException,
+  ForbiddenException,
   Body,
   Controller,
   HttpCode,
@@ -29,7 +30,7 @@ import { RoleCode } from "@prisma/client";
 
 import { RequireRoles, RolesGuard } from "../common/guards/roles.guard";
 import { adminMfaResetDtoSchema } from "../auth/mfa/mfa.dto";
-import { MfaService } from "../auth/mfa/mfa.service";
+
 
 type AuthedReq = {
   user?: { userId?: string; facilityId?: string };
@@ -54,10 +55,8 @@ function ctxFromReq(req: AuthedReq): {
 @Controller("admin")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AdminMfaController {
-  constructor(private readonly mfa: MfaService) {}
-
   @Post("mfa/reset")
-  @RequireRoles(RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN)
+  @RequireRoles(RoleCode.MEDORA_SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   async resetUserMfa(@Body() body: unknown, @Req() req: AuthedReq) {
     const parsed = adminMfaResetDtoSchema.safeParse(body);
@@ -66,7 +65,13 @@ export class AdminMfaController {
         parsed.error.errors?.[0]?.message ?? "Données invalides."
       );
     }
-    const ctx = ctxFromReq(req);
-    return this.mfa.adminReset(ctx, parsed.data.userId);
+    // Direct MFA recovery is intentionally closed. MFA reset is CRITICAL and
+    // must execute through the platform privileged-action state machine, which
+    // enforces recent MFA, immutable target scope, distinct approval, and
+    // execution-time authority revalidation.
+    ctxFromReq(req);
+    throw new ForbiddenException(
+      "MFA recovery requires the governed platform privileged-action workflow.",
+    );
   }
 }
