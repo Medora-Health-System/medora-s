@@ -1,6 +1,6 @@
 /**
- * S17B / S17C — Operational alerts (webhook or console). Never include PHI; never throw to callers.
- * Payload is a strict allowlist aligned with go-live ops runbooks.
+ * S17B / S17C — Operational alerts (PagerDuty or governed webhook). Never include PHI; never throw to callers.
+ * Internal payloads use a strict allowlist; external PagerDuty events apply an even narrower projection.
  */
 
 import { createHash } from "node:crypto";
@@ -133,9 +133,6 @@ function slackFieldLine(label: string, value: string | number | undefined): stri
   return `*${label}* \`${String(v).replace(/`/g, "'")}\``;
 }
 
-/**
- * Slack-compatible incoming-webhook body. Only structured codes/ids — no clinical free text.
- */
 export type PagerDutyEventsApiV2Body = {
   routing_key: string;
   event_action: "trigger";
@@ -203,6 +200,9 @@ export function buildPagerDutyEventsApiV2Body(
   };
 }
 
+/**
+ * Slack-compatible incoming-webhook body. Only structured codes/ids — no clinical free text.
+ */
 export function buildSlackWebhookBody(payload: MedoraAlertPayload): { text: string; blocks: unknown[] } {
   const lines = [
     slackFieldLine("Event", payload.event),
@@ -415,8 +415,8 @@ export async function sendMedoraTestAlert(params: {
 }
 
 /**
- * Fire-and-forget operational alert. Respects MEDORA_ALERT_ENABLED; uses MEDORA_ALERT_WEBHOOK_URL when set.
- * S17C: retries (3×), backoff, Slack/json format, delivery logs; never throws to callers.
+ * Fire-and-forget operational alert. Respects MEDORA_ALERT_ENABLED and the selected alert transport.
+ * S17C: retries (3×), backoff, delivery logs; never throws to callers.
  */
 export function queueMedoraAlert(input: MedoraAlertInput): void {
   if (!readAlertsEnabled()) return;
