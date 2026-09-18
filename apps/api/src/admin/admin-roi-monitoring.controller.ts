@@ -3,7 +3,11 @@ import { AuthGuard } from "@nestjs/passport";
 import { AuditAction } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import {
+  AllowPlatformPrincipalWithFacilityContext,
+  RolesGuard,
+  RequireRoles,
+} from "../common/guards/roles.guard";
 import { PLATFORM_OPERATOR_ROLES } from "../common/auth/platform-operator-roles";
 
 /**
@@ -22,6 +26,7 @@ export class AdminRoiMonitoringController {
 
   @Get("roi-monitoring/summary")
   @RequireRoles(...PLATFORM_OPERATOR_ROLES)
+  @AllowPlatformPrincipalWithFacilityContext()
   async summary(@Req() req: any) {
     const userId = req.user?.userId as string | undefined;
     const ip = req.ip as string | undefined;
