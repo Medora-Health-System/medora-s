@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { getMedoraAlertStatusForApi } from "../common/logging/medoraAlert";
 
 export type BackupReadinessCheckStatus = "pass" | "warn" | "fail";
 export type BackupReadinessOverallStatus = "ready" | "attention" | "blocked";
@@ -35,17 +36,6 @@ function readDatabaseUrlConfigured(): boolean {
 
 function readNodeEnvProduction(): boolean {
   return readEnvTrim("NODE_ENV").toLowerCase() === "production";
-}
-
-function readAlertWebhookConfigured(): boolean {
-  const u = readEnvTrim("MEDORA_ALERT_WEBHOOK_URL");
-  return Boolean(u);
-}
-
-function readAlertsEnabled(): boolean {
-  const raw = readEnvTrim("MEDORA_ALERT_ENABLED").toLowerCase();
-  if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
-  return true;
 }
 
 function readExternalBillingAutoExportEnabled(): boolean {
@@ -159,8 +149,9 @@ export class BackupReadinessService {
       detail: drillDetail,
     });
 
-    const alertsEnabled = readAlertsEnabled();
-    const alertHook = readAlertWebhookConfigured();
+    const alertStatus = getMedoraAlertStatusForApi();
+    const alertsEnabled = alertStatus.enabled;
+    const alertHook = alertStatus.destinationConfigured;
     checks.push({
       key: "alert_webhook",
       label: "alert_webhook",
@@ -170,7 +161,7 @@ export class BackupReadinessService {
           : prod
             ? "fail"
             : "warn",
-      detail: !alertsEnabled ? "alerts_disabled" : !alertHook ? "alert_webhook_missing" : null,
+      detail: !alertsEnabled ? "alerts_disabled" : !alertHook ? "alert_destination_missing" : null,
     });
 
     const extAuto = readExternalBillingAutoExportEnabled();

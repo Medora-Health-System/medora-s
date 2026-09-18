@@ -42,6 +42,16 @@ describe("Phase 4 production backup readiness", () => {
     expect(snapshot.checks.find((check) => check.key === checkKey)?.status).toBe("fail");
   });
 
+  it("accepts PagerDuty Events API v2 as the production alert destination without a generic webhook", () => {
+    baseProductionEnv();
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    const snapshot = new BackupReadinessService().getSnapshot("facility-a");
+    expect(snapshot.checks.find((check) => check.key === "alert_webhook")?.status).toBe("pass");
+    expect(snapshot.status).toBe("ready");
+  });
+
   it("blocks production when the latest restore drill is older than 180 days", () => {
     baseProductionEnv();
     process.env.MEDORA_LAST_RESTORE_DRILL_AT = new Date(Date.now() - 181 * 86400_000).toISOString();

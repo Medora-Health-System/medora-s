@@ -6,6 +6,7 @@ import type { EdReportsQueryDto } from "../reports/dto/ed-reports-query.dto";
 import { computeDispositionSafetyReadiness } from "../encounters/disposition-safety-readiness.util";
 import { auditPresetWhere, classifyAuditUiCategory } from "./audit-category.util";
 import { auditHighlightTags } from "./audit-metadata-summary.util";
+import { getMedoraAlertStatusForApi } from "../common/logging/medoraAlert";
 
 /** Aligné sur la fusion côté `EncountersService` (brouillon sortie structuré seulement). */
 const DISCHARGE_SUMMARY_STRING_KEYS = [
@@ -56,17 +57,6 @@ function avgMinutesNumeric(vals: (number | null | undefined)[]): number | null {
   const nums = vals.filter((m): m is number => m != null && Number.isFinite(m));
   if (nums.length === 0) return null;
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
-}
-
-function readAlertWebhookConfigured(): boolean {
-  const u = process.env.MEDORA_ALERT_WEBHOOK_URL?.trim();
-  return Boolean(u && u.length > 0);
-}
-
-function readAlertsEnabled(): boolean {
-  const raw = process.env.MEDORA_ALERT_ENABLED?.trim().toLowerCase();
-  if (raw === "false" || raw === "0" || raw === "no" || raw === "off") return false;
-  return true;
 }
 
 function readExternalBillingAutoExportEnabled(): boolean {
@@ -203,8 +193,9 @@ export class GoLiveReadinessService {
       if (m?.automationEvent === "external_billing_auto_export_failed") billingFailures48h += 1;
     }
 
-    const alertWebhookConfigured = readAlertWebhookConfigured();
-    const alertsEnabled = readAlertsEnabled();
+    const alertStatus = getMedoraAlertStatusForApi();
+    const alertWebhookConfigured = alertStatus.destinationConfigured;
+    const alertsEnabled = alertStatus.enabled;
     const extAuto = readExternalBillingAutoExportEnabled();
     const extVendor = readExternalBillingVendorWebhookConfigured();
 
@@ -295,7 +286,7 @@ export class GoLiveReadinessService {
       label: "Operational alert webhook (S17)",
       status: !alertsEnabled ? "warn" : alertWebhookConfigured ? "pass" : "warn",
       value: alertWebhookConfigured,
-      detail: !alertsEnabled ? "alerts_disabled" : !alertWebhookConfigured ? "alert_webhook_missing" : null,
+      detail: !alertsEnabled ? "alerts_disabled" : !alertWebhookConfigured ? "alert_destination_missing" : null,
     });
 
     checks.push({

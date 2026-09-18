@@ -59,7 +59,7 @@ export function productionReadinessBlockers(
   if (!system.metrics.alertEnabled) {
     add({ key: "alerts", source: "system", detail: "alerts_disabled" });
   } else if (!system.metrics.alertWebhookConfigured) {
-    add({ key: "alerts", source: "system", detail: "alerts_enabled_no_webhook" });
+    add({ key: "alerts", source: "system", detail: "alerts_enabled_no_destination" });
   }
 
   return [...blockers.values()];

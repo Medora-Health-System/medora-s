@@ -1,9 +1,11 @@
 import * as medoraLogger from "./medoraLogger";
 import {
   buildMedoraAlertPayload,
+  buildPagerDutyEventsApiV2Body,
   buildSlackWebhookBody,
   deliverMedoraAlertWebhookWithRetries,
   drainMedoraAlerts,
+  getMedoraAlertStatusForApi,
   queueMedoraAlert,
   resetMedoraAlertTestState,
 } from "./medoraAlert";
@@ -13,6 +15,8 @@ describe("medoraAlert S17C", () => {
   const prevAlertEnabled = process.env.MEDORA_ALERT_ENABLED;
   const prevNodeEnv = process.env.NODE_ENV;
   const prevWebhook = process.env.MEDORA_ALERT_WEBHOOK_URL;
+  const prevTransport = process.env.MEDORA_ALERT_TRANSPORT;
+  const prevPagerDutyKey = process.env.MEDORA_PAGERDUTY_ROUTING_KEY;
 
   beforeEach(() => {
     jest.spyOn(medoraLogger, "logInfo").mockImplementation(() => {});
@@ -29,6 +33,10 @@ describe("medoraAlert S17C", () => {
     else process.env.NODE_ENV = prevNodeEnv;
     if (prevWebhook === undefined) delete process.env.MEDORA_ALERT_WEBHOOK_URL;
     else process.env.MEDORA_ALERT_WEBHOOK_URL = prevWebhook;
+    if (prevTransport === undefined) delete process.env.MEDORA_ALERT_TRANSPORT;
+    else process.env.MEDORA_ALERT_TRANSPORT = prevTransport;
+    if (prevPagerDutyKey === undefined) delete process.env.MEDORA_PAGERDUTY_ROUTING_KEY;
+    else process.env.MEDORA_PAGERDUTY_ROUTING_KEY = prevPagerDutyKey;
   });
 
   it("buildMedoraAlertPayload only exposes allowlisted operational fields", () => {
@@ -47,6 +55,79 @@ describe("medoraAlert S17C", () => {
     expect(p.service).toBe("medora-api");
   });
 
+  it("PagerDuty Events API v2 body excludes internal actor, encounter, facility, route, and clinical identifiers", () => {
+    const p = buildMedoraAlertPayload({
+      ...baseInput,
+      facilityId: "fac-secret",
+      encounterId: "enc-secret",
+      userId: "usr-secret",
+      requestId: "req-opaque",
+      route: "/patients/patient-secret/encounters/enc-secret",
+      statusCode: 503,
+    });
+    const body = buildPagerDutyEventsApiV2Body(p, "routing-secret");
+    expect(body.routing_key).toBe("routing-secret");
+    expect(body.event_action).toBe("trigger");
+    expect(body.payload.summary).toContain("test_alert_event");
+    expect(body.payload.source).toBe("medora-api");
+    expect(body.payload.custom_details).toEqual(
+      expect.objectContaining({
+        event: "test_alert_event",
+        requestId: "req-opaque",
+        statusCode: 503,
+      })
+    );
+    const external = JSON.stringify(body);
+    expect(external).not.toContain("fac-secret");
+    expect(external).not.toContain("enc-secret");
+    expect(external).not.toContain("usr-secret");
+    expect(external).not.toContain("patient-secret");
+    expect(external).not.toContain("/patients/");
+  });
+
+  it("reports PagerDuty as configured without requiring a generic webhook URL", () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+
+    expect(getMedoraAlertStatusForApi()).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        transport: "pagerduty",
+        destinationConfigured: true,
+        webhookConfigured: true,
+        canSendTest: true,
+      })
+    );
+  });
+
+  it("fails closed when MEDORA_ALERT_TRANSPORT contains an unsupported value", () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerdutty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    process.env.MEDORA_ALERT_WEBHOOK_URL = "https://alerts.example.test/hook";
+
+    expect(getMedoraAlertStatusForApi()).toEqual(
+      expect.objectContaining({
+        transport: "invalid",
+        destinationConfigured: false,
+        webhookConfigured: false,
+        canSendTest: false,
+      })
+    );
+  });
+
+  it("PagerDuty dedup key is stable for retries of the same payload", () => {
+    const p = buildMedoraAlertPayload(baseInput);
+    const first = buildPagerDutyEventsApiV2Body(p, "key-a");
+    const second = buildPagerDutyEventsApiV2Body(p, "key-a");
+    expect(first.dedup_key).toBe(second.dedup_key);
+    expect(first.dedup_key).toMatch(/^medora-[a-f0-9]{64}$/);
+  });
+
   it("Slack body text and serialized blocks stay PHI-safe", () => {
     const p = buildMedoraAlertPayload({
       ...baseInput,
@@ -58,6 +139,39 @@ describe("medoraAlert S17C", () => {
     expect(raw).not.toMatch(/patient|mrn|diagnosis|note|medication|chiefcomplaint/i);
     expect(slack.text).toContain("test_alert_event");
     expect(Array.isArray(slack.blocks)).toBe(true);
+  });
+
+  it("queues PagerDuty alerts to the fixed Events API v2 endpoint with a routing key in the JSON body", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      status: 202,
+    } as Response);
+
+    queueMedoraAlert({
+      ...baseInput,
+      encounterId: "enc-must-not-leave-medora",
+      userId: "user-must-not-leave-medora",
+      facilityId: "facility-must-not-leave-medora",
+      requestId: "req-123",
+    });
+    await drainMedoraAlerts();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe("https://events.pagerduty.com/v2/enqueue");
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    expect(body.routing_key).toBe("routing-secret");
+    expect(body.event_action).toBe("trigger");
+    expect(body.payload.source).toBe("medora-api");
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("enc-must-not-leave-medora");
+    expect(raw).not.toContain("user-must-not-leave-medora");
+    expect(raw).not.toContain("facility-must-not-leave-medora");
   });
 
   it("delivery uses up to 3 fetch attempts when all fail", async () => {
@@ -102,15 +216,18 @@ describe("medoraAlert S17C", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("warns once when alerts enabled without webhook, and drain settles", async () => {
+  it("warns once when alerts enabled without the selected destination, and drain settles", async () => {
     process.env.NODE_ENV = "development";
     process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    delete process.env.MEDORA_PAGERDUTY_ROUTING_KEY;
     delete process.env.MEDORA_ALERT_WEBHOOK_URL;
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     queueMedoraAlert(baseInput);
     queueMedoraAlert(baseInput);
     await drainMedoraAlerts();
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0]?.[0] ?? "")).toContain("MEDORA_ALERT_WEBHOOK_URL not set");
+    expect(String(warn.mock.calls[0]?.[0] ?? "")).toContain("alert destination not configured");
+    expect(String(warn.mock.calls[0]?.[0] ?? "")).toContain("transport=pagerduty");
   });
 });

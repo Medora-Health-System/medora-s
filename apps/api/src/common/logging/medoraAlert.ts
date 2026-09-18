@@ -1,11 +1,15 @@
 /**
- * S17B / S17C — Operational alerts (webhook or console). Never include PHI; never throw to callers.
- * Payload is a strict allowlist aligned with go-live ops runbooks.
+ * S17B / S17C — Operational alerts (PagerDuty or governed webhook). Never include PHI; never throw to callers.
+ * Internal payloads use a strict allowlist; external PagerDuty events apply an even narrower projection.
  */
 
+import { createHash } from "node:crypto";
 import { logError, logInfo } from "./medoraLogger";
 
 export type MedoraAlertSeverity = "critical" | "warning";
+export type MedoraAlertTransport = "webhook" | "pagerduty" | "invalid";
+
+const PAGERDUTY_EVENTS_API_V2_URL = "https://events.pagerduty.com/v2/enqueue";
 
 export type MedoraAlertPayload = {
   service: "medora-api";
@@ -72,6 +76,19 @@ function readWebhookUrl(): string | undefined {
   return trimOrUndef(process.env.MEDORA_ALERT_WEBHOOK_URL);
 }
 
+function readPagerDutyRoutingKey(): string | undefined {
+  return trimOrUndef(process.env.MEDORA_PAGERDUTY_ROUTING_KEY);
+}
+
+function readAlertTransport(): MedoraAlertTransport {
+  const raw = trimOrUndef(process.env.MEDORA_ALERT_TRANSPORT)?.toLowerCase();
+  if (raw === "pagerduty") return "pagerduty";
+  if (raw === "webhook") return "webhook";
+  if (raw) return "invalid";
+  // Backward-compatible auto-detection: an explicit PagerDuty key opts into PagerDuty.
+  return readPagerDutyRoutingKey() ? "pagerduty" : "webhook";
+}
+
 function readEnvironment(): string {
   return trimOrUndef(process.env.MEDORA_ENVIRONMENT) ?? trimOrUndef(process.env.NODE_ENV) ?? "development";
 }
@@ -114,6 +131,73 @@ function slackFieldLine(label: string, value: string | number | undefined): stri
   if (value === undefined || value === "") return "";
   const v = typeof value === "number" ? String(value) : value;
   return `*${label}* \`${String(v).replace(/`/g, "'")}\``;
+}
+
+export type PagerDutyEventsApiV2Body = {
+  routing_key: string;
+  event_action: "trigger";
+  dedup_key: string;
+  payload: {
+    summary: string;
+    source: "medora-api";
+    severity: MedoraAlertSeverity;
+    timestamp: string;
+    component: "api";
+    group: string;
+    class: "medora_operational_alert";
+    custom_details: {
+      event: string;
+      environment: string;
+      timestamp: string;
+      requestId?: string;
+      statusCode?: number;
+    };
+  };
+};
+
+/**
+ * PagerDuty Events API v2 payload.
+ *
+ * External incident payloads intentionally exclude facilityId, encounterId, userId,
+ * patient identifiers, clinical text, and arbitrary route values. Request IDs are
+ * retained solely as opaque correlation identifiers.
+ */
+export function buildPagerDutyEventsApiV2Body(
+  payload: MedoraAlertPayload,
+  routingKey: string
+): PagerDutyEventsApiV2Body {
+  const dedupMaterial = [
+    payload.service,
+    payload.environment,
+    payload.event,
+    payload.severity,
+    payload.timestamp,
+    payload.requestId ?? "",
+  ].join("|");
+  const dedupKey = `medora-${createHash("sha256").update(dedupMaterial).digest("hex")}`;
+  const customDetails: PagerDutyEventsApiV2Body["payload"]["custom_details"] = {
+    event: payload.event,
+    environment: payload.environment,
+    timestamp: payload.timestamp,
+  };
+  if (payload.requestId) customDetails.requestId = payload.requestId;
+  if (payload.statusCode != null) customDetails.statusCode = payload.statusCode;
+
+  return {
+    routing_key: routingKey,
+    event_action: "trigger",
+    dedup_key: dedupKey,
+    payload: {
+      summary: `Medora ${payload.environment} ${payload.event}`.slice(0, 1024),
+      source: "medora-api",
+      severity: payload.severity,
+      timestamp: payload.timestamp,
+      component: "api",
+      group: payload.environment.slice(0, 255),
+      class: "medora_operational_alert",
+      custom_details: customDetails,
+    },
+  };
 }
 
 /**
@@ -213,7 +297,10 @@ export async function deliverMedoraAlertWebhookWithRetries(
 
 export type MedoraAlertStatusForApi = {
   enabled: boolean;
+  /** Backward-compatible field used by existing admin clients; true when the selected destination is configured. */
   webhookConfigured: boolean;
+  destinationConfigured: boolean;
+  transport: MedoraAlertTransport;
   format: "json" | "slack";
   environment: string;
   canSendTest: boolean;
@@ -222,13 +309,21 @@ export type MedoraAlertStatusForApi = {
 /** Read-only snapshot for admin APIs (no secrets). S23 */
 export function getMedoraAlertStatusForApi(): MedoraAlertStatusForApi {
   const enabled = readAlertsEnabled();
-  const webhookConfigured = Boolean(readWebhookUrl());
+  const transport = readAlertTransport();
+  const destinationConfigured =
+    transport === "pagerduty"
+      ? Boolean(readPagerDutyRoutingKey())
+      : transport === "webhook"
+        ? Boolean(readWebhookUrl())
+        : false;
   return {
     enabled,
-    webhookConfigured,
+    webhookConfigured: destinationConfigured,
+    destinationConfigured,
+    transport,
     format: readAlertFormat(),
     environment: readEnvironment(),
-    canSendTest: enabled && webhookConfigured,
+    canSendTest: enabled && destinationConfigured,
   };
 }
 
@@ -259,11 +354,20 @@ export async function sendMedoraTestAlert(params: {
     });
     return { delivered: false, messageKey: "test_alert_disabled" };
   }
-  const url = readWebhookUrl();
-  if (!url) {
+  const transport = readAlertTransport();
+  const pagerDutyRoutingKey = readPagerDutyRoutingKey();
+  const webhookUrl = readWebhookUrl();
+  const destinationConfigured =
+    transport === "pagerduty"
+      ? Boolean(pagerDutyRoutingKey)
+      : transport === "webhook"
+        ? Boolean(webhookUrl)
+        : false;
+  if (!destinationConfigured) {
     logError("medora_test_alert_failed", {
       action: "medora_test_alert_failed",
-      reason: "no_webhook",
+      reason: "no_alert_destination",
+      transport,
       facilityId: params.facilityId,
     });
     return { delivered: false, messageKey: "test_alert_no_webhook" };
@@ -279,8 +383,18 @@ export async function sendMedoraTestAlert(params: {
   };
   const payload = buildMedoraAlertPayload(input);
   const format = readAlertFormat();
+  const url =
+    transport === "pagerduty"
+      ? PAGERDUTY_EVENTS_API_V2_URL
+      : transport === "webhook"
+        ? webhookUrl!
+        : "";
   const bodyString =
-    format === "slack" ? JSON.stringify(buildSlackWebhookBody(payload)) : JSON.stringify(payload);
+    transport === "pagerduty"
+      ? JSON.stringify(buildPagerDutyEventsApiV2Body(payload, pagerDutyRoutingKey!))
+      : format === "slack"
+        ? JSON.stringify(buildSlackWebhookBody(payload))
+        : JSON.stringify(payload);
 
   const ok = await deliverMedoraAlertWebhookWithRetries(url, bodyString, payload, fetch);
   if (ok) {
@@ -301,25 +415,43 @@ export async function sendMedoraTestAlert(params: {
 }
 
 /**
- * Fire-and-forget operational alert. Respects MEDORA_ALERT_ENABLED; uses MEDORA_ALERT_WEBHOOK_URL when set.
- * S17C: retries (3×), backoff, Slack/json format, delivery logs; never throws to callers.
+ * Fire-and-forget operational alert. Respects MEDORA_ALERT_ENABLED and the selected alert transport.
+ * S17C: retries (3×), backoff, delivery logs; never throws to callers.
  */
 export function queueMedoraAlert(input: MedoraAlertInput): void {
   if (!readAlertsEnabled()) return;
 
   const payload = buildMedoraAlertPayload(input);
-  const url = readWebhookUrl();
+  const transport = readAlertTransport();
+  const pagerDutyRoutingKey = readPagerDutyRoutingKey();
+  const webhookUrl = readWebhookUrl();
   const format = readAlertFormat();
+  const url =
+    transport === "pagerduty"
+      ? PAGERDUTY_EVENTS_API_V2_URL
+      : transport === "webhook"
+        ? webhookUrl
+        : undefined;
   const bodyString =
-    format === "slack" ? JSON.stringify(buildSlackWebhookBody(payload)) : JSON.stringify(payload);
+    transport === "pagerduty" && pagerDutyRoutingKey
+      ? JSON.stringify(buildPagerDutyEventsApiV2Body(payload, pagerDutyRoutingKey))
+      : format === "slack"
+        ? JSON.stringify(buildSlackWebhookBody(payload))
+        : JSON.stringify(payload);
 
   const delivery = (async () => {
     try {
-      if (!url) {
+      const destinationConfigured =
+        transport === "pagerduty"
+          ? Boolean(pagerDutyRoutingKey)
+          : transport === "webhook"
+            ? Boolean(webhookUrl)
+            : false;
+      if (!destinationConfigured || !url) {
         if (!warnedNoWebhookForEventType.has(payload.event)) {
           warnedNoWebhookForEventType.add(payload.event);
           console.warn(
-            `[medora-alert] MEDORA_ALERT_WEBHOOK_URL not set; delivery skipped (event=${payload.event}).`
+            `[medora-alert] alert destination not configured (transport=${transport}); delivery skipped (event=${payload.event}).`
           );
         }
         return;
