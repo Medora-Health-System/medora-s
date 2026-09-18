@@ -183,6 +183,12 @@ export function DigitalCareProviderWorkspace() {
 
   useEffect(() => {
     if (selectedId) {
+      void loadWorkspace(selectedId);
+    } else {
+      setWorkspace(null);
+      setThread(null);
+      setSelectedResult(null);
+      setResultDetail(null);
     }
   }, [selectedId, loadWorkspace]);
 
