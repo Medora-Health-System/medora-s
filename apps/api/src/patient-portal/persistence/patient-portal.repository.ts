@@ -227,7 +227,7 @@ export class PatientPortalRepository {
     `);
   }
 
-  async disableAccountAndRevokeAccess(accountId: string): Promise<void> {
+  async disableAccountAndRevokeAccess(accountId: string, replacementPasswordHash: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw(Prisma.sql`
         UPDATE "PatientPortalSession"
@@ -248,8 +248,23 @@ export class PatientPortalRepository {
         WHERE "portalAccountId" = ${accountId}
       `);
       await tx.$executeRaw(Prisma.sql`
+        DELETE FROM "PatientPortalNotification"
+        WHERE "portalAccountId" = ${accountId}
+      `);
+      await tx.$executeRaw(Prisma.sql`
         UPDATE "PatientPortalAccount"
-        SET "status" = 'DISABLED'::"PatientPortalAccountStatus",
+        SET "email" = ${`deleted+${accountId}@deleted.medoras.invalid`},
+            "phone" = NULL,
+            "passwordHash" = ${replacementPasswordHash},
+            "status" = 'DISABLED'::"PatientPortalAccountStatus",
+            "emailVerifiedAt" = NULL,
+            "phoneVerifiedAt" = NULL,
+            "firstName" = 'Deleted',
+            "lastName" = 'Account',
+            "dob" = TIMESTAMP '1970-01-01 00:00:00',
+            "failedLoginCount" = 0,
+            "lockedUntil" = NULL,
+            "lastLoginAt" = NULL,
             "updatedAt" = CURRENT_TIMESTAMP
         WHERE "id" = ${accountId}
       `);
