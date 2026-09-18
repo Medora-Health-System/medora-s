@@ -107,17 +107,13 @@ export class AdminComplianceService {
           createdAt: { gte: since, lte: to },
         },
       }),
-      this.prisma.medicationAdministration.count({
+      this.prisma.auditLog.count({
         where: {
           facilityId,
           createdAt: { gte: since, lte: to },
-          auditLogs: {
-            some: {
-              action: AuditAction.CREATE,
-              entityType: "MEDICATION_ADMINISTRATION",
-              facilityId,
-            },
-          },
+          action: AuditAction.CREATE,
+          entityType: "MEDICATION_ADMINISTRATION",
+          entityId: { not: null },
         },
       }),
       this.prisma.auditLog.count({ where: exportBase }),
@@ -145,7 +141,9 @@ export class AdminComplianceService {
       }),
     ]);
 
-    const marAudited = marAuditedRows;
+    // AuditLog has no Prisma relation back to MedicationAdministration. Count canonical
+    // facility-local CREATE audit rows and cap at the MAR population to preserve coverage semantics.
+    const marAudited = Math.min(marTotal, marAuditedRows);
 
     let failedExportCount = 0;
     for (const row of exportRowsForFailureScan) {
