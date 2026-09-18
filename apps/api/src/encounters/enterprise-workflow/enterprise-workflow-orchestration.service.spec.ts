@@ -168,6 +168,23 @@ describe("EnterpriseWorkflowOrchestrationService D4A.2.8", () => {
     expect(dash.rulesEngineEnabled).toBe(true);
   });
 
+
+  it("marks admin metrics unavailable rather than presenting a truncated census as complete", async () => {
+    hospitalCensus.getHospitalCensus.mockResolvedValueOnce({
+      allHospitalPatients: Array.from({ length: 121 }, (_, i) => ({
+        encounterId: `enc-${i}`,
+        patientId: `pat-${i}`,
+      })),
+      summary: {},
+      operationalSnapshot: null,
+    } as never);
+
+    const dash = await service.getAdminDashboard(facilityId, "admin-1");
+    expect(dash.volumeActiveWorkflows.availability).toBe("UNAVAILABLE");
+    expect(dash.volumeOpenTasks.availability).toBe("UNAVAILABLE");
+    expect(dash.health.availability).toBe("UNAVAILABLE");
+  });
+
   it("persists via admissionSummaryJson bag helpers", () => {
     const empty = emptyEnterpriseWorkflowOrchestrationDoc();
     const merged = mergeEnterpriseWorkflowOrchestrationIntoSummary({}, empty);
