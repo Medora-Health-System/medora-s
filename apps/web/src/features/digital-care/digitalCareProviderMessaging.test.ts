@@ -138,6 +138,7 @@ describe("Digital Care provider messaging workspace", () => {
     expect(workspace).toContain("onSelect={(patient) => setSelectedId(patient.id)}");
     expect(workspace).toContain('useState<DigitalCareRosterFilter>("ALL")');
     expect(workspace).toContain("fetchDigitalCareWorkspace(facilityId, patientId)");
+    expect(workspace).toContain("void loadWorkspace(selectedId)");
     expect(workspace).toContain("releaseDigitalCareResult");
     expect(workspace).toContain("createDigitalCareStaffThread");
     expect(workspace).not.toContain("DigitalCarePatientAppAccess");
