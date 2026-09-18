@@ -39,7 +39,7 @@ export type SystemHealthAlertStatus = {
   /** Backward-compatible alias for destinationConfigured. */
   webhookConfigured: boolean;
   destinationConfigured: boolean;
-  transport: "webhook" | "pagerduty";
+  transport: "webhook" | "pagerduty" | "invalid";
   format: "json" | "slack";
   environment: string;
   canSendTest: boolean;
