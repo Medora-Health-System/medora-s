@@ -101,10 +101,11 @@ export function DigitalCareProviderWorkspace() {
   const { t } = useI18n();
   const { facilityId, roles, ready } = useFacilityAndRoles();
   const canUse = roles.includes("ADMIN") || roles.includes("PROVIDER") || roles.includes("RN");
-  // Digital Care itself is ADMIN/PROVIDER/RN. MEDORA_SUPER_ADMIN is not a workspace actor here;
-  // platform-principal activation stays on the existing staff activation API / admin portal.
-  const canActivatePortal = roles.includes("ADMIN");
-  const canRevokePortal = canActivatePortal;
+  // Digital Care entry remains ADMIN/PROVIDER/RN. A platform operator does not gain workspace
+  // entry from MEDORA_SUPER_ADMIN alone, but when already an authorized workspace actor the
+  // existing staff activation API permits that principal to issue patient portal access.
+  const canActivatePortal = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
+  const canRevokePortal = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
   const [tab, setTab] = useState<DigitalCareMainTab>("results");
   const [rosterFilter, setRosterFilter] = useState<DigitalCareRosterFilter>("ALL");
   const [rosterQuery, setRosterQuery] = useState("");
