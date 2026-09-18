@@ -367,6 +367,9 @@ export class OperationalGovernanceService {
       select: { id: true, patientId: true, status: true },
     });
     if (!enc) throw new BadRequestException("Encounter not found in facility");
+    if (body.patientId && body.patientId !== enc.patientId) {
+      throw new BadRequestException("patientId does not match encounter");
+    }
 
     const action =
       body.accessKind === "OPEN"
@@ -378,7 +381,7 @@ export class OperationalGovernanceService {
     await this.audit.log(action, "CHART_ACCESS", {
       userId: actorUserId,
       facilityId,
-      patientId: body.patientId ?? enc.patientId,
+      patientId: enc.patientId,
       encounterId: enc.id,
       entityId: enc.id,
       ip: body.ip ?? undefined,
