@@ -5,6 +5,7 @@ import {
   buildSlackWebhookBody,
   deliverMedoraAlertWebhookWithRetries,
   drainMedoraAlerts,
+  getMedoraAlertStatusForApi,
   queueMedoraAlert,
   resetMedoraAlertTestState,
 } from "./medoraAlert";
@@ -82,6 +83,24 @@ describe("medoraAlert S17C", () => {
     expect(external).not.toContain("usr-secret");
     expect(external).not.toContain("patient-secret");
     expect(external).not.toContain("/patients/");
+  });
+
+  it("reports PagerDuty as configured without requiring a generic webhook URL", () => {
+    process.env.NODE_ENV = "production";
+    process.env.MEDORA_ALERT_ENABLED = "true";
+    process.env.MEDORA_ALERT_TRANSPORT = "pagerduty";
+    process.env.MEDORA_PAGERDUTY_ROUTING_KEY = "routing-secret";
+    delete process.env.MEDORA_ALERT_WEBHOOK_URL;
+
+    expect(getMedoraAlertStatusForApi()).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        transport: "pagerduty",
+        destinationConfigured: true,
+        webhookConfigured: true,
+        canSendTest: true,
+      })
+    );
   });
 
   it("PagerDuty dedup key is stable for retries of the same payload", () => {
