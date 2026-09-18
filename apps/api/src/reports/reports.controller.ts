@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, ForbiddenException, Get, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { AuditAction } from "@prisma/client";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
@@ -60,7 +60,7 @@ export class ReportsController {
    */
   private async assertReportScope(req: AuthedRequest, facilityId: string): Promise<string> {
     const actorUserId = typeof req.user?.userId === "string" ? req.user.userId.trim() : "";
-    if (!actorUserId) throw new BadRequestException("Authenticated user required");
+    if (!actorUserId) throw new ForbiddenException("Authentication required");
     await assertFacilityAdminFacilityScope(this.prisma, actorUserId, facilityId);
     return actorUserId;
   }
