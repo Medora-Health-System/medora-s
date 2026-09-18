@@ -6,7 +6,8 @@ import { isOptionalPortalStorageError } from "../../patient-portal/portal-storag
 import type { DiagnosticResultStaffActor } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { PatientDiagnosticResultReleaseService } from "../../patient-portal/records/patient-diagnostic-result-release.service";
 import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
-import { projectFacilityRuntimeConfiguration } from "@medora/shared";
+import { projectFacilityRuntimeConfiguration, resolveMedicationOrderIdentity } from "@medora/shared";
+import { loadOrderMedicationCatalogMaps, resolveOrderMedicationCatalogRow } from "../../orders/order-medication-catalog-resolve.util";
 import {
   digitalCareAgeYears,
   digitalCareImagingReport,
@@ -388,8 +389,11 @@ export class DigitalCareStaffWorkspaceService {
           items: {
             select: {
               id: true,
+              catalogItemId: true,
+              medicationProductId: true,
               catalogItemType: true,
               manualLabel: true,
+              manualSecondaryText: true,
               strength: true,
               route: true,
               frequencyCode: true,
@@ -518,14 +522,29 @@ export class DigitalCareStaffWorkspaceService {
     const homeSummary = history?.homeMedications?.medicationsSummary?.trim() || null;
     const reconComplete = history?.homeMedications?.reconciled === true || Boolean(homeSummary);
 
+    const medicationOrderItems = orders.flatMap((order) => order.items).filter((item) => item.catalogItemType === "MEDICATION");
+    const medicationCatalogMaps = await loadOrderMedicationCatalogMaps(this.prisma, medicationOrderItems);
+
     const medicationItems = orders.flatMap((order) =>
       order.items
         .filter((item) => item.catalogItemType === "MEDICATION")
-        .map((item) => ({
+        .map((item) => {
+          const catalogMedication = resolveOrderMedicationCatalogRow(item, medicationCatalogMaps);
+          const identity = resolveMedicationOrderIdentity({
+            catalogMedication,
+            orderLine: {
+              catalogItemType: item.catalogItemType,
+              manualLabel: item.manualLabel,
+              manualSecondaryText: item.manualSecondaryText,
+              strength: item.strength,
+              notes: item.notes,
+            },
+          });
+          return {
           id: item.id,
           orderId: order.id,
-          name: item.manualLabel?.trim() || "Medication",
-          strength: item.strength,
+          name: identity.medicationNameEn ?? identity.medicationNameFr ?? "Medication (label unavailable)",
+          strength: item.strength ?? catalogMedication?.strength ?? null,
           route: item.route,
           frequency: item.frequencyCode,
           instructions: item.notes,
@@ -544,7 +563,8 @@ export class DigitalCareStaffWorkspaceService {
             orderStatus: order.status,
             cancelledAt: order.cancelledAt?.toISOString() ?? null,
           }),
-        })),
+          };
+        }),
     );
 
     const timeline = [
