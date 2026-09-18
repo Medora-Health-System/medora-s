@@ -20,10 +20,10 @@ import {
 import { switchActiveFacility } from "@/lib/facilitySwitch";
 import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 
-const adminSectionStyle: CSSProperties = { marginBottom: 20, padding: 18, border: "1px solid #dbe3ee", borderRadius: 14, background: "#f8fafc" };
-const adminLinkGridStyle: CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 };
-const adminLinkStyle: CSSProperties = { display: "flex", alignItems: "center", minHeight: 52, padding: "12px 14px", backgroundColor: "#fff", color: "#0f172a", border: "1px solid #dbe3ee", borderRadius: 10, textDecoration: "none", fontWeight: 700, boxShadow: "0 1px 2px rgba(15,23,42,.03)" };
-const platformLinkStyle: CSSProperties = { ...adminLinkStyle, borderColor: "#cbd5e1" };
+const adminSectionStyle: CSSProperties = { marginBottom: 18, padding: 18, border: "1px solid #dbe5f0", borderRadius: 16, background: "linear-gradient(135deg,#f8fbff 0%,#f8fafc 100%)", boxShadow: "0 4px 18px rgba(15,23,42,.035)" };
+const adminLinkGridStyle: CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 };
+const adminLinkStyle: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 58, padding: "12px 15px", backgroundColor: "rgba(255,255,255,.96)", color: "#0f172a", border: "1px solid #dbe5f0", borderRadius: 11, textDecoration: "none", fontWeight: 700, lineHeight: 1.25, boxShadow: "0 1px 2px rgba(15,23,42,.035)" };
+const platformLinkStyle: CSSProperties = { ...adminLinkStyle, borderColor: "#dbeafe", background: "linear-gradient(135deg,#ffffff 0%,#f8fbff 100%)" };
 const tableButtonStyle: CSSProperties = { padding: "7px 11px", fontSize: 13, borderRadius: 8, background: "#fff", fontWeight: 700 };
 
 async function switchSessionToFacility(facilityId: string) {
@@ -100,22 +100,14 @@ export default function AdminPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 22, padding: "20px 22px", border: "1px solid #dbe3ee", borderRadius: 14, background: "linear-gradient(135deg,#f8fafc 0%,#ffffff 100%)" }}><div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#0f766e" }}>Medora administration</div><h1 style={{ margin: "5px 0 6px", fontSize: 28 }}>{t("adminHub.title")}</h1><p style={{ color: "#64748b", margin: 0 }}>{t("adminHub.intro")}</p></div>
+      <div style={{ marginBottom: 22, padding: "22px 24px", border: "1px solid #dbe5f0", borderRadius: 16, background: "linear-gradient(135deg,#f8fbff 0%,#ffffff 70%)", boxShadow: "0 6px 24px rgba(15,23,42,.04)" }}><div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#0f766e" }}>Medora administration</div><h1 style={{ margin: "5px 0 6px", fontSize: 28 }}>{t("adminHub.title")}</h1><p style={{ color: "#64748b", margin: 0 }}>{t("adminHub.intro")}</p></div>
 
       <section style={adminSectionStyle}><h2 style={{ fontSize: 17, margin: "0 0 4px", color: "#0f172a" }}>{t("adminHub.sectionFacility")}</h2><p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 13 }}>Facility-level administration, clinical governance, revenue operations, and access controls.</p>
       <ul style={adminLinkGridStyle}>
         <li>
           <Link
             href="/app/admin/users"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#1a1a1a",
-              color: "white",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={{ ...adminLinkStyle, background: "linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)", color: "#fff", borderColor: "#2563eb" }}
           >
             {t("adminHub.usersAndAccess")}
           </Link>
@@ -123,16 +115,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/audit"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.auditLogLink")}
           </Link>
@@ -140,16 +123,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/reports"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.opsReportsLink")}
           </Link>
@@ -157,16 +131,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/go-live"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.goLiveLink")}
           </Link>
@@ -174,16 +139,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/enterprise-workflow"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.enterpriseWorkflowLink")}
           </Link>
@@ -191,16 +147,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/enterprise-clinical-rules"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.enterpriseClinicalRulesLink")}
           </Link>
@@ -208,16 +155,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/revenue-cycle"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.revenueCycleLink")}
           </Link>
@@ -225,16 +163,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/revenue-cycle/claims"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.revenueClaimSubmissionLink")}
           </Link>
@@ -242,16 +171,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/revenue-cycle/payments"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.revenuePaymentLink")}
           </Link>
@@ -259,16 +179,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/billing-governance"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.billingGovernanceLink")}
           </Link>
@@ -276,16 +187,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/medical-exam-analytics"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.medicalExamAnalyticsLink")}
           </Link>
@@ -293,16 +195,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/order-set-analytics"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.orderSetAnalyticsLink")}
           </Link>
@@ -310,16 +203,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/medication-master"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.medicationMasterLink")}
           </Link>
@@ -327,16 +211,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/medication-governance"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.medicationGovernanceLink")}
           </Link>
@@ -344,16 +219,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/medication-governance/rxnorm-review"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.rxNormReviewLink")}
           </Link>
@@ -361,16 +227,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/medication-inventory-staging"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.medicationInventoryStagingLink")}
           </Link>
@@ -378,16 +235,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/catalog-import"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.catalogImportLink")}
           </Link>
@@ -395,16 +243,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/high-risk-medication-review"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.highRiskMedicationReviewLink")}
           </Link>
@@ -412,16 +251,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/er-procedure-catalog-import"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.erProcedureCatalogLink")}
           </Link>
@@ -429,16 +259,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/roi"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("adminHub.roiWorkflowLink")}
           </Link>
@@ -446,16 +267,7 @@ export default function AdminPage() {
         <li>
           <Link
             href="/app/admin/mfa"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "1px solid #1a1a1a",
-              borderRadius: 4,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
+            style={adminLinkStyle}
           >
             {t("auth.mfa.adminResetTitle")}
           </Link>
@@ -572,7 +384,7 @@ export default function AdminPage() {
       ) : null}
       <section style={adminSectionStyle}><h2 style={{ fontSize: 17, margin: "0 0 12px", color: "#0f172a" }}>Connectivity & national access</h2><ul style={{ ...adminLinkGridStyle, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 280px))" }}>
         {ready && canCreateFacilities ? (
-          <><li><Link href="/app/admin/integrations" style={{ display: "inline-block", padding: "12px 20px", backgroundColor: "#0f766e", color: "white", borderRadius: 4, textDecoration: "none", fontWeight: 600 }}>{t("adminHub.integrationsLink")}</Link></li><li>
+          <><li><Link href="/app/admin/integrations" style={{ ...platformLinkStyle, background: "linear-gradient(135deg,#0f766e 0%,#0d9488 100%)", color: "#fff", borderColor: "#0f766e" }}>{t("adminHub.integrationsLink")}</Link></li><li>
             <Link
               href="/app/admin/mspp-access"
               style={{
@@ -593,7 +405,7 @@ export default function AdminPage() {
       </ul></section>
 
       {ready && canCreateFacilities ? (
-        <section style={{ marginTop: 24, padding: 18, border: "1px solid #dbe3ee", borderRadius: 14, background: "#fff" }}>
+        <section style={{ marginTop: 24, padding: 18, border: "1px solid #dbe5f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 24px rgba(15,23,42,.04)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", marginBottom: 12 }}><div><h2 style={{ margin: 0, fontSize: 19 }}>{t("adminHub.facilities")}</h2><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 13 }}>Manage facility status, language, billing identity, and active workspace.</p></div>{facilities ? <span style={{ color: "#64748b", fontSize: 12 }}>{facilities.length} facilities</span> : null}</div>
           {facilitiesLoading ? (
             <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.loading")}</p>
@@ -602,7 +414,7 @@ export default function AdminPage() {
           ) : facilities && facilities.length === 0 ? (
             <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.emptyFacilities")}</p>
           ) : facilities && facilities.length > 0 ? (
-            <div style={{ overflowX: "auto", border: "1px solid #dbe3ee", borderRadius: 12, boxShadow: "0 1px 3px rgba(15,23,42,.04)" }}>
+            <div style={{ overflowX: "auto", border: "1px solid #dbe5f0", borderRadius: 12, boxShadow: "0 2px 8px rgba(15,23,42,.04)" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e0e0e0", background: "#f8fafc" }}>
