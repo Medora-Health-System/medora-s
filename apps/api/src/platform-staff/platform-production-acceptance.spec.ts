@@ -10,7 +10,7 @@ describe("Phase 18 platform production readiness acceptance", () => {
     const source = readLocal("platform-production-readiness.ts");
     expect(source).toContain('auditFailureMode !== "fail_closed"');
     expect(source).toContain("alerts_disabled");
-    expect(source).toContain("alerts_enabled_no_webhook");
+    expect(source).toContain("alerts_enabled_no_destination");
     expect(source).toContain('status: blockers.length > 0 ? "critical"');
     expect(source).toContain('status: blockers.length > 0 ? "blocked"');
   });
