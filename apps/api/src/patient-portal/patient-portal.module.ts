@@ -27,6 +27,8 @@ import { PatientPortalRepository } from "./persistence/patient-portal.repository
 import { PatientProfileController } from "./profile/patient-profile.controller";
 import { PatientProfileService } from "./profile/patient-profile.service";
 import { PatientPortalMessagingFacade } from "./public/patient-portal-messaging.facade";
+import { PatientNotificationsController } from "./notifications/patient-notifications.controller";
+import { PatientNotificationsService } from "./notifications/patient-notifications.service";
 import { PatientDiagnosticResultReleaseService } from "./records/patient-diagnostic-result-release.service";
 import { PatientDiagnosticResultsController } from "./records/patient-diagnostic-results.controller";
 import { PatientDiagnosticResultsService } from "./records/patient-diagnostic-results.service";
@@ -51,8 +53,8 @@ import { PatientSessionSecurityService } from "./security/patient-session-securi
  */
 @Module({
   imports: [PassportModule, PrismaModule, DocumentsModule, JwtModule.register({}), FacilityConfigurationModule],
-  controllers: [PatientPortalAuthController,PatientOrganizationsController,PatientPortalActivationController,PatientDashboardController,PatientRecordsController,PatientDocumentsController,PatientDocumentReleaseController,PatientDiagnosticResultsController,PatientMedicationsController,PatientAppointmentsController,PatientProfileController,PatientMessagesController,PatientServiceRequestsController,PatientServiceRequestsStaffController,PatientSessionSecurityController],
-  providers: [PatientPortalRepository,PatientPortalActivationRepository,PatientPortalAuditService,PatientPortalAuthService,PatientPortalJwtStrategy,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientOrganizationsService,PatientPortalActivationService,OutboundMailService,PatientDashboardService,PatientRecordsService,PatientDocumentsService,PatientDocumentReleaseService,PatientDiagnosticResultsService,PatientDiagnosticResultReleaseService,PatientMedicationsService,PatientAppointmentsService,PatientProfileService,PatientMessagesService,PatientPortalMessagingFacade,PatientServiceRequestsService,PatientSessionSecurityService,AuditService],
-  exports: [PatientPortalRepository,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientPortalMessagingFacade],
+  controllers: [PatientPortalAuthController,PatientOrganizationsController,PatientPortalActivationController,PatientDashboardController,PatientRecordsController,PatientDocumentsController,PatientDocumentReleaseController,PatientDiagnosticResultsController,PatientMedicationsController,PatientAppointmentsController,PatientProfileController,PatientMessagesController,PatientNotificationsController,PatientServiceRequestsController,PatientServiceRequestsStaffController,PatientSessionSecurityController],
+  providers: [PatientPortalRepository,PatientPortalActivationRepository,PatientPortalAuditService,PatientPortalAuthService,PatientPortalJwtStrategy,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientOrganizationsService,PatientPortalActivationService,OutboundMailService,PatientDashboardService,PatientRecordsService,PatientDocumentsService,PatientDocumentReleaseService,PatientDiagnosticResultsService,PatientDiagnosticResultReleaseService,PatientMedicationsService,PatientAppointmentsService,PatientProfileService,PatientMessagesService,PatientNotificationsService,PatientPortalMessagingFacade,PatientServiceRequestsService,PatientSessionSecurityService,AuditService],
+  exports: [PatientPortalRepository,PatientPortalAuthGuard,PatientPortalFacilityGuard,PatientPortalMessagingFacade,PatientNotificationsService],
 })
 export class PatientPortalModule {}
