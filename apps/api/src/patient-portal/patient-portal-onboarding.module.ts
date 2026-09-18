@@ -3,6 +3,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { OutboundMailService } from "../common/mail/outbound-mail.service";
 import { PrismaModule } from "../prisma/prisma.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { PatientPortalAuthController } from "./auth/patient-portal-auth.controller";
 import { PatientPortalAuthService } from "./auth/patient-portal-auth.service";
 import { PatientPortalJwtStrategy } from "./auth/patient-portal-jwt.strategy";
@@ -22,7 +23,7 @@ import { PatientPortalRepository } from "./persistence/patient-portal.repository
  * behind PATIENT_PORTAL_ENABLED in PatientPortalModule/Digital Care runtime.
  */
 @Module({
-  imports: [PassportModule, PrismaModule, JwtModule.register({})],
+  imports: [PassportModule, PrismaModule, JwtModule.register({}), FacilityConfigurationModule],
   controllers: [PatientPortalAuthController, PatientPortalActivationController],
   providers: [
     PatientPortalRepository,
