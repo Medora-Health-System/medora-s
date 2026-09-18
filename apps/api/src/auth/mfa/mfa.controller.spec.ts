@@ -4,8 +4,8 @@
  * Verifies that:
  *   * `MfaController` routes are guarded by the right combinations of
  *     `MfaEnrollmentGuard` / `MfaChallengeGuard` / `AuthGuard("jwt")`.
- *   * `AdminMfaController` requires `ADMIN` or `MEDORA_SUPER_ADMIN`
- *     via `@RequireRoles` + `RolesGuard`.
+ *   * the legacy `AdminMfaController` is platform-only and cannot be used by
+ *     facility ADMIN to bypass governed MFA recovery.
  *   * Throttling is configured.
  * These checks run against decorator metadata so they are stable and don't
  * boot the full app.
@@ -102,11 +102,10 @@ describe("AdminMfaController metadata", () => {
     expect(guards.length).toBeGreaterThan(0);
   });
 
-  it("resetUserMfa requires ADMIN or MEDORA_SUPER_ADMIN", () => {
+  it("legacy resetUserMfa excludes facility ADMIN and requires platform authority", () => {
     const roles = getMethodRoles(AdminMfaController, "resetUserMfa");
-    expect(roles).toEqual(
-      expect.arrayContaining([RoleCode.ADMIN, RoleCode.MEDORA_SUPER_ADMIN])
-    );
+    expect(roles).toEqual([RoleCode.MEDORA_SUPER_ADMIN]);
+    expect(roles).not.toContain(RoleCode.ADMIN);
     expect(roles).not.toContain(RoleCode.RN);
     expect(roles).not.toContain(RoleCode.PROVIDER);
     expect(roles).not.toContain(RoleCode.PHARMACY);
