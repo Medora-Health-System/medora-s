@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { GUARDS_METADATA } from "@nestjs/common/constants";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { THROTTLER_LIMIT, THROTTLER_TTL } from "@nestjs/throttler";
 import { AuthController } from "./auth.controller";
 
@@ -16,6 +16,7 @@ describe("Auth enterprise abuse controls", () => {
     const ttls = Reflect.getMetadata(THROTTLER_TTL, handler);
     expect(limits?.default).toBe(limit);
     expect(ttls?.default).toBe(ttl);
-    expect(Reflect.getMetadata(GUARDS_METADATA, handler)?.length).toBeGreaterThan(0);
+    const guards = Reflect.getMetadata("__guards__", handler) ?? [];
+    expect(guards).toContain(ThrottlerGuard);
   });
 });
