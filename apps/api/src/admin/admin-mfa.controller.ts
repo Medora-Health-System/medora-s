@@ -30,7 +30,7 @@ import { RoleCode } from "@prisma/client";
 
 import { RequireRoles, RolesGuard } from "../common/guards/roles.guard";
 import { adminMfaResetDtoSchema } from "../auth/mfa/mfa.dto";
-import { MfaService } from "../auth/mfa/mfa.service";
+
 
 type AuthedReq = {
   user?: { userId?: string; facilityId?: string };
@@ -55,8 +55,6 @@ function ctxFromReq(req: AuthedReq): {
 @Controller("admin")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class AdminMfaController {
-  constructor(private readonly mfa: MfaService) {}
-
   @Post("mfa/reset")
   @RequireRoles(RoleCode.MEDORA_SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
