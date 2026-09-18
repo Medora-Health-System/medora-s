@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
@@ -9,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { PatientPortalAuthService } from "./patient-portal-auth.service";
 import {
+  patientPortalDeleteAccountBodySchema,
   patientPortalLoginBodySchema,
   patientPortalRefreshBodySchema,
   patientPortalRegisterBodySchema,
@@ -57,6 +59,32 @@ export class PatientPortalAuthController {
       });
     }
     return this.auth.refresh(parsed.data.refreshToken);
+  }
+
+  @Delete("account")
+  @UseGuards(PatientPortalAuthGuard)
+  async deleteAccount(
+    @Body() body: unknown,
+    @Req() req: { patientPrincipal?: PatientPortalPrincipal; ip?: string; headers?: Record<string, string | undefined> },
+  ) {
+    if (!req.patientPrincipal) {
+      throw new BadRequestException("Patient principal missing");
+    }
+    const parsed = patientPortalDeleteAccountBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid account deletion payload", {
+        cause: parsed.error,
+      });
+    }
+    await this.auth.deleteAccount(req.patientPrincipal, parsed.data, {
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+    });
+    return {
+      deleted: true,
+      portalAccessRevoked: true,
+      clinicalRecordsRetainedByProvider: true,
+    };
   }
 
   @Post("logout")
