@@ -192,7 +192,8 @@ export class PatientDiagnosticResultReleaseService {
       await tx.$executeRaw(Prisma.sql`INSERT INTO "PatientDiagnosticResultRelease" ("id","orderItemId","patientId","facilityId","releasedByUserId","releasedAt","revokedByUserId","revokedAt","createdAt","updatedAt") VALUES (${id},${item.id},${item.order.patientId},${actor.facilityId},${actor.userId},CURRENT_TIMESTAMP,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON CONFLICT ("orderItemId") DO UPDATE SET "patientId"=EXCLUDED."patientId","facilityId"=EXCLUDED."facilityId","releasedByUserId"=EXCLUDED."releasedByUserId","releasedAt"=CURRENT_TIMESTAMP,"revokedByUserId"=NULL,"revokedAt"=NULL,"updatedAt"=CURRENT_TIMESTAMP`);
       await this.audit.log(AuditAction.UPDATE, "PATIENT_DIAGNOSTIC_RESULT_RELEASE", { tx, critical: true, userId: actor.userId, facilityId: actor.facilityId, patientId: item.order.patientId, entityId: item.id, ip: actor.ip ?? undefined, userAgent: actor.userAgent ?? undefined, metadata: { operation: "RELEASE" } });
     });
-    void this.notifications.notify(item.order.patientId, actor.facilityId, "RESULT_RELEASED", item.id, "New result available", "A new result has been released by your care team.", `/healthcareOrganizations?facilityId=${encodeURIComponent(actor.facilityId)}`).catch(() => undefined);\n    return { orderItemId: item.id, patientId: item.order.patientId, facilityId: actor.facilityId, released: true };
+    void this.notifications.notify(item.order.patientId, actor.facilityId, "RESULT_RELEASED", item.id, "New result available", "A new result has been released by your care team.", `/healthcareOrganizations?facilityId=${encodeURIComponent(actor.facilityId)}`).catch(() => undefined);
+    return { orderItemId: item.id, patientId: item.order.patientId, facilityId: actor.facilityId, released: true };
   }
 
   async revoke(orderItemId: string, actor: DiagnosticResultStaffActor) {
