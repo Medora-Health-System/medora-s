@@ -65,12 +65,24 @@ export class ClinicalRulesOrchestrationService {
     try {
       const raw = await readFile(this.catalogPath(facilityId), "utf8");
       const parsed = JSON.parse(raw) as EnterpriseClinicalRulesCatalogV1;
-      if (parsed?.version === 1 && Array.isArray(parsed.rules)) {
+      if (
+        parsed?.version === 1 &&
+        Array.isArray(parsed.rules) &&
+        parsed.facilityId === facilityId
+      ) {
         this.memory.set(facilityId, parsed);
         return parsed;
       }
-    } catch {
-      // seed below
+      if (parsed?.version === 1 && Array.isArray(parsed.rules)) {
+        throw new Error("CLINICAL_RULES_CATALOG_FACILITY_MISMATCH");
+      }
+    } catch (err) {
+      // A missing catalog may be seeded. Existing malformed/mismatched catalog
+      // state must fail closed rather than silently replacing clinical policy.
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (code && code !== "ENOENT") throw err;
+      if (!code && err instanceof SyntaxError) throw err;
+      if (!code && String(err).includes("CLINICAL_RULES_CATALOG_FACILITY_MISMATCH")) throw err;
     }
 
     const seeded = seedFacilityClinicalRulesCatalog(
@@ -83,18 +95,23 @@ export class ClinicalRulesOrchestrationService {
   }
 
   private async persistCatalog(catalog: EnterpriseClinicalRulesCatalogV1): Promise<void> {
-    this.memory.set(catalog.facilityId, catalog);
+    // Clinical policy writes are durability-sensitive. Never acknowledge a rule
+    // mutation that exists only in process memory.
+    await mkdir(this.catalogDir(), { recursive: true });
+    const destination = this.catalogPath(catalog.facilityId);
+    const temp = `${destination}.tmp-${process.pid}-${Date.now()}`;
     try {
-      await mkdir(this.catalogDir(), { recursive: true });
-      await writeFile(
-        this.catalogPath(catalog.facilityId),
-        JSON.stringify(catalog, null, 2),
-        "utf8"
-      );
+      await writeFile(temp, JSON.stringify(catalog, null, 2), "utf8");
+      await (await import("fs/promises")).rename(temp, destination);
+      this.memory.set(catalog.facilityId, catalog);
     } catch (err) {
-      this.logger.warn(
+      this.logger.error(
         `clinical_rules_catalog_persist_failed facility=${catalog.facilityId} err=${String(err)}`
       );
+      try {
+        await (await import("fs/promises")).unlink(temp);
+      } catch {}
+      throw err;
     }
   }
 
