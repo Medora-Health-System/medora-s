@@ -285,9 +285,21 @@ export function DigitalCareProviderWorkspace() {
     if (!facilityId || !thread || !reply.trim()) return;
     setBusy(true);
     try {
-      await replyDigitalCareStaffThread(facilityId, thread.id, reply.trim());
+      const currentThreadId = thread.id;
+      await replyDigitalCareStaffThread(facilityId, currentThreadId, reply.trim());
       setReply("");
-      setThread(await fetchDigitalCareStaffThread(facilityId, thread.id));
+      const refreshedThread = await fetchDigitalCareStaffThread(facilityId, currentThreadId);
+      setThread(refreshedThread);
+      setWorkspace((current) => current
+        ? {
+            ...current,
+            threads: current.threads.map((row) =>
+              row.id === currentThreadId
+                ? { ...row, lastMessageAt: refreshedThread.messages.at(-1)?.createdAt ?? row.lastMessageAt }
+                : row,
+            ),
+          }
+        : current);
     } catch (e) {
       setError(digitalCareCaughtError(e, t));
     } finally {
