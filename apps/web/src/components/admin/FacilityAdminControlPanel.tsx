@@ -7,6 +7,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchAdminFacilities, type AdminFacilityRow } from "@/lib/adminUsersApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
+import { DigitalCarePatientActivationPanel } from "@/features/digital-care/DigitalCarePatientActivationPanel";
 
 type FacilityRow = AdminFacilityRow & {
   serviceLines?: string[];
@@ -310,6 +311,8 @@ export function FacilityAdminControlPanel() {
           <Card href="/app/admin/go-live" title={copy.goLiveTitle} text={copy.goLiveText} />
         </div>
       </div>
+
+      <DigitalCarePatientActivationPanel />
 
       <div style={{ marginBottom: 18 }}>
         <h3 style={{ fontSize: 16, margin: "0 0 10px" }}>{copy.peopleSection}</h3>
