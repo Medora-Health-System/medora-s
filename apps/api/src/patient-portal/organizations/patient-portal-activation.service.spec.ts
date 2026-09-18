@@ -25,6 +25,7 @@ describe("PatientPortalActivationService staff access", () => {
   const audit = { record: jest.fn() };
   const mail = { isConfigured: jest.fn(), send: jest.fn() };
   const config = { get: jest.fn() };
+  const facilityConfiguration = { settingsForFacility: jest.fn() };
 
   const service = new PatientPortalActivationService(
     activations as any,
@@ -32,12 +33,14 @@ describe("PatientPortalActivationService staff access", () => {
     audit as any,
     mail as any,
     config as any,
+    facilityConfiguration as any,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     mail.isConfigured.mockReturnValue(true);
     config.get.mockImplementation((key: string) => (key === "PATIENT_APP_BASE_URL" ? "https://patient.medoras.com" : undefined));
+    facilityConfiguration.settingsForFacility.mockResolvedValue({ patientPortal: { language: "en" } });
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -223,6 +226,61 @@ describe("PatientPortalActivationService staff access", () => {
         metadata: expect.objectContaining({ channel: "EMAIL_INVITATION", delivery: "EMAIL" }),
       }),
     );
+  });
+
+  it("localizes invitation email from the facility patient-portal language", async () => {
+    activations.assertPatientBelongsToFacility.mockResolvedValue(true);
+    activations.getPatientEmail.mockResolvedValue("patient@example.com");
+    activations.createActivation.mockResolvedValue({ id: "activation-localized" });
+    mail.send.mockResolvedValue(undefined);
+
+    const cases = [
+      {
+        language: "en",
+        subject: "Activate your Medora Patient account",
+        phrase: "Open this link to continue:",
+      },
+      {
+        language: "es",
+        subject: "Active su cuenta de paciente de Medora",
+        phrase: "Abra este enlace para continuar:",
+      },
+      {
+        language: "fr",
+        subject: "Activez votre compte patient Medora",
+        phrase: "Ouvrez ce lien pour continuer :",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      jest.clearAllMocks();
+      mail.isConfigured.mockReturnValue(true);
+      facilityConfiguration.settingsForFacility.mockResolvedValue({
+        patientPortal: { language: testCase.language },
+      });
+
+      await service.inviteForStaff({
+        patientId: "patient-a",
+        facilityId: "facility-a",
+        createdByUserId: "admin-1",
+      });
+
+      expect(facilityConfiguration.settingsForFacility).toHaveBeenCalledWith("facility-a");
+      expect(mail.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "patient@example.com",
+          subject: testCase.subject,
+          text: expect.stringContaining(testCase.phrase),
+        }),
+      );
+      expect(audit.record).toHaveBeenCalledWith(
+        "PATIENT_PORTAL_INVITATION_SENT",
+        "PATIENT_PORTAL_ACTIVATION",
+        expect.objectContaining({
+          metadata: expect.objectContaining({ language: testCase.language }),
+        }),
+      );
+    }
   });
 
   it("does not create an invitation when Patient.email is missing", async () => {
