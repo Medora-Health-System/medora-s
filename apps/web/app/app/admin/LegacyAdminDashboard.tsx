@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type CSSProperties } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   fetchAdminFacilities,
@@ -19,6 +19,12 @@ import {
 } from "@/i18n/config";
 import { switchActiveFacility } from "@/lib/facilitySwitch";
 import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
+
+const adminSectionStyle: CSSProperties = { marginBottom: 20, padding: 18, border: "1px solid #dbe3ee", borderRadius: 14, background: "#f8fafc" };
+const adminLinkGridStyle: CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 };
+const adminLinkStyle: CSSProperties = { display: "flex", alignItems: "center", minHeight: 52, padding: "12px 14px", backgroundColor: "#fff", color: "#0f172a", border: "1px solid #dbe3ee", borderRadius: 10, textDecoration: "none", fontWeight: 700, boxShadow: "0 1px 2px rgba(15,23,42,.03)" };
+const platformLinkStyle: CSSProperties = { ...adminLinkStyle, borderColor: "#cbd5e1" };
+const tableButtonStyle: CSSProperties = { padding: "7px 11px", fontSize: 13, borderRadius: 8, background: "#fff", fontWeight: 700 };
 
 async function switchSessionToFacility(facilityId: string) {
   const requested = String(facilityId ?? "").trim();
@@ -94,10 +100,10 @@ export default function AdminPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>{t("adminHub.title")}</h1>
-      <p style={{ color: "#555", marginBottom: 20 }}>{t("adminHub.intro")}</p>
-      <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionFacility")}</h2>
-      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ marginBottom: 22, padding: "20px 22px", border: "1px solid #dbe3ee", borderRadius: 14, background: "linear-gradient(135deg,#f8fafc 0%,#ffffff 100%)" }}><div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "#0f766e" }}>Medora administration</div><h1 style={{ margin: "5px 0 6px", fontSize: 28 }}>{t("adminHub.title")}</h1><p style={{ color: "#64748b", margin: 0 }}>{t("adminHub.intro")}</p></div>
+
+      <section style={adminSectionStyle}><h2 style={{ fontSize: 17, margin: "0 0 4px", color: "#0f172a" }}>{t("adminHub.sectionFacility")}</h2><p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 13 }}>Facility-level administration, clinical governance, revenue operations, and access controls.</p>
+      <ul style={adminLinkGridStyle}>
         <li>
           <Link
             href="/app/admin/users"
@@ -454,11 +460,11 @@ export default function AdminPage() {
             {t("auth.mfa.adminResetTitle")}
           </Link>
         </li>
-      </ul>
+      </ul></section>
       {isPlatformOperator ? (
         <>
-          <h2 style={{ fontSize: 16, margin: "0 0 12px 0", color: "#334155" }}>{t("adminHub.sectionPlatform")}</h2>
-          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px 0", display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <section style={adminSectionStyle}><h2 style={{ fontSize: 17, margin: "0 0 4px", color: "#0f172a" }}>{t("adminHub.sectionPlatform")}</h2><p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 13 }}>Cross-facility platform health, compliance, recovery, and monitoring.</p>
+          <ul style={adminLinkGridStyle}>
             <li>
               <Link
                 href="/app/admin/exports"
@@ -561,10 +567,10 @@ export default function AdminPage() {
                 {t("adminHub.catalogAuditLink")}
               </Link>
             </li>
-          </ul>
+          </ul></section>
         </>
       ) : null}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 12 }}>
+      <section style={adminSectionStyle}><h2 style={{ fontSize: 17, margin: "0 0 12px", color: "#0f172a" }}>Connectivity & national access</h2><ul style={{ ...adminLinkGridStyle, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 280px))" }}>
         {ready && canCreateFacilities ? (
           <><li><Link href="/app/admin/integrations" style={{ display: "inline-block", padding: "12px 20px", backgroundColor: "#0f766e", color: "white", borderRadius: 4, textDecoration: "none", fontWeight: 600 }}>{t("adminHub.integrationsLink")}</Link></li><li>
             <Link
@@ -584,11 +590,11 @@ export default function AdminPage() {
             </Link>
           </li></>
         ) : null}
-      </ul>
+      </ul></section>
 
       {ready && canCreateFacilities ? (
-        <section style={{ marginTop: 32 }}>
-          <h2 style={{ margin: "0 0 12px 0", fontSize: 18 }}>{t("adminHub.facilities")}</h2>
+        <section style={{ marginTop: 24, padding: 18, border: "1px solid #dbe3ee", borderRadius: 14, background: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", marginBottom: 12 }}><div><h2 style={{ margin: 0, fontSize: 19 }}>{t("adminHub.facilities")}</h2><p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 13 }}>Manage facility status, language, billing identity, and active workspace.</p></div>{facilities ? <span style={{ color: "#64748b", fontSize: 12 }}>{facilities.length} facilities</span> : null}</div>
           {facilitiesLoading ? (
             <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.loading")}</p>
           ) : facilitiesError ? (
@@ -596,10 +602,10 @@ export default function AdminPage() {
           ) : facilities && facilities.length === 0 ? (
             <p style={{ color: "#555", fontSize: 14 }}>{t("adminHub.emptyFacilities")}</p>
           ) : facilities && facilities.length > 0 ? (
-            <div style={{ overflowX: "auto", border: "1px solid #e0e0e0", borderRadius: 8 }}>
+            <div style={{ overflowX: "auto", border: "1px solid #dbe3ee", borderRadius: 12, boxShadow: "0 1px 3px rgba(15,23,42,.04)" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #e0e0e0", background: "#fafafa" }}>
+                  <tr style={{ borderBottom: "1px solid #e0e0e0", background: "#f8fafc" }}>
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colName")}</th>
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colState")}</th>
                     <th style={{ textAlign: "left", padding: 10 }}>{t("adminHub.colId")}</th>

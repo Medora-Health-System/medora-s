@@ -178,7 +178,8 @@ const cardStyle: CSSProperties = {
   background: "#fff",
   color: "#0f172a",
   textDecoration: "none",
-  minHeight: 86,
+  minHeight: 92,
+  boxShadow: "0 1px 2px rgba(15,23,42,.03)",
 };
 
 function localeCopy(language: string | undefined): FacilityAdminCopy {
@@ -256,8 +257,9 @@ export function FacilityAdminControlPanel() {
         margin: "24px 24px 0",
         padding: 20,
         border: "1px solid #cbd5e1",
-        borderRadius: 12,
+        borderRadius: 14,
         background: "#f8fafc",
+        boxShadow: "0 1px 3px rgba(15,23,42,.04)",
       }}
     >
       <div style={{ marginBottom: 18 }}>
