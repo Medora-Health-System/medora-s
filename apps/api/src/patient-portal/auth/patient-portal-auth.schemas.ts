@@ -31,6 +31,11 @@ export const patientPortalRefreshBodySchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+export const patientPortalDeleteAccountBodySchema = z.object({
+  password: z.string().min(1).max(256),
+});
+
 export type PatientPortalRegisterBody = z.infer<typeof patientPortalRegisterBodySchema>;
 export type PatientPortalLoginBody = z.infer<typeof patientPortalLoginBodySchema>;
 export type PatientPortalRefreshBody = z.infer<typeof patientPortalRefreshBodySchema>;
+export type PatientPortalDeleteAccountBody = z.infer<typeof patientPortalDeleteAccountBodySchema>;
