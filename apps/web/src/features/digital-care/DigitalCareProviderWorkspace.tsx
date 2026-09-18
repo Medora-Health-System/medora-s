@@ -141,7 +141,6 @@ export function DigitalCareProviderWorkspace() {
       if (!facilityId || !canUse) return;
       setBusy(true);
       setError(null);
-      setPortalError(null);
       try {
         const bundle = await fetchDigitalCareWorkspace(facilityId, patientId);
         setWorkspace(bundle);
