@@ -1,2 +1,21 @@
 /* Preflight désactivé dans tailwind.config.js ; utilitaires uniquement pour ne pas écraser le shell existant. */
 @tailwind utilities;
+
+
+/* Make interactive controls visibly interactive across the Medora web shell. */
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for],
+select,
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
