@@ -47,8 +47,15 @@ async function bootstrap() {
   app.use(urlencoded({ limit: "50mb", extended: true }));
   app.use((req: any, res: any, next: () => void) => {
     const incoming = req.headers?.["x-request-id"];
-    const fromHeader = typeof incoming === "string" && incoming.trim() ? incoming.trim() : "";
-    const requestId = fromHeader || randomUUID();
+    const candidate = typeof incoming === "string" ? incoming.trim() : "";
+    // Request IDs cross a trust boundary and are echoed to logs/responses. Keep them printable,
+    // bounded, and delimiter-free so a client cannot create log-forging or oversized metadata.
+    const requestId =
+      candidate.length > 0 &&
+      candidate.length <= 128 &&
+      /^[A-Za-z0-9._:-]+$/.test(candidate)
+        ? candidate
+        : randomUUID();
     req.requestId = requestId;
     res.setHeader("x-request-id", requestId);
     next();
