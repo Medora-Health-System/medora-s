@@ -10,7 +10,7 @@ import type {
   PatientPortalPrincipal,
   PatientPortalRefreshJwtPayload,
 } from "./patient-portal.types";
-import type { PatientPortalLoginBody, PatientPortalRegisterBody } from "./patient-portal-auth.schemas";
+import type { PatientPortalDeleteAccountBody, PatientPortalLoginBody, PatientPortalRegisterBody } from "./patient-portal-auth.schemas";
 
 export type PatientPortalSessionTokens = {
   accessToken: string;
@@ -237,6 +237,37 @@ export class PatientPortalAuthService {
       accessTokenTtlSeconds: this.tokenTtlSeconds(next.accessToken),
       account: this.accountView(account),
     };
+  }
+
+  async deleteAccount(
+    principal: PatientPortalPrincipal,
+    body: PatientPortalDeleteAccountBody,
+    context: { ip?: string | null; userAgent?: string | null },
+  ): Promise<void> {
+    const account = await this.repo.findAccountById(principal.portalAccountId);
+    if (!account || account.status !== "ACTIVE") {
+      throw new UnauthorizedException("Patient portal account not active");
+    }
+    if (!(await argon2.verify(account.passwordHash, body.password))) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    await this.audit.record("PATIENT_PORTAL_ACCOUNT_DELETE", "PATIENT_PORTAL_ACCOUNT", {
+      portalAccountId: account.id,
+      sessionId: principal.sessionId,
+      entityId: account.id,
+      ip: context.ip,
+      userAgent: context.userAgent,
+      critical: true,
+      metadata: {
+        portalIdentityAnonymized: true,
+        clinicalRecordsRetainedByProvider: true,
+      },
+    });
+    await this.repo.disableAccountAndRevokeAccess(
+      account.id,
+      await argon2.hash(randomUUID()),
+    );
   }
 
   async logout(principal: PatientPortalPrincipal): Promise<void> {
