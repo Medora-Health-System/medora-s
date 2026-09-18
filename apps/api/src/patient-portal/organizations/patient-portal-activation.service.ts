@@ -11,6 +11,7 @@ import * as argon2 from "argon2";
 import { randomBytes, randomUUID } from "crypto";
 import { MailDeliveryError, MailNotConfiguredError, OutboundMailService } from "../../common/mail/outbound-mail.service";
 import { PatientPortalAuditService } from "../patient-portal-audit.service";
+import { FacilityConfigurationService } from "../../facility-configuration/facility-configuration.service";
 import { PatientPortalActivationRepository } from "../persistence/patient-portal-activation.repository";
 import { PatientPortalRepository } from "../persistence/patient-portal.repository";
 import {
@@ -33,6 +34,7 @@ export class PatientPortalActivationService {
     private readonly audit: PatientPortalAuditService,
     private readonly mail: OutboundMailService,
     private readonly config: ConfigService,
+    private readonly facilityConfiguration: FacilityConfigurationService,
   ) {}
 
   async issueForStaff(input: {
@@ -115,6 +117,7 @@ export class PatientPortalActivationService {
         createdByUserId: input.createdByUserId,
         channel: PATIENT_PORTAL_ACTIVATION_CHANNEL.EMAIL_INVITATION,
         delivery: "EMAIL",
+        language,
       },
       critical: true,
     });
@@ -305,6 +308,53 @@ export class PatientPortalActivationService {
       activationId,
       activationCode: `${activationId}.${secret}`,
       expiresAt,
+    };
+  }
+
+  private async invitationLanguage(facilityId: string): Promise<"en" | "es" | "fr"> {
+    const settings = await this.facilityConfiguration.settingsForFacility(facilityId);
+    const language = settings.patientPortal.language;
+    if (language === "en" || language === "es" || language === "fr") return language;
+    return "en";
+  }
+
+  private invitationEmail(language: "en" | "es" | "fr", invitationUrl: string) {
+    if (language === "es") {
+      return {
+        subject: "Active su cuenta de paciente de Medora",
+        text: [
+          "Ha recibido una invitación para activar su cuenta de paciente de Medora.",
+          "",
+          "Abra este enlace para continuar:",
+          invitationUrl,
+          "",
+          "Esta invitación vence en 24 horas. Si no esperaba este mensaje, puede ignorarlo.",
+        ].join("\n"),
+      };
+    }
+    if (language === "fr") {
+      return {
+        subject: "Activez votre compte patient Medora",
+        text: [
+          "Vous avez reçu une invitation à activer votre compte patient Medora.",
+          "",
+          "Ouvrez ce lien pour continuer :",
+          invitationUrl,
+          "",
+          "Cette invitation expire dans 24 heures. Si vous n’attendiez pas ce message, vous pouvez l’ignorer.",
+        ].join("\n"),
+      };
+    }
+    return {
+      subject: "Activate your Medora Patient account",
+      text: [
+        "You have been invited to activate your Medora Patient account.",
+        "",
+        "Open this link to continue:",
+        invitationUrl,
+        "",
+        "This invitation expires in 24 hours. If you did not expect this message, you can ignore it.",
+      ].join("\n"),
     };
   }
 
