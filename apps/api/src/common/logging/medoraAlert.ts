@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { logError, logInfo } from "./medoraLogger";
 
 export type MedoraAlertSeverity = "critical" | "warning";
-export type MedoraAlertTransport = "webhook" | "pagerduty";
+export type MedoraAlertTransport = "webhook" | "pagerduty" | "invalid";
 
 const PAGERDUTY_EVENTS_API_V2_URL = "https://events.pagerduty.com/v2/enqueue";
 
@@ -84,6 +84,7 @@ function readAlertTransport(): MedoraAlertTransport {
   const raw = trimOrUndef(process.env.MEDORA_ALERT_TRANSPORT)?.toLowerCase();
   if (raw === "pagerduty") return "pagerduty";
   if (raw === "webhook") return "webhook";
+  if (raw) return "invalid";
   // Backward-compatible auto-detection: an explicit PagerDuty key opts into PagerDuty.
   return readPagerDutyRoutingKey() ? "pagerduty" : "webhook";
 }
@@ -310,7 +311,11 @@ export function getMedoraAlertStatusForApi(): MedoraAlertStatusForApi {
   const enabled = readAlertsEnabled();
   const transport = readAlertTransport();
   const destinationConfigured =
-    transport === "pagerduty" ? Boolean(readPagerDutyRoutingKey()) : Boolean(readWebhookUrl());
+    transport === "pagerduty"
+      ? Boolean(readPagerDutyRoutingKey())
+      : transport === "webhook"
+        ? Boolean(readWebhookUrl())
+        : false;
   return {
     enabled,
     webhookConfigured: destinationConfigured,
@@ -353,7 +358,11 @@ export async function sendMedoraTestAlert(params: {
   const pagerDutyRoutingKey = readPagerDutyRoutingKey();
   const webhookUrl = readWebhookUrl();
   const destinationConfigured =
-    transport === "pagerduty" ? Boolean(pagerDutyRoutingKey) : Boolean(webhookUrl);
+    transport === "pagerduty"
+      ? Boolean(pagerDutyRoutingKey)
+      : transport === "webhook"
+        ? Boolean(webhookUrl)
+        : false;
   if (!destinationConfigured) {
     logError("medora_test_alert_failed", {
       action: "medora_test_alert_failed",
@@ -374,7 +383,12 @@ export async function sendMedoraTestAlert(params: {
   };
   const payload = buildMedoraAlertPayload(input);
   const format = readAlertFormat();
-  const url = transport === "pagerduty" ? PAGERDUTY_EVENTS_API_V2_URL : webhookUrl!;
+  const url =
+    transport === "pagerduty"
+      ? PAGERDUTY_EVENTS_API_V2_URL
+      : transport === "webhook"
+        ? webhookUrl!
+        : "";
   const bodyString =
     transport === "pagerduty"
       ? JSON.stringify(buildPagerDutyEventsApiV2Body(payload, pagerDutyRoutingKey!))
@@ -412,7 +426,12 @@ export function queueMedoraAlert(input: MedoraAlertInput): void {
   const pagerDutyRoutingKey = readPagerDutyRoutingKey();
   const webhookUrl = readWebhookUrl();
   const format = readAlertFormat();
-  const url = transport === "pagerduty" ? PAGERDUTY_EVENTS_API_V2_URL : webhookUrl;
+  const url =
+    transport === "pagerduty"
+      ? PAGERDUTY_EVENTS_API_V2_URL
+      : transport === "webhook"
+        ? webhookUrl
+        : undefined;
   const bodyString =
     transport === "pagerduty" && pagerDutyRoutingKey
       ? JSON.stringify(buildPagerDutyEventsApiV2Body(payload, pagerDutyRoutingKey))
@@ -423,7 +442,11 @@ export function queueMedoraAlert(input: MedoraAlertInput): void {
   const delivery = (async () => {
     try {
       const destinationConfigured =
-        transport === "pagerduty" ? Boolean(pagerDutyRoutingKey) : Boolean(webhookUrl);
+        transport === "pagerduty"
+          ? Boolean(pagerDutyRoutingKey)
+          : transport === "webhook"
+            ? Boolean(webhookUrl)
+            : false;
       if (!destinationConfigured || !url) {
         if (!warnedNoWebhookForEventType.has(payload.event)) {
           warnedNoWebhookForEventType.add(payload.event);
