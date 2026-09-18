@@ -172,15 +172,28 @@ const COPY: Record<"en" | "fr" | "es", FacilityAdminCopy> = {
 
 const cardStyle: CSSProperties = {
   display: "block",
-  padding: 16,
-  border: "1px solid #dbe3ee",
-  borderRadius: 10,
-  background: "#fff",
+  padding: "15px 16px",
+  border: "1px solid #dbe5f0",
+  borderRadius: 12,
+  background: "rgba(255,255,255,.94)",
   color: "#0f172a",
   textDecoration: "none",
-  minHeight: 92,
-  boxShadow: "0 1px 2px rgba(15,23,42,.03)",
+  minHeight: 88,
+  boxShadow: "0 1px 2px rgba(15,23,42,.035)",
 };
+
+const sectionStyle = (tone: "blue" | "violet" | "amber"): CSSProperties => ({
+  marginBottom: 16,
+  padding: 14,
+  border: `1px solid ${tone === "blue" ? "#dbeafe" : tone === "violet" ? "#ede9fe" : "#fed7aa"}`,
+  borderRadius: 14,
+  background:
+    tone === "blue"
+      ? "linear-gradient(135deg,#f8fbff 0%,#f1f7ff 100%)"
+      : tone === "violet"
+        ? "linear-gradient(135deg,#fbfaff 0%,#f7f5ff 100%)"
+        : "linear-gradient(135deg,#fffaf5 0%,#fff7ed 100%)",
+});
 
 function localeCopy(language: string | undefined): FacilityAdminCopy {
   const locale = String(language ?? "en").toLowerCase().split("-")[0];
@@ -243,10 +256,15 @@ export function FacilityAdminControlPanel() {
     );
   }
 
-  const Card = ({ href, title, text }: { href: string; title: string; text: string }) => (
-    <Link href={href} style={cardStyle}>
-      <strong>{title}</strong>
-      <div style={{ marginTop: 6, color: "#64748b", fontSize: 13, lineHeight: 1.35 }}>{text}</div>
+  const Card = ({ href, title, text, icon, tone = "#2563eb" }: { href: string; title: string; text: string; icon: string; tone?: string }) => (
+    <Link href={href} style={{ ...cardStyle, display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <span aria-hidden="true" style={{ display: "grid", placeItems: "center", flex: "0 0 38px", width: 38, height: 38, borderRadius: 10, background: `${tone}12`, color: tone, fontSize: 19, fontWeight: 800 }}>{icon}</span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <strong>{title}</strong><span aria-hidden="true" style={{ color: "#64748b", fontSize: 18 }}>›</span>
+        </span>
+        <span style={{ display: "block", marginTop: 5, color: "#64748b", fontSize: 13, lineHeight: 1.35 }}>{text}</span>
+      </span>
     </Link>
   );
 
@@ -255,11 +273,11 @@ export function FacilityAdminControlPanel() {
       data-testid="facility-admin-control-panel"
       style={{
         margin: "24px 24px 0",
-        padding: 20,
-        border: "1px solid #cbd5e1",
-        borderRadius: 14,
-        background: "#f8fafc",
-        boxShadow: "0 1px 3px rgba(15,23,42,.04)",
+        padding: 18,
+        border: "1px solid #dbe3ee",
+        borderRadius: 16,
+        background: "#ffffff",
+        boxShadow: "0 8px 28px rgba(15,23,42,.045)",
       }}
     >
       <div style={{ marginBottom: 18 }}>
@@ -295,8 +313,8 @@ export function FacilityAdminControlPanel() {
         </div>
       ) : null}
 
-      <div style={{ marginBottom: 18 }}>
-        <h3 style={{ fontSize: 16, margin: "0 0 10px" }}>{copy.appSection}</h3>
+      <div style={sectionStyle("blue")}>
+        <h3 style={{ fontSize: 18, margin: "0 0 12px", color: "#0f172a" }}>{copy.appSection}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
           <button
             type="button"
@@ -308,31 +326,31 @@ export function FacilityAdminControlPanel() {
             <strong>{copy.modulesTitle}</strong>
             <div style={{ marginTop: 6, color: "#64748b", fontSize: 13, lineHeight: 1.35 }}>{copy.modulesText}</div>
           </button>
-          <Card href="/app/admin/enterprise-workflow" title={copy.workflowsTitle} text={copy.workflowsText} />
-          <Card href="/app/admin/enterprise-clinical-rules" title={copy.rulesTitle} text={copy.rulesText} />
-          <Card href="/app/admin/go-live" title={copy.goLiveTitle} text={copy.goLiveText} />
+          <Card href="/app/admin/enterprise-workflow" title={copy.workflowsTitle} text={copy.workflowsText} icon="⌘" tone="#7c3aed" />
+          <Card href="/app/admin/enterprise-clinical-rules" title={copy.rulesTitle} text={copy.rulesText} icon="✓" tone="#059669" />
+          <Card href="/app/admin/go-live" title={copy.goLiveTitle} text={copy.goLiveText} icon="↗" tone="#ea580c" />
         </div>
       </div>
 
       <DigitalCarePatientActivationPanel />
 
-      <div style={{ marginBottom: 18 }}>
-        <h3 style={{ fontSize: 16, margin: "0 0 10px" }}>{copy.peopleSection}</h3>
+      <div style={sectionStyle("violet")}>
+        <h3 style={{ fontSize: 18, margin: "0 0 12px", color: "#0f172a" }}>{copy.peopleSection}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <Card href="/app/admin/users" title={copy.staffTitle} text={copy.staffText} />
-          <Card href="/app/admin/audit" title={copy.auditTitle} text={copy.auditText} />
-          <Card href="/app/admin/mfa" title={copy.mfaTitle} text={copy.mfaText} />
-          <Card href="/app/reports" title={copy.reportsTitle} text={copy.reportsText} />
+          <Card href="/app/admin/users" title={copy.staffTitle} text={copy.staffText} icon="●" tone="#2563eb" />
+          <Card href="/app/admin/audit" title={copy.auditTitle} text={copy.auditText} icon="▤" tone="#16a34a" />
+          <Card href="/app/admin/mfa" title={copy.mfaTitle} text={copy.mfaText} icon="◇" tone="#7c3aed" />
+          <Card href="/app/reports" title={copy.reportsTitle} text={copy.reportsText} icon="▥" tone="#ea580c" />
         </div>
       </div>
 
-      <div>
-        <h3 style={{ fontSize: 16, margin: "0 0 10px" }}>{copy.revenueSection}</h3>
+      <div style={{ ...sectionStyle("amber"), marginBottom: 0 }}>
+        <h3 style={{ fontSize: 18, margin: "0 0 12px", color: "#0f172a" }}>{copy.revenueSection}</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <Card href="/app/admin/billing-governance" title={copy.billingTitle} text={copy.billingText} />
-          <Card href="/app/admin/revenue-cycle" title={copy.revenueTitle} text={copy.revenueText} />
-          <Card href="/app/admin/medication-governance" title={copy.medicationTitle} text={copy.medicationText} />
-          <Card href="/app/admin/medication-inventory-staging" title={copy.inventoryTitle} text={copy.inventoryText} />
+          <Card href="/app/admin/billing-governance" title={copy.billingTitle} text={copy.billingText} icon="$" tone="#16a34a" />
+          <Card href="/app/admin/revenue-cycle" title={copy.revenueTitle} text={copy.revenueText} icon="▥" tone="#2563eb" />
+          <Card href="/app/admin/medication-governance" title={copy.medicationTitle} text={copy.medicationText} icon="◇" tone="#7c3aed" />
+          <Card href="/app/admin/medication-inventory-staging" title={copy.inventoryTitle} text={copy.inventoryText} icon="□" tone="#ea580c" />
         </div>
       </div>
 
