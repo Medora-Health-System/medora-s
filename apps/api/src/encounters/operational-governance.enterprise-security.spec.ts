@@ -1,7 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
 import { RoleCode } from "@prisma/client";
 import "reflect-metadata";
-import { ROLES_KEY } from "../common/guards/roles.decorators";
 import { OperationalGovernanceController } from "./operational-governance.controller";
 import { OperationalGovernanceService } from "./operational-governance.service";
 
@@ -9,7 +8,7 @@ describe("Hospital operations enterprise security boundary", () => {
   it.each(["staffAnalytics", "listChartAccess", "auditCenter", "roleTimeline"] as const)(
     "%s is restricted to facility administrators",
     (method) => {
-      const roles = Reflect.getMetadata(ROLES_KEY, OperationalGovernanceController.prototype[method]);
+      const roles = Reflect.getMetadata("roles", OperationalGovernanceController.prototype[method]);
       expect(roles).toEqual([RoleCode.ADMIN]);
     },
   );
