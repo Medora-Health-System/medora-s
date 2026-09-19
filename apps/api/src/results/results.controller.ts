@@ -34,11 +34,11 @@ export class ResultsController {
   private async assertDiagnosticModule(facilityId: string, orderItemId: string) {
     const item = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { encounter: { facilityId } } },
-      select: { type: true },
+      select: { catalogItemType: true },
     });
     if (!item) return;
-    if (item.type === "LAB_TEST") await this.facilityConfiguration.assertModuleEnabled(facilityId, "laboratory");
-    if (item.type === "IMAGING_STUDY") await this.facilityConfiguration.assertModuleEnabled(facilityId, "radiology");
+    if (item.catalogItemType === "LAB_TEST") await this.facilityConfiguration.assertModuleEnabled(facilityId, "laboratory");
+    if (item.catalogItemType === "IMAGING_STUDY") await this.facilityConfiguration.assertModuleEnabled(facilityId, "radiology");
   }
 
   /** Phase 1 RN-policy gate needs every facility-scoped role to discriminate RN-only from RN+LAB. */
