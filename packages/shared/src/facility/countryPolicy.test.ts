@@ -37,12 +37,12 @@ describe("country policy authority", () => {
     const facilityA = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { radiology: true },
+      optionalModules: { laboratory: false, radiology: true, pharmacy: false, publicHealth: false, billing: true },
     });
     const facilityB = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { radiology: false },
+      optionalModules: { laboratory: false, radiology: false, pharmacy: false, publicHealth: false, billing: true },
     });
 
     expect(resolveEffectiveFacilityModuleCapability({
@@ -62,7 +62,7 @@ describe("country policy authority", () => {
     const facility = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { radiology: true },
+      optionalModules: { laboratory: false, radiology: true, pharmacy: false, publicHealth: false, billing: true },
     });
 
     const original = COUNTRY_POLICY_REGISTRY.US.modules.radiology;
@@ -89,7 +89,7 @@ describe("country policy authority", () => {
     const facility = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { laboratory: true },
+      optionalModules: { laboratory: true, radiology: false, pharmacy: false, publicHealth: false, billing: true },
     });
     const decision = resolveEffectiveFacilityModuleCapability({
       country: "CA",
