@@ -28,7 +28,7 @@ const control: React.CSSProperties = { border: "1px solid #cbd8ec", borderRadius
 export default function AppointmentsPage() {
   const { facilityId, ready, roles } = useFacilityAndRoles();
   const { language } = useI18n();
-  const locale = language === "es" ? "es" : language === "fr" ? "fr" : "en";
+  // The authenticated app shell bridges the registered active-facility language into useI18n.\n  // Never offer a page-local language switch or read a staff browser preference here.\n  const locale = language === "es" ? "es" : language === "fr" ? "fr" : "en";
   const s = strings[locale];
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState(() => isoDay(new Date()));
