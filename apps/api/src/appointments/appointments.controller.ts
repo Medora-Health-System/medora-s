@@ -69,6 +69,27 @@ export class AppointmentsController {
     }
   }
 
+  /** Facility-scoped calendar range. ISO instants are exclusive at the upper bound. */
+  @Get("appointments/calendar")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  async calendar(
+    @Query("from") from: string | undefined,
+    @Query("to") to: string | undefined,
+    @Req() req: any
+  ) {
+    if (!from || !to || !/^\\d{4}-\\d{2}-\\d{2}T/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}T/.test(to)) {
+      throw new BadRequestException("from and to must be ISO date-time instants");
+    }
+    const start = new Date(from);
+    const end = new Date(to);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) ||
+        end <= start || end.getTime() - start.getTime() > 32 * 86400000) {
+      throw new BadRequestException("Invalid calendar range (maximum 32 days)");
+    }
+    return this.appointmentsService.listCalendar(this.facilityId(req), start, end,
+      req.user?.userId, req.ip, req.headers["user-agent"]);
+  }
+
   @Post("appointments/:id/arrive")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
   async arrive(@Param("id") id: string, @Req() req: any) {
