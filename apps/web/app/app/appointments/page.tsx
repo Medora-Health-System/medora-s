@@ -4,18 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
+import { facilityMonthBounds } from "@/lib/facilityCalendarBounds";
 
 const colors = ["#0879e8", "#079981", "#f8b51b", "#f53681", "#7838db", "#ff692f"];
 const isoDay = (date: Date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 const dayInZone = (instant: string, zone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(instant));
   return ["year", "month", "day"].map((key) => parts.find((part) => part.type === key)?.value).join("-");
-};
-const bounds = (date: Date) => {
-  // 32-day API limit: load calendar cells in two bounded requests when necessary.
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-  return { from: start.toISOString(), to: end.toISOString() };
 };
 const strings = {
   en: { title: "Appointments", subtitle: "View and manage patient appointments. Click on a date to see the list of appointments.", today: "Today", add: "Add Appointment", search: "Search by patient name or reason...", all: "All Providers", time: "Time", patient: "Patient", reason: "Reason", provider: "Provider", status: "Status", actions: "Actions", visits: "Visits", empty: "No appointments for this day", retry: "Retry", more: "Load more", loading: "Loading appointments...", failed: "Unable to load appointments", month: "Month", week: "Week", day: "Day", details: "Appointment Details", date: "Date", selected: "Appointments for", unavailable: "Not available in this phase" },
@@ -26,7 +21,7 @@ const panel: React.CSSProperties = { background: "#fff", border: "1px solid #d5e
 const control: React.CSSProperties = { border: "1px solid #cbd8ec", borderRadius: 6, padding: "9px 12px", background: "#fff", color: "#172b4d", cursor: "pointer" };
 
 export default function AppointmentsPage() {
-  const { facilityId, ready, roles } = useFacilityAndRoles();
+  const { facilityId, ready, roles, facilityTimeZone } = useFacilityAndRoles();
   const { language } = useI18n();
   // The authenticated app shell bridges the registered active-facility language into useI18n.\n  // Never offer a page-local language switch or read a staff browser preference here.\n  const locale = language === "es" ? "es" : language === "fr" ? "fr" : "en";
   const s = strings[locale];
@@ -44,10 +39,10 @@ export default function AppointmentsPage() {
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
   const load = useCallback(async (offset = 0) => {
-    if (!facilityId || !canView) return;
+    if (!facilityId || !canView || !facilityTimeZone) return;
     setLoading(true); setError(false);
     try {
-      const { from, to } = bounds(month);
+      const { from, to } = facilityMonthBounds(month, facilityTimeZone);
       const result = await fetchAppointmentCalendar(facilityId, from, to, offset);
       setItems((previous) => offset ? [...previous, ...result.items] : result.items);
       setCounts(result.dailyCounts); setZone(result.timezone);
@@ -55,7 +50,7 @@ export default function AppointmentsPage() {
       setNext(result.hasMore && result.nextOffset !== null && result.nextOffset > offset ? result.nextOffset : null);
     } catch { setError(true); if (!offset) { setItems([]); setCounts({}); setNext(null); } }
     finally { setLoading(false); }
-  }, [facilityId, canView, month]);
+  }, [facilityId, canView, month, facilityTimeZone]);
   useEffect(() => { void load(); }, [load]);
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const days = useMemo(() => {
@@ -69,7 +64,7 @@ export default function AppointmentsPage() {
   const displayDate = (value: string) => new Date(value + "T12:00:00").toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const time = (value: string) => new Date(value).toLocaleTimeString(locale, { timeZone: zone, hour: "numeric", minute: "2-digit" });
   const move = (n: number) => { const d = new Date(month.getFullYear(), month.getMonth() + n, 1); setMonth(d); setSelected(isoDay(d)); setFocused(null); };
-  if (!ready) return <p>{s.loading}</p>;
+  if (!ready || !facilityTimeZone) return <p>{s.loading}</p>;
   if (!canView) return <p role="alert">{s.unavailable}</p>;
   return <main style={{ color: "#172b4d", padding: 6 }}>
     <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
