@@ -114,4 +114,41 @@ describe("AppointmentsService facility-scoped provider search", () => {
     }));
   });
 
+  it("does not expose a provider name without active membership in the requested facility", async () => {
+    const { service, prisma } = makeService();
+    const scheduledStartAt = new Date("2026-10-05T15:00:00.000Z");
+    const row = {
+      id: "appointment-a", facilityId, patientId: "patient-a",
+      status: "SCHEDULED", scheduledStartAt, scheduledEndAt: null,
+      arrivedAt: null, checkedInAt: null, completedAt: null, cancelledAt: null,
+      encounterId: null, providerId: "provider-other-facility", departmentId: null,
+      reason: null, createdByUserId: null, createdAt: scheduledStartAt,
+      updatedAt: scheduledStartAt, patient: null, encounter: null,
+    };
+    const findMany = jest.fn().mockResolvedValue([row]);
+    const groupBy = jest.fn().mockResolvedValue([
+      { scheduledStartAt, _count: { _all: 1 } },
+    ]);
+    Object.assign(prisma, { appointment: {
+      findMany, groupBy, count: jest.fn().mockResolvedValue(1),
+    } });
+    prisma.user.findMany.mockResolvedValue([]);
+    const result = await service.listCalendar(
+      facilityId, new Date("2026-10-05T00:00:00.000Z"),
+      new Date("2026-10-06T00:00:00.000Z"),
+    );
+    expect(result.items[0]?.providerName).toBeNull();
+    expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        userRoles: { some: {
+          facilityId, isActive: true,
+          facility: { isActive: true }, role: { code: "PROVIDER" },
+        } },
+      }),
+    }));
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ facilityId }),
+    }));
+  });
+
 });
