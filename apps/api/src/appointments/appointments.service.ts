@@ -211,10 +211,21 @@ export class AppointmentsService {
 
     if (data.providerId) {
       const provider = await this.prisma.user.findFirst({
-        where: { id: data.providerId, isActive: true },
+        where: {
+          id: data.providerId,
+          isActive: true,
+          userRoles: {
+            some: {
+              facilityId,
+              isActive: true,
+              facility: { isActive: true },
+              role: { code: "PROVIDER" },
+            },
+          },
+        },
         select: { id: true },
       });
-      if (!provider) throw new BadRequestException("Provider not found");
+      if (!provider) throw new BadRequestException("Active provider membership at this facility required");
     }
     if (data.departmentId) {
       const dept = await this.prisma.department.findFirst({
@@ -271,6 +282,124 @@ export class AppointmentsService {
       take: 250,
     });
     return rows.map(toAppointmentDto);
+  }
+
+  /** Read-only calendar projection; caller must supply facility-local bounds as UTC instants. */
+  async listCalendar(
+    facilityId: string,
+    from: Date,
+    to: Date,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    offset = 0
+  ) {
+    await this.assertClinicCareEnabled(facilityId);
+    const where = {
+      facilityId,
+      scheduledStartAt: { gte: from, lt: to },
+      status: { not: AppointmentStatus.CANCELLED },
+    };
+    // Count the complete range, independently of roster pagination. The client
+    // converts these UTC instants to the facility's configured timezone for day cells.
+    const dailyRows = await this.prisma.appointment.groupBy({
+      by: ["scheduledStartAt"],
+      where,
+      _count: { _all: true },
+    });
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: { timezone: true },
+    });
+    const timezone = facility?.timezone || "UTC";
+    const dayFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    const dailyCounts: Record<string, number> = {};
+    for (const appointment of dailyRows) {
+      const parts = dayFormatter.formatToParts(appointment.scheduledStartAt);
+      const date = ["year", "month", "day"].map((type) => parts.find((part) => part.type === type)?.value).join("-");
+      dailyCounts[date] = (dailyCounts[date] ?? 0) + appointment._count._all;
+    }
+    const [total, rows] = await Promise.all([
+      this.prisma.appointment.count({ where }),
+      this.prisma.appointment.findMany({
+        where,
+        select: APPOINTMENT_SELECT,
+        orderBy: [{ scheduledStartAt: "asc" }, { id: "asc" }],
+        skip: offset,
+        take: 500,
+      }),
+    ]);
+    // Never use a creator's name as the assigned clinician. Resolve only the
+    // provider explicitly assigned to appointments in the authorized facility.
+    const providerIds = [...new Set(rows.map((row) => row.providerId).filter((id): id is string => Boolean(id)))];
+    const providers = providerIds.length
+      ? await this.prisma.user.findMany({
+          where: {
+            id: { in: providerIds },
+            isActive: true,
+            userRoles: {
+              some: {
+                facilityId,
+                isActive: true,
+                facility: { isActive: true },
+                role: { code: "PROVIDER" },
+              },
+            },
+          },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const providerNames = new Map(providers.map((provider) => [
+      provider.id, `${provider.firstName} ${provider.lastName}`.trim(),
+    ]));
+    await this.audit.log(AuditAction.VIEW, "APPOINTMENT", {
+      userId, facilityId, ip, userAgent,
+      metadata: { calendar: true, from: from.toISOString(), to: to.toISOString(), total, offset },
+    });
+    return {
+      items: rows.map((row) => ({
+        ...toAppointmentDto(row),
+        providerName: row.providerId ? providerNames.get(row.providerId) ?? null : null,
+      })),
+      total,
+      timezone,
+      dailyCounts,
+      hasMore: offset + rows.length < total,
+      nextOffset: offset + rows.length < total ? offset + rows.length : null,
+      offset,
+      from: from.toISOString(),
+      to: to.toISOString(),
+    };
+  }
+
+  async searchProviders(facilityId: string, query: string) {
+    await this.assertClinicCareEnabled(facilityId);
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        userRoles: {
+          some: {
+            facilityId,
+            isActive: true,
+            facility: { isActive: true },
+            role: { code: "PROVIDER" },
+          },
+        },
+        OR: [
+          { firstName: { contains: query, mode: "insensitive" } },
+          { lastName: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 20,
+    });
+    return users.map((user) => ({
+      id: user.id,
+      displayName: `${user.firstName} ${user.lastName}`.trim(),
+    }));
   }
 
   async markArrived(

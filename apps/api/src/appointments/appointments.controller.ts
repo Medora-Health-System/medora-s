@@ -69,6 +69,43 @@ export class AppointmentsController {
     }
   }
 
+  /** Facility-scoped calendar range. ISO instants are exclusive at the upper bound. */
+  @Get("appointments/calendar")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  async calendar(
+    @Query("from") from: string | undefined,
+    @Query("to") to: string | undefined,
+    @Query("offset") offsetRaw: string | undefined,
+    @Req() req: any
+  ) {
+    if (!from || !to || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(from) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(to)) {
+      throw new BadRequestException("from and to must be ISO date-time instants");
+    }
+    const start = new Date(from);
+    const end = new Date(to);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) ||
+        end <= start || end.getTime() - start.getTime() > 32 * 86400000) {
+      throw new BadRequestException("Invalid calendar range (maximum 32 days)");
+    }
+    if (offsetRaw !== undefined && !/^(0|[1-9]\d{0,6})$/.test(offsetRaw)) {
+      throw new BadRequestException("offset must be an integer between 0 and 9999999");
+    }
+    const offset = offsetRaw === undefined ? 0 : Number(offsetRaw);
+    return this.appointmentsService.listCalendar(this.facilityId(req), start, end,
+      req.user?.userId, req.ip, req.headers["user-agent"], offset);
+  }
+
+  /** Autocomplete: only active clinicians assigned to the selected facility. */
+  @Get("appointments/providers/search")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.RN)
+  async searchProviders(@Query("q") query: string | undefined, @Req() req: any) {
+    const q = query?.trim() ?? "";
+    if (q.length < 3 || q.length > 80) {
+      throw new BadRequestException("Provider search requires 3 to 80 characters");
+    }
+    return this.appointmentsService.searchProviders(this.facilityId(req), q);
+  }
+
   @Post("appointments/:id/arrive")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.ADMIN)
   async arrive(@Param("id") id: string, @Req() req: any) {
