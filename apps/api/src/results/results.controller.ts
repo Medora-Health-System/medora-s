@@ -69,7 +69,8 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const actorRoles = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    const actorRoles = await this.roleCodesForFacility(req.user?.userId, facilityId);
 
     return this.resultsService.updateResult(
       orderItemId,
@@ -89,7 +90,8 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.acknowledgeResultByClinician(
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    return this.resultsService.acknowledgeResultByClinician(
       orderItemId,
       facilityId,
       req.user?.userId,
@@ -105,7 +107,8 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.verifyResultByClinician(
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    return this.resultsService.verifyResultByClinician(
       orderItemId,
       facilityId,
       req.user?.userId,
@@ -125,7 +128,8 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setLabResultedEffectiveTime(
       facilityId,
@@ -149,7 +153,8 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setImagingFinalizedEffectiveTime(
       facilityId,
@@ -174,7 +179,8 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
-    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.setCriticalFlag(
+    await this.assertDiagnosticModule(facilityId, orderItemId);
+    return this.resultsService.setCriticalFlag(
       orderItemId,
       facilityId,
       body.critical,
