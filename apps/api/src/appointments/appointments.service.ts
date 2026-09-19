@@ -280,7 +280,8 @@ export class AppointmentsService {
     to: Date,
     userId?: string,
     ip?: string,
-    userAgent?: string
+    userAgent?: string,
+    offset = 0
   ) {
     await this.assertClinicCareEnabled(facilityId);
     const where = {
@@ -294,7 +295,8 @@ export class AppointmentsService {
         where,
         select: APPOINTMENT_SELECT,
         orderBy: [{ scheduledStartAt: "asc" }, { id: "asc" }],
-        take: 501,
+        skip: offset,
+        take: 500,
       }),
     ]);
     // Never use a creator's name as the assigned clinician. Resolve only the
@@ -311,15 +313,17 @@ export class AppointmentsService {
     ]));
     await this.audit.log(AuditAction.VIEW, "APPOINTMENT", {
       userId, facilityId, ip, userAgent,
-      metadata: { calendar: true, from: from.toISOString(), to: to.toISOString(), total },
+      metadata: { calendar: true, from: from.toISOString(), to: to.toISOString(), total, offset },
     });
     return {
-      items: rows.slice(0, 500).map((row) => ({
+      items: rows.map((row) => ({
         ...toAppointmentDto(row),
         providerName: row.providerId ? providerNames.get(row.providerId) ?? null : null,
       })),
       total,
-      hasMore: total > 500,
+      hasMore: offset + rows.length < total,
+      nextOffset: offset + rows.length < total ? offset + rows.length : null,
+      offset,
       from: from.toISOString(),
       to: to.toISOString(),
     };
