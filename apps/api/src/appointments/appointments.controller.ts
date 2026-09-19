@@ -78,7 +78,7 @@ export class AppointmentsController {
     @Query("offset") offsetRaw: string | undefined,
     @Req() req: any
   ) {
-    if (!from || !to || !/^\d{4}-\d{2}-\d{2}T/.test(from) || !/^\d{4}-\d{2}-\d{2}T/.test(to)) {
+    if (!from || !to || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(from) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(to)) {
       throw new BadRequestException("from and to must be ISO date-time instants");
     }
     const start = new Date(from);
