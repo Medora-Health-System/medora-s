@@ -61,15 +61,32 @@ export default function AppointmentsPage() {
     if (!facilityId || !canView || !facilityTimeZone) return;
     setLoading(true); setError(false);
     try {
-      const { from, to } = facilityMonthBounds(month, facilityTimeZone);
-      const result = await fetchAppointmentCalendar(facilityId, from, to, offset);
+      let bounds: { from: string; to: string };
+      if (view === "month") {
+        bounds = facilityMonthBounds(month, facilityTimeZone);
+      } else {
+        const anchor = new Date(selected + "T12:00:00");
+        if (view === "day") {
+          bounds = facilityDayBounds(anchor, facilityTimeZone);
+        } else {
+          const start = new Date(anchor);
+          start.setDate(anchor.getDate() - anchor.getDay());
+          const afterWeek = new Date(start);
+          afterWeek.setDate(start.getDate() + 7);
+          bounds = {
+            from: facilityDayBounds(start, facilityTimeZone).from,
+            to: facilityDayBounds(afterWeek, facilityTimeZone).from,
+          };
+        }
+      }
+      const result = await fetchAppointmentCalendar(facilityId, bounds.from, bounds.to, offset);
       setItems((previous) => offset ? [...previous, ...result.items] : result.items);
       setCounts(result.dailyCounts); setZone(result.timezone);
       setTotal(result.total);
       setNext(result.hasMore && result.nextOffset !== null && result.nextOffset > offset ? result.nextOffset : null);
     } catch { setError(true); if (!offset) { setItems([]); setCounts({}); setNext(null); } }
     finally { setLoading(false); }
-  }, [facilityId, canView, month, facilityTimeZone]);
+  }, [facilityId, canView, month, selected, view, facilityTimeZone]);
   useEffect(() => { void load(); }, [load]);
   const loadHoverRoster = useCallback(async (date: Date) => {
     if (!facilityId || !facilityTimeZone || !canView) return;
