@@ -80,6 +80,12 @@ export class RolesGuard implements CanActivate {
     });
 
     if (membershipsSatisfying.length > 0) {
+      /**
+       * Phase 5 country/facility isolation: an ordinary facility membership is
+       * authoritative only for that exact facility. Country is deliberately not
+       * inferred into broader access: membership in Facility A never grants
+       * Facility B merely because both share a country.
+       */
       // An accepted ordinary facility role is independent of global platform authority. Prefer it
       // deterministically so a stale/unauthorized MEDORA_SUPER_ADMIN row cannot mask valid ADMIN,
       // PROVIDER, RN, or other route-specific access.
