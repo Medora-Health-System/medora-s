@@ -39,7 +39,7 @@ export function facilityDayBounds(date: Date, timeZone: string) {
  * than silently scheduling at the browser's timezone or the wrong occurrence.
  */
 export function facilityLocalDateTimeToIso(value: string, timeZone: string): string | null {
-  if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/.test(value)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
   const [date, clock] = value.split("T");
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = clock.split(":").map(Number);
