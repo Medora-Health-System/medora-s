@@ -75,6 +75,7 @@ export class AppointmentsController {
   async calendar(
     @Query("from") from: string | undefined,
     @Query("to") to: string | undefined,
+    @Query("offset") offsetRaw: string | undefined,
     @Req() req: any
   ) {
     if (!from || !to || !/^\\d{4}-\\d{2}-\\d{2}T/.test(from) || !/^\\d{4}-\\d{2}-\\d{2}T/.test(to)) {
@@ -86,8 +87,12 @@ export class AppointmentsController {
         end <= start || end.getTime() - start.getTime() > 32 * 86400000) {
       throw new BadRequestException("Invalid calendar range (maximum 32 days)");
     }
+    if (offsetRaw !== undefined && !/^(0|[1-9]\\d{0,6})$/.test(offsetRaw)) {
+      throw new BadRequestException("offset must be an integer between 0 and 9999999");
+    }
+    const offset = offsetRaw === undefined ? 0 : Number(offsetRaw);
     return this.appointmentsService.listCalendar(this.facilityId(req), start, end,
-      req.user?.userId, req.ip, req.headers["user-agent"]);
+      req.user?.userId, req.ip, req.headers["user-agent"], offset);
   }
 
   @Post("appointments/:id/arrive")
