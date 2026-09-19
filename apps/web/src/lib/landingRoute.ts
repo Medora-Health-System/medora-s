@@ -154,6 +154,7 @@ const APP_ROUTE_RULES: RouteRule[] = [
   { prefix: "/app/lab-worklist", roles: ["ADMIN", "LAB", "RN", "PROVIDER"] },
   { prefix: "/app/rad-worklist", roles: ["ADMIN", "RADIOLOGY"] },
   { prefix: "/app/registration", roles: ["ADMIN", "FRONT_DESK"] },
+  { prefix: "/app/appointments", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
   { prefix: "/app/follow-ups", roles: ["ADMIN", "PROVIDER", "RN", "FRONT_DESK"] },
   /** Dossier patient, face sheet, assurance primaire — accès accueil pour parcours inscription. */
   {
