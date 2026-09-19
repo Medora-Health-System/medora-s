@@ -106,6 +106,14 @@ export class FacilityConfigurationService {
     return snapshot.settings;
   }
 
+  async effectiveSettingsForFacility(facilityId: string): Promise<FacilityConfigurationSettings> {
+    const snapshot = await this.loadOrCreate(facilityId);
+    return projectEffectiveFacilityConfiguration({
+      country: snapshot.facility.country,
+      facilitySettings: snapshot.settings,
+    });
+  }
+
   /**
    * Phase 3 — server-side effective capability authority.
    * Facility.country is read from the authoritative Facility row; callers never
