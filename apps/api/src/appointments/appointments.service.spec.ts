@@ -83,15 +83,15 @@ describe("AppointmentsService facility-scoped provider search", () => {
     });
     const beforeMidnight = new Date("2026-10-06T04:30:00.000Z");
     const afterMidnight = new Date("2026-10-06T05:30:00.000Z");
-    const appointmentFindMany = jest.fn()
-      .mockResolvedValueOnce([
-        { scheduledStartAt: beforeMidnight },
-        { scheduledStartAt: afterMidnight },
-      ])
-      .mockResolvedValueOnce([]);
+    const appointmentFindMany = jest.fn().mockResolvedValue([]);
+    const appointmentGroupBy = jest.fn().mockResolvedValue([
+      { scheduledStartAt: beforeMidnight, _count: { _all: 1 } },
+      { scheduledStartAt: afterMidnight, _count: { _all: 1 } },
+    ]);
     Object.assign(prisma, {
       appointment: {
         findMany: appointmentFindMany,
+        groupBy: appointmentGroupBy,
         count: jest.fn().mockResolvedValue(502),
       },
     });
@@ -104,7 +104,11 @@ describe("AppointmentsService facility-scoped provider search", () => {
     expect(result.total).toBe(502);
     expect(result.hasMore).toBe(true);
     expect(result.nextOffset).toBe(500);
-    expect(appointmentFindMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+    expect(appointmentGroupBy).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ facilityId }),
+      by: ["scheduledStartAt"],
+    }));
+    expect(appointmentFindMany).toHaveBeenCalledWith(expect.objectContaining({
       skip: 500, take: 500,
       where: expect.objectContaining({ facilityId }),
     }));
