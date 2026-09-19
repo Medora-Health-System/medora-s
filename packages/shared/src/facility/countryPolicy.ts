@@ -214,3 +214,103 @@ export function resolveEffectiveCarePlansCapability(input: {
       : "Care Plans are unavailable because the effective Hospital capability is disabled.",
   };
 }
+
+
+/**
+ * Phase 4 — effective runtime projection.
+ *
+ * The stored FacilityConfiguration remains untouched. This projection is safe
+ * to return to staff/browser runtime consumers because it can only narrow
+ * country/facility capabilities and their dependent child surfaces.
+ */
+export function projectEffectiveFacilityConfiguration(input: {
+  country: string | null | undefined;
+  facilitySettings: FacilityConfigurationSettings;
+}): FacilityConfigurationSettings {
+  const next = applyCountryPolicyToFacilityConfiguration(input.country, input.facilitySettings);
+
+  if (!next.modules.laboratory.enabled) {
+    next.laboratory.enabled = false;
+    next.laboratory.patientResults = false;
+    next.patientPortal.labResults = false;
+    next.integrations.laboratory.enabled = false;
+  }
+  if (!next.modules.radiology.enabled) {
+    next.radiology.enabled = false;
+    next.radiology.patientResults = false;
+    next.patientPortal.radiology = false;
+    next.integrations.radiology.enabled = false;
+    next.integrations.pacs.enabled = false;
+  }
+  if (!next.modules.pharmacy.enabled) {
+    next.pharmacy.enabled = false;
+    next.pharmacy.patientMedicationList = false;
+    next.patientPortal.medications = false;
+    next.digitalCare.medicationSharing = false;
+    next.medication.shareHomeMedications = false;
+    next.integrations.pharmacy.enabled = false;
+  }
+  if (!next.modules.billing.enabled) {
+    next.billing.enabled = false;
+    next.billing.patientInvoices = false;
+    next.billing.insuranceClaims = false;
+    next.patientPortal.invoices = false;
+  }
+  if (!next.modules.patientPortal.enabled) {
+    next.patientPortal.enabled = false;
+    next.patientPortal.registration = false;
+    next.patientPortal.appointments = false;
+    next.patientPortal.visits = false;
+    next.patientPortal.documents = false;
+    next.patientPortal.messages = false;
+    next.patientPortal.invoices = false;
+    next.patientPortal.medications = false;
+    next.patientPortal.labResults = false;
+    next.patientPortal.radiology = false;
+    next.patientPortal.carePlans = false;
+    next.patientPortal.telehealth = false;
+    next.patientPortal.notifications = false;
+    next.patientPortal.portalHome = false;
+  }
+  if (!next.modules.digitalCare.enabled) {
+    next.digitalCare.secureMessaging = false;
+    next.digitalCare.resultRelease = false;
+    next.digitalCare.autoRelease = false;
+    next.digitalCare.manualRelease = false;
+    next.digitalCare.carePlans = false;
+    next.digitalCare.education = false;
+    next.digitalCare.medicationSharing = false;
+    next.digitalCare.dischargeSharing = false;
+    next.digitalCare.questionnaires = false;
+    next.digitalCare.remoteMonitoring = false;
+    next.digitalCare.videoVisits = false;
+    next.digitalCare.providerChat = false;
+    next.digitalCare.patientChat = false;
+    next.digitalCare.readReceipts = false;
+    next.digitalCare.attachments = false;
+    next.digitalCare.pushNotifications = false;
+    next.digitalCare.emailNotifications = false;
+    next.digitalCare.smsNotifications = false;
+    next.messaging.enabled = false;
+    next.messaging.staffToPatient = false;
+    next.messaging.patientToStaff = false;
+    next.messaging.attachments = false;
+    next.messaging.readReceipts = false;
+  }
+  if (!next.modules.telemedicine.enabled) {
+    next.telehealth.enabled = false;
+    next.telehealth.videoVisits = false;
+    next.telehealth.waitingRoom = false;
+    next.patientPortal.telehealth = false;
+  }
+  if (!next.modules.ai.enabled) {
+    next.ai.notes = false;
+    next.ai.coding = false;
+    next.ai.summaries = false;
+    next.ai.discharge = false;
+    next.ai.suggestions = false;
+    next.ai.ambientScribe = false;
+  }
+
+  return next;
+}

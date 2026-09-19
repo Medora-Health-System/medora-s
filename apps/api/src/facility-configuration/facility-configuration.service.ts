@@ -16,6 +16,7 @@ import {
   parseFacilityConfigurationSettings,
   parseStoredFacilityServiceLines,
   projectFacilityRuntimeConfiguration,
+  projectEffectiveFacilityConfiguration,
   resolveFacilityOptionalModules,
   resolveEffectiveCarePlansCapability,
   resolveEffectiveFacilityModuleCapability,
@@ -96,8 +97,21 @@ export class FacilityConfigurationService {
     const cached = this.cache.get(facilityId);
     if (cached) return cached.settings;
     const snapshot = await this.loadOrCreate(facilityId);
-    this.cache.put(facilityId, snapshot.row.revision, snapshot.settings);
+    this.cache.put(
+      facilityId,
+      snapshot.row.revision,
+      snapshot.settings,
+      projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: snapshot.settings }),
+    );
     return snapshot.settings;
+  }
+
+  async effectiveSettingsForFacility(facilityId: string): Promise<FacilityConfigurationSettings> {
+    const snapshot = await this.loadOrCreate(facilityId);
+    return projectEffectiveFacilityConfiguration({
+      country: snapshot.facility.country,
+      facilitySettings: snapshot.settings,
+    });
   }
 
   /**
@@ -148,7 +162,12 @@ export class FacilityConfigurationService {
     }
     try {
       const snapshot = await this.loadOrCreate(facilityId);
-      const entry = this.cache.put(facilityId, snapshot.row.revision, snapshot.settings);
+      const entry = this.cache.put(
+      facilityId,
+      snapshot.row.revision,
+      snapshot.settings,
+      projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: snapshot.settings }),
+    );
       log.log("facility_configuration_load", { facilityId, revision: snapshot.row.revision, durationMs: Date.now() - started, source: "db" });
       return entry.runtime;
     } catch (err) {
@@ -164,7 +183,12 @@ export class FacilityConfigurationService {
   async getForAdmin(actor: Actor) {
     await this.assertCanConfigure(actor.userId, actor.facilityId);
     const snapshot = await this.loadOrCreate(actor.facilityId);
-    this.cache.put(actor.facilityId, snapshot.row.revision, snapshot.settings);
+    this.cache.put(
+      actor.facilityId,
+      snapshot.row.revision,
+      snapshot.settings,
+      projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: snapshot.settings }),
+    );
     const [revisions, updatedBy] = await Promise.all([
       this.prisma.facilityConfigurationRevision.findMany({
         where: { facilityId: actor.facilityId },
@@ -397,7 +421,12 @@ export class FacilityConfigurationService {
     }
 
     this.cache.invalidate(actor.facilityId);
-    this.cache.put(actor.facilityId, nextRevision, nextSettings);
+    this.cache.put(
+      actor.facilityId,
+      nextRevision,
+      nextSettings,
+      projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: nextSettings }),
+    );
     this.events.emitUpdated({ facilityId: actor.facilityId, revision: nextRevision });
     log.log("facility_configuration_save", {
       facilityId: actor.facilityId,
@@ -409,7 +438,7 @@ export class FacilityConfigurationService {
   }
 
   async assertStaffDigitalCare(facilityId: string) {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (!settings.modules.digitalCare.enabled || settings.modules.digitalCare.hidden) {
       throw new ForbiddenException("Soins numériques désactivés pour cet établissement.");
     }
@@ -417,7 +446,7 @@ export class FacilityConfigurationService {
   }
 
   async assertMessaging(facilityId: string, party: "STAFF" | "PATIENT") {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (
       !settings.modules.digitalCare.enabled ||
       settings.modules.digitalCare.hidden ||
@@ -473,7 +502,7 @@ export class FacilityConfigurationService {
   }
 
   async ensureAutoReleasesForFacility(facilityId: string, actorUserId?: string) {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (!settings.digitalCare.autoRelease || settings.resultRelease.mode !== "AUTO") return 0;
     const orders = await this.prisma.order.findMany({
       where: { facilityId, cancelledAt: null },
@@ -567,7 +596,11 @@ export class FacilityConfigurationService {
           }
         : null,
       settings: snapshot.settings,
-      runtime: projectFacilityRuntimeConfiguration(actor.facilityId, snapshot.settings, snapshot.row.revision),
+      runtime: projectFacilityRuntimeConfiguration(
+        actor.facilityId,
+        projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: snapshot.settings }),
+        snapshot.row.revision,
+      ),
       history: revisions.map((row) => ({
         id: row.id,
         revision: row.revision,

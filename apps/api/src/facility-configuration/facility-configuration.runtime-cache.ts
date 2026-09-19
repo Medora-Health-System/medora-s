@@ -30,12 +30,17 @@ export class FacilityConfigurationRuntimeCache {
     return this.lastValid.get(facilityId) ?? this.hot.get(facilityId);
   }
 
-  put(facilityId: string, revision: number, settings: FacilityConfigurationSettings): FacilityConfigurationCacheEntry {
+  put(
+    facilityId: string,
+    revision: number,
+    settings: FacilityConfigurationSettings,
+    runtimeSettings: FacilityConfigurationSettings = settings,
+  ): FacilityConfigurationCacheEntry {
     const entry: FacilityConfigurationCacheEntry = {
       facilityId,
       revision,
       settings,
-      runtime: projectFacilityRuntimeConfiguration(facilityId, settings, revision),
+      runtime: projectFacilityRuntimeConfiguration(facilityId, runtimeSettings, revision),
       loadedAt: Date.now(),
     };
     this.hot.set(facilityId, entry);
