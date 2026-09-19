@@ -18,6 +18,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { labRadiologyEffectiveClinicalTimeDtoSchema } from "@medora/shared";
 import { assertZodBody } from "../common/http/zod-parse";
+import { FacilityConfigurationService } from "../facility-configuration/facility-configuration.service";
 
 @Controller("orders")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -26,7 +27,19 @@ export class ResultsController {
     private readonly resultsService: ResultsService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
     private readonly prisma: PrismaService,
+    private readonly facilityConfiguration: FacilityConfigurationService,
   ) {}
+
+
+  private async assertDiagnosticModule(facilityId: string, orderItemId: string) {
+    const item = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { encounter: { facilityId } } },
+      select: { type: true },
+    });
+    if (!item) return;
+    if (item.type === "LAB_TEST") await this.facilityConfiguration.assertModuleEnabled(facilityId, "laboratory");
+    if (item.type === "IMAGING_STUDY") await this.facilityConfiguration.assertModuleEnabled(facilityId, "radiology");
+  }
 
   /** Phase 1 RN-policy gate needs every facility-scoped role to discriminate RN-only from RN+LAB. */
   private async roleCodesForFacility(userId: string | undefined, facilityId: string): Promise<RoleCode[]> {
@@ -56,7 +69,7 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
-    const actorRoles = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const actorRoles = await this.roleCodesForFacility(req.user?.userId, facilityId);
 
     return this.resultsService.updateResult(
       orderItemId,
@@ -76,7 +89,7 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
-    return this.resultsService.acknowledgeResultByClinician(
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.acknowledgeResultByClinician(
       orderItemId,
       facilityId,
       req.user?.userId,
@@ -92,7 +105,7 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
-    return this.resultsService.verifyResultByClinician(
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.verifyResultByClinician(
       orderItemId,
       facilityId,
       req.user?.userId,
@@ -112,7 +125,7 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
-    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setLabResultedEffectiveTime(
       facilityId,
@@ -136,7 +149,7 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
-    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setImagingFinalizedEffectiveTime(
       facilityId,
@@ -161,7 +174,7 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
-    return this.resultsService.setCriticalFlag(
+    await this.assertDiagnosticModule(facilityId, orderItemId);\n    return this.resultsService.setCriticalFlag(
       orderItemId,
       facilityId,
       body.critical,
