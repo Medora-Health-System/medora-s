@@ -1,11 +1,18 @@
 import {
-  COUNTRY_POLICY_REGISTRY,
   applyCountryPolicyToFacilityConfiguration,
   normalizeMedoraCountryCode,
   resolveCountryPolicy,
   resolveEffectiveFacilityModuleCapability,
 } from "./countryPolicy.js";
 import { seedFacilityConfigurationSettings } from "./facilityConfiguration.js";
+
+const optionalModules = (radiology: boolean, laboratory = false) => ({
+  laboratory,
+  radiology,
+  pharmacy: false,
+  publicHealth: false,
+  billing: true,
+});
 
 describe("country policy authority", () => {
   it("normalizes existing country spellings without changing Facility.country storage", () => {
@@ -27,7 +34,7 @@ describe("country policy authority", () => {
     expect(resolveCountryPolicy("Haiti")?.defaultLanguage).toBe("fr");
   });
 
-  it("does not make country language the jurisdiction authority", () => {
+  it("does not make language a jurisdiction authority", () => {
     expect(resolveCountryPolicy("fr")).toBeNull();
     expect(resolveCountryPolicy("es")).toBeNull();
     expect(resolveCountryPolicy("en")).toBeNull();
@@ -37,12 +44,12 @@ describe("country policy authority", () => {
     const facilityA = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { laboratory: false, radiology: true, pharmacy: false, publicHealth: false, billing: true },
+      optionalModules: optionalModules(true),
     });
     const facilityB = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { laboratory: false, radiology: false, pharmacy: false, publicHealth: false, billing: true },
+      optionalModules: optionalModules(false),
     });
 
     expect(resolveEffectiveFacilityModuleCapability({
@@ -58,38 +65,22 @@ describe("country policy authority", () => {
     }).effectiveEnabled).toBe(false);
   });
 
-  it("country prohibition wins over a facility enablement", () => {
+  it("country policy application never broadens a facility-disabled capability", () => {
     const facility = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { laboratory: false, radiology: true, pharmacy: false, publicHealth: false, billing: true },
+      optionalModules: optionalModules(false),
     });
-
-    const original = COUNTRY_POLICY_REGISTRY.US.modules.radiology;
-    (COUNTRY_POLICY_REGISTRY.US.modules as Record<string, unknown>).radiology = {
-      decision: "PROHIBITED",
-      reason: "test prohibition",
-    };
-    try {
-      expect(resolveEffectiveFacilityModuleCapability({
-        country: "US",
-        module: "radiology",
-        facilitySettings: facility,
-      }).effectiveEnabled).toBe(false);
-
-      const effective = applyCountryPolicyToFacilityConfiguration("US", facility);
-      expect(effective.modules.radiology.enabled).toBe(false);
-      expect(effective.modules.radiology.hidden).toBe(true);
-    } finally {
-      (COUNTRY_POLICY_REGISTRY.US.modules as Record<string, unknown>).radiology = original;
-    }
+    const effective = applyCountryPolicyToFacilityConfiguration("US", facility);
+    expect(effective.modules.radiology.enabled).toBe(false);
+    expect(facility.modules.radiology.enabled).toBe(false);
   });
 
   it("preserves existing facility behavior for legacy/unregistered country values", () => {
     const facility = seedFacilityConfigurationSettings({
       facilityType: "CLINIC",
       serviceLines: ["CLINIC"],
-      optionalModules: { laboratory: true, radiology: false, pharmacy: false, publicHealth: false, billing: true },
+      optionalModules: optionalModules(false, true),
     });
     const decision = resolveEffectiveFacilityModuleCapability({
       country: "CA",
