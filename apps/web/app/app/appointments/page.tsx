@@ -7,7 +7,7 @@ import { fetchChartSummary, type ChartSummary } from "@/lib/chartApi";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
-import { facilityMonthBounds } from "@/lib/facilityCalendarBounds";
+import { facilityDayBounds, facilityMonthBounds } from "@/lib/facilityCalendarBounds";
 import { AddAppointmentForm } from "@/features/appointments/AddAppointmentForm";
 
 const colors = ["#0879e8", "#079981", "#f8b51b", "#f53681", "#7838db", "#ff692f"];
@@ -47,6 +47,10 @@ export default function AppointmentsPage() {
   const [chart, setChart] = useState<ChartSummary | null>(null);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartDenied, setChartDenied] = useState(false);
+  const [hoverDay, setHoverDay] = useState<string | null>(null);
+  const [hoverRows, setHoverRows] = useState<CalendarAppointment[]>([]);
+  const [hoverTotal, setHoverTotal] = useState(0);
+  const [hoverLoading, setHoverLoading] = useState(false);
   const canOpenChart = focused ? isAppPathAllowedForRoles(`/app/patients/${focused.patientId}`, roles) : false;
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
@@ -64,6 +68,20 @@ export default function AppointmentsPage() {
     finally { setLoading(false); }
   }, [facilityId, canView, month, facilityTimeZone]);
   useEffect(() => { void load(); }, [load]);
+  const loadHoverRoster = useCallback(async (date: Date) => {
+    if (!facilityId || !facilityTimeZone || !canView) return;
+    const key = isoDay(date);
+    setHoverDay(key); setHoverRows([]); setHoverTotal(0); setHoverLoading(true);
+    try {
+      const { from, to } = facilityDayBounds(date, facilityTimeZone);
+      const result = await fetchAppointmentCalendar(facilityId, from, to, 0);
+      setHoverRows(result.items.slice(0, 8));
+      setHoverTotal(result.total);
+      setZone(result.timezone);
+    } catch {
+      setHoverRows([]); setHoverTotal(0);
+    } finally { setHoverLoading(false); }
+  }, [facilityId, facilityTimeZone, canView]);
   useEffect(() => {
     let active = true;
     setChart(null); setChartDenied(false);
@@ -117,7 +135,7 @@ export default function AppointmentsPage() {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 12 }}>
       <section style={panel}><h2 style={{ marginTop: 0 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>{displayedDays.slice(0, 7).map((d) => <div key={isoDay(d)} style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>{d.toLocaleDateString(locale, { weekday: "short" })}</div>)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${view === "day" ? 1 : 7}, minmax(0, 1fr))` }}>{displayedDays.map((d) => { const key = isoDay(d), count = counts[key] ?? 0, current = d.getMonth() === month.getMonth(); return <button key={key} type="button" onClick={() => { setSelected(key); if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setFocused(null); }} aria-pressed={selected === key} style={{ minHeight: 66, border: "1px solid #e0e9f6", background: selected === key ? "#e8f3ff" : "#fff", color: current ? "#142846" : "#a1aec2", cursor: "pointer" }}><span style={{ display: "inline-block", background: selected === key ? "#0879e8" : "transparent", color: selected === key ? "#fff" : "inherit", borderRadius: 30, padding: "5px 9px" }}>{d.getDate()}</span><br/>{count > 0 && <small title={`${count} appointments`} style={{ color: colors[d.getDate() % colors.length] }}>● {count}</small>}</button>; })}</div>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${view === "day" ? 1 : 7}, minmax(0, 1fr))` }}>{displayedDays.map((d) => { const key = isoDay(d), count = counts[key] ?? 0, current = d.getMonth() === month.getMonth(); return <button key={key} type="button" onMouseEnter={() => { if (count > 0) void loadHoverRoster(d); }} onFocus={() => { if (count > 0) void loadHoverRoster(d); }} onMouseLeave={() => setHoverDay((value) => value === key ? null : value)} onBlur={() => setHoverDay((value) => value === key ? null : value)} onClick={() => { setSelected(key); if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setFocused(null); }} aria-pressed={selected === key} style={{ position: "relative", minHeight: 66, border: "1px solid #e0e9f6", background: selected === key ? "#e8f3ff" : "#fff", color: current ? "#142846" : "#a1aec2", cursor: "pointer" }}><span style={{ display: "inline-block", background: selected === key ? "#0879e8" : "transparent", color: selected === key ? "#fff" : "inherit", borderRadius: 30, padding: "5px 9px" }}>{d.getDate()}</span><br/>{count > 0 && <small style={{ color: colors[d.getDate() % colors.length] }}>● {count}</small>}{hoverDay === key && count > 0 && <div role="tooltip" style={{ position: "absolute", zIndex: 20, left: "50%", top: "62px", transform: "translateX(-50%)", width: 250, background: "#10233f", color: "#fff", borderRadius: 8, padding: 10, boxShadow: "0 8px 24px #0003", textAlign: "left", pointerEvents: "none" }}><strong>{displayDate(key)}</strong>{hoverLoading ? <div style={{ marginTop: 6 }}>{s.loading}</div> : <><div style={{ margin: "4px 0 6px", opacity: .85 }}>{hoverTotal} {s.title.toLowerCase()}</div>{hoverRows.map((row) => <div key={row.id} style={{ padding: "4px 0", borderTop: "1px solid #ffffff24" }}>{time(row.scheduledStartAt)} · {row.patientName ?? "—"}{row.providerName ? ` · ${row.providerName}` : ""}</div>)}{hoverTotal > hoverRows.length && <div style={{ marginTop: 5, opacity: .8 }}>+{hoverTotal - hoverRows.length} more</div>}</>}</div>}</button>; })}</div>
         <p style={{ fontSize: 12, color: "#62738f" }}>{loading ? s.loading : `${total} ${s.title.toLowerCase()}`}</p>
       </section>
       <section style={panel}><h2 style={{ marginTop: 0, fontSize: 20 }}>{s.selected} <span style={{ color: "#1241a1" }}>{displayDate(selected)}</span> <small style={{ fontSize: 12, color: "#0879e8" }}>({counts[selected] ?? 0})</small></h2>
