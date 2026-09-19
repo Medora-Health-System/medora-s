@@ -24,7 +24,7 @@ export default function AppointmentsPage() {
   const { facilityId, ready, roles, facilityTimeZone } = useFacilityAndRoles();
   const { language } = useI18n();
   // The authenticated app shell bridges the registered active-facility language into useI18n.\n  // Never offer a page-local language switch or read a staff browser preference here.\n  const locale = language === "es" ? "es" : language === "fr" ? "fr" : "en";
-  const s = strings[locale];
+  const s = strings[locale as keyof typeof strings];
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState(() => isoDay(new Date()));
   const [items, setItems] = useState<CalendarAppointment[]>([]);
