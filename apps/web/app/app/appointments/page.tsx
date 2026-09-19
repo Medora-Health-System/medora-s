@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchChartSummary, type ChartSummary } from "@/lib/chartApi";
@@ -37,11 +37,14 @@ export default function AppointmentsPage() {
   const s = strings[locale as keyof typeof strings];
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState(() => isoDay(new Date()));
-  const [items, setItems] = useState<CalendarAppointment[]>([]);
+  const [dayRows, setDayRows] = useState<CalendarAppointment[]>([]);
+  const [dayNext, setDayNext] = useState<number | null>(null);
+  const [dayLoading, setDayLoading] = useState(false);
+  const [dayError, setDayError] = useState(false);
+  const dayRequest = useRef(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [zone, setZone] = useState("UTC");
   const [total, setTotal] = useState(0);
-  const [next, setNext] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
@@ -83,13 +86,35 @@ export default function AppointmentsPage() {
         }
       }
       const result = await fetchAppointmentCalendar(facilityId, bounds.from, bounds.to, offset);
-      setItems((previous) => offset ? [...previous, ...result.items] : result.items);
       setCounts(result.dailyCounts); setZone(result.timezone);
       setTotal(result.total);
-      setNext(result.hasMore && result.nextOffset !== null && result.nextOffset > offset ? result.nextOffset : null);
-    } catch { setError(true); if (!offset) { setItems([]); setCounts({}); setNext(null); } }
+    } catch { setError(true); if (!offset) { setCounts({}); } }
     finally { setLoading(false); }
   }, [facilityId, canView, month, selected, view, facilityTimeZone]);
+  // The selected-day roster has its own facility-local query and pagination.
+  // Monthly/weekly totals never stand in for the complete daily appointment list.
+  const loadDay = useCallback(async (offset = 0) => {
+    if (!facilityId || !canView || !facilityTimeZone) return;
+    const request = ++dayRequest.current;
+    setDayLoading(true);
+    setDayError(false);
+    if (offset === 0) { setDayRows([]); setDayNext(null); }
+    try {
+      const { from, to } = facilityDayBounds(calendarDate(selected), facilityTimeZone);
+      const result = await fetchAppointmentCalendar(facilityId, from, to, offset);
+      if (request !== dayRequest.current) return;
+      setDayRows((previous) => offset ? [...previous, ...result.items] : result.items);
+      setDayNext(result.hasMore && result.nextOffset !== null && result.nextOffset > offset ? result.nextOffset : null);
+    } catch {
+      if (request === dayRequest.current) setDayError(true);
+    } finally {
+      if (request === dayRequest.current) setDayLoading(false);
+    }
+  }, [facilityId, canView, facilityTimeZone, selected]);
+  useEffect(() => {
+    void loadDay();
+    return () => { dayRequest.current += 1; };
+  }, [loadDay]);
   // Re-anchor on the registered facility's local date when its timezone changes.
   // The initial browser-local placeholder is never used after the facility resolves.
   useEffect(() => {
@@ -142,7 +167,7 @@ export default function AppointmentsPage() {
       date.setDate(weekStart.getDate() + index);
       return date;
     });
-  const dayItems = items.filter((item) => dayInZone(item.scheduledStartAt, zone) === selected);
+  const dayItems = dayRows;
   const providers = [...new Set(dayItems.map((item) => item.providerName).filter((name): name is string => Boolean(name)))];
   const visible = dayItems.filter((item) => (!provider || item.providerName === provider) && `${item.patientName ?? ""} ${item.reason ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const statusLabel = (value: string) => {
@@ -170,7 +195,7 @@ export default function AppointmentsPage() {
         ...(action === "check-in" ? { body: JSON.stringify({ encounterType: "OUTPATIENT" }) } : {}),
       }) as CalendarAppointment;
       setFocused((previous) => previous?.id === focused.id ? { ...previous, status: result.status, encounterId: result.encounterId } : previous);
-      await load();
+      await Promise.all([load(), loadDay()]);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : s.actionFailed);
     } finally { setActionBusy(false); }
@@ -184,7 +209,7 @@ export default function AppointmentsPage() {
   if (!ready || !facilityTimeZone) return <p>{s.loading}</p>;
   if (!canView) return <p role="alert">{s.unavailable}</p>;
   return <main style={{ color: "#172b4d", padding: 6 }}>
-    {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} facilityTimeZone={facilityTimeZone} onClose={() => setAdding(false)} onCreated={() => void load()} />}
+    {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} facilityTimeZone={facilityTimeZone} onClose={() => setAdding(false)} onCreated={() => { void load(); void loadDay(); }} />}
     <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
       <div><h1 style={{ margin: 0, fontSize: 30 }}>🗓️ {s.title}</h1><p style={{ color: "#62738f", margin: "5px 0" }}>{s.subtitle}</p></div>
       <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} onClick={() => setAdding(true)} disabled={!roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER"].includes(role))}>{"+ " + s.add}</button>
@@ -203,8 +228,10 @@ export default function AppointmentsPage() {
       <section style={panel}><h2 style={{ marginTop: 0, fontSize: 20 }}>{s.selected} <span style={{ color: "#1241a1" }}>{displayDate(selected)}</span> <small style={{ fontSize: 12, color: "#0879e8" }}>({counts[selected] ?? 0})</small></h2>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}><input aria-label={s.search} placeholder={s.search} value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...control, flex: 1, minWidth: 0 }}/><select aria-label={s.all} value={provider} onChange={(e) => setProvider(e.target.value)} style={control}><option value="">{s.all}</option>{providers.map((name) => <option key={name}>{name}</option>)}</select></div>
         <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}><thead><tr>{[s.time, s.patient, s.reason, s.provider, s.status, s.actions].map((h) => <th key={h} style={{ textAlign: "left", padding: 9, background: "#f2f6fd" }}>{h}</th>)}</tr></thead><tbody>{visible.map((item) => <tr key={item.id} style={{ borderBottom: "1px solid #e4eaf4", background: focused?.id === item.id ? "#e8f3ff" : "#fff" }}><td style={{ padding: 9, whiteSpace: "nowrap" }}>{time(item.scheduledStartAt)}</td><td style={{ padding: 9 }}>{item.patientName ?? "—"}</td><td style={{ padding: 9 }}>{item.reason ?? "—"}</td><td style={{ padding: 9 }}>{item.providerName ?? s.unassigned}</td><td style={{ padding: 9 }}>{statusLabel(item.status)}</td><td style={{ padding: 9 }}><button style={control} onClick={() => setFocused(item)} aria-label={s.details}>•••</button></td></tr>)}</tbody></table></div>
-        {!visible.length && !loading && <p>{s.empty}</p>}
-        {next !== null && <button style={{ ...control, marginTop: 12 }} disabled={loading} onClick={() => void load(next)}>{s.more}</button>}
+        {dayError && <p role="alert" style={{ color: "#b91c1c" }}>{s.failed} <button type="button" onClick={() => void loadDay(dayNext ?? 0)}>{s.retry}</button></p>}
+        {!visible.length && !dayLoading && !dayError && <p>{s.empty}</p>}
+        {dayLoading && <p>{s.loading}</p>}
+        {dayNext !== null && <button type="button" style={{ ...control, marginTop: 12 }} disabled={dayLoading} onClick={() => void loadDay(dayNext)}>{s.more}</button>}
       </section>
     </div>
     {focused && <section style={{ ...panel, marginTop: 16 }}>
