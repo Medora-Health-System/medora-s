@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
@@ -41,6 +43,7 @@ export default function AppointmentsPage() {
   const [provider, setProvider] = useState("");
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
   const [adding, setAdding] = useState(false);
+  const canOpenChart = focused ? isAppPathAllowedForRoles(`/app/patients/${focused.patientId}`, roles) : false;
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
   const load = useCallback(async (offset = 0) => {
@@ -109,6 +112,6 @@ export default function AppointmentsPage() {
         {next !== null && <button style={{ ...control, marginTop: 12 }} disabled={loading} onClick={() => void load(next)}>{s.more}</button>}
       </section>
     </div>
-    {focused && <section style={{ ...panel, marginTop: 16 }}><h2>{focused.patientName ?? s.patient}</h2><p>{s.details}: {displayDate(dayInZone(focused.scheduledStartAt, zone))} · {time(focused.scheduledStartAt)} · {focused.reason ?? "—"} · {focused.providerName ?? "—"} · {focused.status}</p><p>{s.visits}: {s.unavailable}</p></section>}
+    {focused && <section style={{ ...panel, marginTop: 16 }}><h2>{focused.patientName ?? s.patient}</h2><p>{s.details}: {displayDate(dayInZone(focused.scheduledStartAt, zone))} · {time(focused.scheduledStartAt)} · {focused.reason ?? "—"} · {focused.providerName ?? "—"} · {focused.status}</p>{canOpenChart && <Link href={`/app/patients/${focused.patientId}`}>{s.visits} · {s.patient}</Link>}</section>}
   </main>;
 }
