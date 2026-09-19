@@ -273,6 +273,43 @@ export class AppointmentsService {
     return rows.map(toAppointmentDto);
   }
 
+  /** Read-only calendar projection; caller must supply facility-local bounds as UTC instants. */
+  async listCalendar(
+    facilityId: string,
+    from: Date,
+    to: Date,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    await this.assertClinicCareEnabled(facilityId);
+    const where = {
+      facilityId,
+      scheduledStartAt: { gte: from, lt: to },
+      status: { not: AppointmentStatus.CANCELLED },
+    };
+    const [total, rows] = await Promise.all([
+      this.prisma.appointment.count({ where }),
+      this.prisma.appointment.findMany({
+        where,
+        select: APPOINTMENT_SELECT,
+        orderBy: [{ scheduledStartAt: "asc" }, { id: "asc" }],
+        take: 501,
+      }),
+    ]);
+    await this.audit.log(AuditAction.VIEW, "APPOINTMENT", {
+      userId, facilityId, ip, userAgent,
+      metadata: { calendar: true, from: from.toISOString(), to: to.toISOString(), total },
+    });
+    return {
+      items: rows.slice(0, 500).map(toAppointmentDto),
+      total,
+      hasMore: total > 500,
+      from: from.toISOString(),
+      to: to.toISOString(),
+    };
+  }
+
   async markArrived(
     appointmentId: string,
     facilityId: string,
