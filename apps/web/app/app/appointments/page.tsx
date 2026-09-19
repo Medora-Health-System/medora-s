@@ -41,6 +41,7 @@ export default function AppointmentsPage() {
   const [provider, setProvider] = useState("");
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
   const [adding, setAdding] = useState(false);
+  const [view, setView] = useState<"month" | "week" | "day">("month");
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
   const load = useCallback(async (offset = 0) => {
     if (!facilityId || !canView || !facilityTimeZone) return;
@@ -62,12 +63,26 @@ export default function AppointmentsPage() {
     return Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month.getFullYear(), month.getMonth()]);
+  const selectedDate = new Date(selected + "T12:00:00");
+  const weekStart = new Date(selectedDate);
+  weekStart.setDate(selectedDate.getDate() - selectedDate.getDay());
+  const displayedDays = view === "month" ? days : view === "day" ? [selectedDate] :
+    Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + index);
+      return date;
+    });
   const dayItems = items.filter((item) => dayInZone(item.scheduledStartAt, zone) === selected);
   const providers = [...new Set(dayItems.map((item) => item.providerName).filter((name): name is string => Boolean(name)))];
   const visible = dayItems.filter((item) => (!provider || item.providerName === provider) && `${item.patientName ?? ""} ${item.reason ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const displayDate = (value: string) => new Date(value + "T12:00:00").toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const time = (value: string) => new Date(value).toLocaleTimeString(locale, { timeZone: zone, hour: "numeric", minute: "2-digit" });
-  const move = (n: number) => { const d = new Date(month.getFullYear(), month.getMonth() + n, 1); setMonth(d); setSelected(isoDay(d)); setFocused(null); };
+  const move = (n: number) => {
+    const d = view === "month" ? new Date(month.getFullYear(), month.getMonth() + n, 1) : new Date(selected + "T12:00:00");
+    if (view !== "month") d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
+    setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    setSelected(isoDay(d)); setFocused(null);
+  };
   if (!ready || !facilityTimeZone) return <p>{s.loading}</p>;
   if (!canView) return <p role="alert">{s.unavailable}</p>;
   return <main style={{ color: "#172b4d", padding: 6 }}>
@@ -78,13 +93,13 @@ export default function AppointmentsPage() {
     </header>
     <nav aria-label={s.title} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
       <div style={{ display: "flex", gap: 6 }}>{[s.title, "Today's Visits", "Nursing / MA", "Billing", "Laboratory"].map((tab, i) => <span key={tab} style={{ ...control, background: i === 0 ? "#e7f2ff" : "#fff" }}>{tab}</span>)}</div>
-      <div style={{ display: "flex", gap: 8 }}><button style={control} onClick={() => { const d = new Date(); setMonth(d); setSelected(isoDay(d)); }}>{s.today}</button><button style={control} onClick={() => move(-1)} aria-label="Previous month">‹</button><strong style={{ padding: 9 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</strong><button style={control} onClick={() => move(1)} aria-label="Next month">›</button><span style={{ ...control, background: "#e7f2ff" }}>{s.month}</span><span style={{ ...control, opacity: .5 }} title={s.unavailable}>{s.week}</span><span style={{ ...control, opacity: .5 }} title={s.unavailable}>{s.day}</span></div>
+      <div style={{ display: "flex", gap: 8 }}><button style={control} onClick={() => { const d = new Date(); setMonth(d); setSelected(isoDay(d)); }}>{s.today}</button><button style={control} onClick={() => move(-1)} aria-label="Previous month">‹</button><strong style={{ padding: 9 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</strong><button style={control} onClick={() => move(1)} aria-label="Next month">›</button>{(["month", "week", "day"] as const).map((mode) => <button key={mode} type="button" aria-pressed={view === mode} onClick={() => setView(mode)} style={{ ...control, background: view === mode ? "#e7f2ff" : "#fff" }}>{s[mode]}</button>)}</div>
     </nav>
     {error && <p role="alert" style={{ color: "#b91c1c" }}>{s.failed} <button onClick={() => void load()}>{s.retry}</button></p>}
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 12 }}>
       <section style={panel}><h2 style={{ marginTop: 0 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>{days.slice(0, 7).map((d) => <div key={isoDay(d)} style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>{d.toLocaleDateString(locale, { weekday: "short" })}</div>)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>{days.map((d) => { const key = isoDay(d), count = counts[key] ?? 0, current = d.getMonth() === month.getMonth(); return <button key={key} type="button" onClick={() => { setSelected(key); setFocused(null); }} aria-pressed={selected === key} style={{ minHeight: 66, border: "1px solid #e0e9f6", background: selected === key ? "#e8f3ff" : "#fff", color: current ? "#142846" : "#a1aec2", cursor: "pointer" }}><span style={{ display: "inline-block", background: selected === key ? "#0879e8" : "transparent", color: selected === key ? "#fff" : "inherit", borderRadius: 30, padding: "5px 9px" }}>{d.getDate()}</span><br/>{current && count > 0 && <small title={`${count} appointments`} style={{ color: colors[d.getDate() % colors.length] }}>● {count}</small>}</button>; })}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>{displayedDays.slice(0, 7).map((d) => <div key={isoDay(d)} style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>{d.toLocaleDateString(locale, { weekday: "short" })}</div>)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${view === "day" ? 1 : 7}, minmax(0, 1fr))` }}>{displayedDays.map((d) => { const key = isoDay(d), count = counts[key] ?? 0, current = d.getMonth() === month.getMonth(); return <button key={key} type="button" onClick={() => { setSelected(key); if (d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear()) setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setFocused(null); }} aria-pressed={selected === key} style={{ minHeight: 66, border: "1px solid #e0e9f6", background: selected === key ? "#e8f3ff" : "#fff", color: current ? "#142846" : "#a1aec2", cursor: "pointer" }}><span style={{ display: "inline-block", background: selected === key ? "#0879e8" : "transparent", color: selected === key ? "#fff" : "inherit", borderRadius: 30, padding: "5px 9px" }}>{d.getDate()}</span><br/>{count > 0 && <small title={`${count} appointments`} style={{ color: colors[d.getDate() % colors.length] }}>● {count}</small>}</button>; })}</div>
         <p style={{ fontSize: 12, color: "#62738f" }}>{loading ? s.loading : `${total} ${s.title.toLowerCase()}`}</p>
       </section>
       <section style={panel}><h2 style={{ marginTop: 0, fontSize: 20 }}>{s.selected} <span style={{ color: "#1241a1" }}>{displayDate(selected)}</span> <small style={{ fontSize: 12, color: "#0879e8" }}>({counts[selected] ?? 0})</small></h2>
