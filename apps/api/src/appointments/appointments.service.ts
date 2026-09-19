@@ -363,6 +363,34 @@ export class AppointmentsService {
     };
   }
 
+  async searchProviders(facilityId: string, query: string) {
+    await this.assertClinicCareEnabled(facilityId);
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        userRoles: {
+          some: {
+            facilityId,
+            isActive: true,
+            facility: { isActive: true },
+            role: { code: "PROVIDER" },
+          },
+        },
+        OR: [
+          { firstName: { contains: query, mode: "insensitive" } },
+          { lastName: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 20,
+    });
+    return users.map((user) => ({
+      id: user.id,
+      displayName: `${user.firstName} ${user.lastName}`.trim(),
+    }));
+  }
+
   async markArrived(
     appointmentId: string,
     facilityId: string,
