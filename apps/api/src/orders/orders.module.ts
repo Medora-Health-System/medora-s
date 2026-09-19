@@ -12,9 +12,10 @@ import { MedicationAdministrationModule } from "../medication-administration/med
 import { PharmacyVerificationService } from "../medication-safety/pharmacy-verification.service";
 import { OrdersContinuousFluidService } from "./orders-continuous-fluid.service";
 import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 
 @Module({
-  imports: [PrismaModule, MedicationAdministrationModule],
+  imports: [PrismaModule, MedicationAdministrationModule, FacilityConfigurationModule],
   controllers: [OrdersController, EnterpriseOrderSetAnalyticsController],
   providers: [
     OrdersService,

@@ -3,11 +3,15 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { PharmacyDispenseService } from "./pharmacy-dispense.service";
 import { RoleCode } from "@prisma/client";
+import { FacilityConfigurationService } from "../facility-configuration/facility-configuration.service";
 
 @Controller("pharmacy")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class PharmacyDispenseController {
-  constructor(private readonly pharmacyDispenseService: PharmacyDispenseService) {}
+  constructor(
+    private readonly pharmacyDispenseService: PharmacyDispenseService,
+    private readonly facilityConfiguration: FacilityConfigurationService,
+  ) {}
 
   @Get("patients/:id/summary")
   @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN)
@@ -16,6 +20,7 @@ export class PharmacyDispenseController {
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
+    await this.facilityConfiguration.assertModuleEnabled(facilityId, "pharmacy");
     return this.pharmacyDispenseService.getPatientSummary(id, facilityId);
   }
 
@@ -26,6 +31,7 @@ export class PharmacyDispenseController {
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
+    await this.facilityConfiguration.assertModuleEnabled(facilityId, "pharmacy");
     return this.pharmacyDispenseService.getDispenseContext(id, facilityId);
   }
 }

@@ -106,6 +106,30 @@ describe("RolesGuard facility selection", () => {
     expect(resolveAuthorizedFacilityId(request)).toBe(FACILITY_A);
   });
 
+  it("Phase 5: same-country Facility A membership never authorizes Facility B", async () => {
+    // Country equality is intentionally absent from RolesGuard authority. Both
+    // facilities may be US/DO/HT; only exact facilityId membership matters.
+    const { guard } = buildGuard([{ facilityId: FACILITY_A, role: RoleCode.ADMIN }]);
+    const request = {
+      user: { userId: USER_ID, facilityId: FACILITY_A },
+      headers: { "x-facility-id": FACILITY_B },
+    };
+    await expect(guard.canActivate(context(request))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("Phase 5: explicit membership independently authorizes both facilities without country inheritance", async () => {
+    const { guard } = buildGuard([
+      { facilityId: FACILITY_A, role: RoleCode.ADMIN },
+      { facilityId: FACILITY_B, role: RoleCode.ADMIN },
+    ]);
+    const request = {
+      user: { userId: USER_ID, facilityId: FACILITY_A },
+      headers: { "x-facility-id": FACILITY_B },
+    };
+    await expect(guard.canActivate(context(request))).resolves.toBe(true);
+    expect(resolveAuthorizedFacilityId(request)).toBe(FACILITY_B);
+  });
+
   it("uses the JWT facility when no explicit header exists", async () => {
     const { guard, prisma } = buildGuard([{ facilityId: FACILITY_A, role: RoleCode.ADMIN }]);
     const request = {

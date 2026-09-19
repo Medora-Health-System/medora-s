@@ -18,6 +18,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { labRadiologyEffectiveClinicalTimeDtoSchema } from "@medora/shared";
 import { assertZodBody } from "../common/http/zod-parse";
+import { FacilityConfigurationService } from "../facility-configuration/facility-configuration.service";
 
 @Controller("orders")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -26,7 +27,19 @@ export class ResultsController {
     private readonly resultsService: ResultsService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
     private readonly prisma: PrismaService,
+    private readonly facilityConfiguration: FacilityConfigurationService,
   ) {}
+
+
+  private async assertDiagnosticModule(facilityId: string, orderItemId: string) {
+    const item = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { encounter: { facilityId } } },
+      select: { catalogItemType: true },
+    });
+    if (!item) return;
+    if (item.catalogItemType === "LAB_TEST") await this.facilityConfiguration.assertModuleEnabled(facilityId, "laboratory");
+    if (item.catalogItemType === "IMAGING_STUDY") await this.facilityConfiguration.assertModuleEnabled(facilityId, "radiology");
+  }
 
   /** Phase 1 RN-policy gate needs every facility-scoped role to discriminate RN-only from RN+LAB. */
   private async roleCodesForFacility(userId: string | undefined, facilityId: string): Promise<RoleCode[]> {
@@ -56,6 +69,7 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     const actorRoles = await this.roleCodesForFacility(req.user?.userId, facilityId);
 
     return this.resultsService.updateResult(
@@ -76,6 +90,7 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     return this.resultsService.acknowledgeResultByClinician(
       orderItemId,
       facilityId,
@@ -92,6 +107,7 @@ export class ResultsController {
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     return this.resultsService.verifyResultByClinician(
       orderItemId,
       facilityId,
@@ -112,6 +128,7 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setLabResultedEffectiveTime(
@@ -136,6 +153,7 @@ export class ResultsController {
     if (!facilityId) throw new BadRequestException("Établissement requis");
     const userId = req.user?.userId;
     if (!userId) throw new ForbiddenException("Authentification requise");
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     const dto = assertZodBody(labRadiologyEffectiveClinicalTimeDtoSchema.safeParse(body));
     const codes = await this.roleCodesForFacility(userId, facilityId);
     return this.labRadEffectiveTime.setImagingFinalizedEffectiveTime(
@@ -161,6 +179,7 @@ export class ResultsController {
       throw new BadRequestException("Établissement requis");
     }
 
+    await this.assertDiagnosticModule(facilityId, orderItemId);
     return this.resultsService.setCriticalFlag(
       orderItemId,
       facilityId,
