@@ -302,10 +302,10 @@ export class AppointmentsService {
     };
     // Count the complete range, independently of roster pagination. The client
     // converts these UTC instants to the facility's configured timezone for day cells.
-    const dailyRows = await this.prisma.appointment.findMany({
+    const dailyRows = await this.prisma.appointment.groupBy({
+      by: ["scheduledStartAt"],
       where,
-      select: { scheduledStartAt: true },
-      orderBy: { scheduledStartAt: "asc" },
+      _count: { _all: true },
     });
     const facility = await this.prisma.facility.findFirst({
       where: { id: facilityId },
@@ -319,7 +319,7 @@ export class AppointmentsService {
     for (const appointment of dailyRows) {
       const parts = dayFormatter.formatToParts(appointment.scheduledStartAt);
       const date = ["year", "month", "day"].map((type) => parts.find((part) => part.type === type)?.value).join("-");
-      dailyCounts[date] = (dailyCounts[date] ?? 0) + 1;
+      dailyCounts[date] = (dailyCounts[date] ?? 0) + appointment._count._all;
     }
     const [total, rows] = await Promise.all([
       this.prisma.appointment.count({ where }),
