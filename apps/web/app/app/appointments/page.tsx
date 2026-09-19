@@ -190,7 +190,7 @@ export default function AppointmentsPage() {
       <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} onClick={() => setAdding(true)} disabled={!roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER"].includes(role))}>{"+ " + s.add}</button>
     </header>
     <nav aria-label={s.title} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-      <div style={{ display: "flex", gap: 6 }}>{[s.title, s.todaysVisits, s.nursing, s.billing, s.laboratory].map((tab, i) => <span key={tab} style={{ ...control, background: i === 0 ? "#e7f2ff" : "#fff" }}>{tab}</span>)}</div>
+      <div aria-current="page" style={{ ...control, background: "#e7f2ff", cursor: "default" }}>{s.title}</div>
       <div style={{ display: "flex", gap: 8 }}><button style={control} onClick={() => { if (!facilityTimeZone) return; const today = facilityToday(facilityTimeZone); setMonth(calendarDate(today)); setSelected(today); }}>{s.today}</button><button style={control} onClick={() => move(-1)} aria-label={s.previous}>‹</button><strong style={{ padding: 9 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</strong><button style={control} onClick={() => move(1)} aria-label={s.nextLabel}>›</button>{(["month", "week", "day"] as const).map((mode) => <button key={mode} type="button" aria-pressed={view === mode} onClick={() => setView(mode)} style={{ ...control, background: view === mode ? "#e7f2ff" : "#fff" }}>{s[mode]}</button>)}</div>
     </nav>
     {error && <p role="alert" style={{ color: "#b91c1c" }}>{s.failed} <button onClick={() => void load()}>{s.retry}</button></p>}
@@ -227,7 +227,7 @@ export default function AppointmentsPage() {
           <strong>{s.visits}</strong>
           {chartLoading && <p style={{ marginBottom: 0 }}>{s.loading}</p>}
           {chartDenied && <p style={{ marginBottom: 0 }}>{s.unavailable}</p>}
-          {chart && <><p style={{ margin: "6px 0" }}>{chart.recentEncounters.length} {s.recent.toLowerCase()}</p>
+          {chart && <><p style={{ margin: "6px 0" }}>{s.recent}</p>
             <div style={{ display: "grid", gap: 5 }}>{chart.recentEncounters.slice(0, 5).map((encounter) => <Link key={encounter.id} href={`/app/patients/${focused.patientId}`} style={{ fontSize: 12 }}>{new Date(encounter.createdAt).toLocaleDateString(locale)} · {encounterTypeLabel(encounter.type)} · {statusLabel(encounter.status)}</Link>)}</div></>}
         </div>
       </div>
