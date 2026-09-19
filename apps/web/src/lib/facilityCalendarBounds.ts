@@ -24,3 +24,12 @@ export function facilityMonthBounds(date: Date, timeZone: string) {
   const to = facilityMidnight(new Date(date.getFullYear(), date.getMonth() + 1, 1), timeZone);
   return { from: from.toISOString(), to: to.toISOString() };
 }
+
+
+/** Half-open UTC bounds for one facility-local calendar date. */
+export function facilityDayBounds(date: Date, timeZone: string) {
+  const from = facilityMidnight(new Date(date.getFullYear(), date.getMonth(), date.getDate()), timeZone);
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+  const to = facilityMidnight(next, timeZone);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
