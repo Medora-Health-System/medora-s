@@ -297,12 +297,27 @@ export class AppointmentsService {
         take: 501,
       }),
     ]);
+    // Never use a creator's name as the assigned clinician. Resolve only the
+    // provider explicitly assigned to appointments in the authorized facility.
+    const providerIds = [...new Set(rows.map((row) => row.providerId).filter((id): id is string => Boolean(id)))];
+    const providers = providerIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: providerIds }, isActive: true },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const providerNames = new Map(providers.map((provider) => [
+      provider.id, `${provider.firstName} ${provider.lastName}`.trim(),
+    ]));
     await this.audit.log(AuditAction.VIEW, "APPOINTMENT", {
       userId, facilityId, ip, userAgent,
       metadata: { calendar: true, from: from.toISOString(), to: to.toISOString(), total },
     });
     return {
-      items: rows.slice(0, 500).map(toAppointmentDto),
+      items: rows.slice(0, 500).map((row) => ({
+        ...toAppointmentDto(row),
+        providerName: row.providerId ? providerNames.get(row.providerId) ?? null : null,
+      })),
       total,
       hasMore: total > 500,
       from: from.toISOString(),
