@@ -233,6 +233,9 @@ model Role {
 }
 
 model User {
+  platformCountryScopesTarget PlatformCountryScopeGrant[] @relation("PlatformCountryScopeTarget")
+  platformCountryScopesGranted PlatformCountryScopeGrant[] @relation("PlatformCountryScopeGrantedBy")
+  platformCountryScopesRevoked PlatformCountryScopeGrant[] @relation("PlatformCountryScopeRevokedBy")
   id                                              String                                 @id @default(uuid())
   email                                           String                                 @unique
   firstName                                       String
@@ -507,6 +510,29 @@ model PlatformCapability {
 }
 
 /// Immutable grant attribution; revoked rows remain as security history. A partial unique index enforces one active grant.
+/// Delegated corporate geography. This never grants clinical/facility authorization.
+model PlatformCountryScopeGrant {
+  id              String    @id @default(uuid())
+  userId          String
+  countryCode     String
+  isActive        Boolean   @default(true)
+  grantedByUserId String
+  grantedAt       DateTime  @default(now())
+  grantReason     String
+  ticketReference String?
+  revokedByUserId String?
+  revokedAt       DateTime?
+  revokeReason    String?
+  user            User      @relation("PlatformCountryScopeTarget", fields: [userId], references: [id], onDelete: Restrict)
+  grantedBy       User      @relation("PlatformCountryScopeGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy       User?     @relation("PlatformCountryScopeRevokedBy", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isActive])
+  @@index([countryCode, isActive])
+  @@index([grantedByUserId])
+  @@index([revokedByUserId])
+}
+
 model PlatformCapabilityGrant {
   id              String             @id @default(uuid())
   userId          String
