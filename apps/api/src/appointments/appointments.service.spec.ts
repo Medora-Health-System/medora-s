@@ -73,4 +73,41 @@ describe("AppointmentsService facility-scoped provider search", () => {
     expect(appointmentCreate).not.toHaveBeenCalled();
   });
 
+  it("counts calendar dates in facility timezone independently of roster pagination", async () => {
+    const { service, prisma } = makeService();
+    prisma.facility.findFirst.mockResolvedValue({
+      id: facilityId, country: "US", facilityType: "CLINIC",
+      serviceLinesJson: null, facilityCareProfileJson: null,
+      billingSiteType: null, billingClassificationMode: null,
+      timezone: "America/Chicago",
+    });
+    const beforeMidnight = new Date("2026-10-06T04:30:00.000Z");
+    const afterMidnight = new Date("2026-10-06T05:30:00.000Z");
+    const appointmentFindMany = jest.fn()
+      .mockResolvedValueOnce([
+        { scheduledStartAt: beforeMidnight },
+        { scheduledStartAt: afterMidnight },
+      ])
+      .mockResolvedValueOnce([]);
+    Object.assign(prisma, {
+      appointment: {
+        findMany: appointmentFindMany,
+        count: jest.fn().mockResolvedValue(502),
+      },
+    });
+    const result = await service.listCalendar(
+      facilityId, new Date("2026-10-05T00:00:00.000Z"),
+      new Date("2026-10-07T00:00:00.000Z"), undefined, undefined, undefined, 500,
+    );
+    expect(result.dailyCounts).toEqual({ "2026-10-05": 1, "2026-10-06": 1 });
+    expect(result.timezone).toBe("America/Chicago");
+    expect(result.total).toBe(502);
+    expect(result.hasMore).toBe(true);
+    expect(result.nextOffset).toBe(500);
+    expect(appointmentFindMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      skip: 500, take: 500,
+      where: expect.objectContaining({ facilityId }),
+    }));
+  });
+
 });
