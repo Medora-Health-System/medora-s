@@ -211,10 +211,21 @@ export class AppointmentsService {
 
     if (data.providerId) {
       const provider = await this.prisma.user.findFirst({
-        where: { id: data.providerId, isActive: true },
+        where: {
+          id: data.providerId,
+          isActive: true,
+          userRoles: {
+            some: {
+              facilityId,
+              isActive: true,
+              facility: { isActive: true },
+              role: { code: "PROVIDER" },
+            },
+          },
+        },
         select: { id: true },
       });
-      if (!provider) throw new BadRequestException("Provider not found");
+      if (!provider) throw new BadRequestException("Active provider membership at this facility required");
     }
     if (data.departmentId) {
       const dept = await this.prisma.department.findFirst({
