@@ -17,6 +17,8 @@ import {
   parseStoredFacilityServiceLines,
   projectFacilityRuntimeConfiguration,
   resolveFacilityOptionalModules,
+  resolveEffectiveCarePlansCapability,
+  resolveEffectiveFacilityModuleCapability,
   shouldAutoReleaseDiagnosticResult,
   synchronizeDerivedSettings,
   validateFacilityConfiguration,
@@ -96,6 +98,45 @@ export class FacilityConfigurationService {
     const snapshot = await this.loadOrCreate(facilityId);
     this.cache.put(facilityId, snapshot.row.revision, snapshot.settings);
     return snapshot.settings;
+  }
+
+  /**
+   * Phase 3 — server-side effective capability authority.
+   * Facility.country is read from the authoritative Facility row; callers never
+   * supply jurisdiction. Country policy may narrow FacilityConfiguration, and
+   * FacilityConfiguration may further narrow availability.
+   */
+  async effectiveModuleCapability(facilityId: string, module: Parameters<typeof resolveEffectiveFacilityModuleCapability>[0]["module"]) {
+    const snapshot = await this.loadOrCreate(facilityId);
+    return resolveEffectiveFacilityModuleCapability({
+      country: snapshot.facility.country,
+      module,
+      facilitySettings: snapshot.settings,
+    });
+  }
+
+  async assertModuleEnabled(facilityId: string, module: Parameters<typeof resolveEffectiveFacilityModuleCapability>[0]["module"]) {
+    const capability = await this.effectiveModuleCapability(facilityId, module);
+    if (!capability.effectiveEnabled) {
+      throw new ForbiddenException(`FACILITY_CAPABILITY_DISABLED:${module}`);
+    }
+    return capability;
+  }
+
+  async effectiveCarePlansCapability(facilityId: string) {
+    const snapshot = await this.loadOrCreate(facilityId);
+    return resolveEffectiveCarePlansCapability({
+      country: snapshot.facility.country,
+      facilitySettings: snapshot.settings,
+    });
+  }
+
+  async assertCarePlansEnabled(facilityId: string) {
+    const capability = await this.effectiveCarePlansCapability(facilityId);
+    if (!capability.effectiveEnabled) {
+      throw new ForbiddenException("FACILITY_CAPABILITY_DISABLED:carePlans");
+    }
+    return capability;
   }
 
   async runtimeForFacility(facilityId: string): Promise<FacilityRuntimeConfiguration> {
