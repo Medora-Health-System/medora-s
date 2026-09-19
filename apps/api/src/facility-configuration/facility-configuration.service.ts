@@ -413,15 +413,12 @@ export class FacilityConfigurationService {
     }
 
     this.cache.invalidate(actor.facilityId);
-    {
-      const facility = await this.prisma.facility.findUnique({ where: { id: actor.facilityId }, select: { country: true } });
-      this.cache.put(
-        actor.facilityId,
-        nextRevision,
-        nextSettings,
-        projectEffectiveFacilityConfiguration({ country: facility?.country, facilitySettings: nextSettings }),
-      );
-    }
+    this.cache.put(
+      actor.facilityId,
+      nextRevision,
+      nextSettings,
+      projectEffectiveFacilityConfiguration({ country: snapshot.facility.country, facilitySettings: nextSettings }),
+    );
     this.events.emitUpdated({ facilityId: actor.facilityId, revision: nextRevision });
     log.log("facility_configuration_save", {
       facilityId: actor.facilityId,
@@ -433,7 +430,7 @@ export class FacilityConfigurationService {
   }
 
   async assertStaffDigitalCare(facilityId: string) {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (!settings.modules.digitalCare.enabled || settings.modules.digitalCare.hidden) {
       throw new ForbiddenException("Soins numériques désactivés pour cet établissement.");
     }
@@ -441,7 +438,7 @@ export class FacilityConfigurationService {
   }
 
   async assertMessaging(facilityId: string, party: "STAFF" | "PATIENT") {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (
       !settings.modules.digitalCare.enabled ||
       settings.modules.digitalCare.hidden ||
@@ -497,7 +494,7 @@ export class FacilityConfigurationService {
   }
 
   async ensureAutoReleasesForFacility(facilityId: string, actorUserId?: string) {
-    const settings = await this.settingsForFacility(facilityId);
+    const settings = await this.effectiveSettingsForFacility(facilityId);
     if (!settings.digitalCare.autoRelease || settings.resultRelease.mode !== "AUTO") return 0;
     const orders = await this.prisma.order.findMany({
       where: { facilityId, cancelledAt: null },
