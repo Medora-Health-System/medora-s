@@ -336,7 +336,18 @@ export class AppointmentsService {
     const providerIds = [...new Set(rows.map((row) => row.providerId).filter((id): id is string => Boolean(id)))];
     const providers = providerIds.length
       ? await this.prisma.user.findMany({
-          where: { id: { in: providerIds }, isActive: true },
+          where: {
+            id: { in: providerIds },
+            isActive: true,
+            userRoles: {
+              some: {
+                facilityId,
+                isActive: true,
+                facility: { isActive: true },
+                role: { code: "PROVIDER" },
+              },
+            },
+          },
           select: { id: true, firstName: true, lastName: true },
         })
       : [];
