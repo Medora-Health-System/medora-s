@@ -5,6 +5,7 @@ import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
 import { facilityMonthBounds } from "@/lib/facilityCalendarBounds";
+import { AddAppointmentForm } from "@/features/appointments/AddAppointmentForm";
 
 const colors = ["#0879e8", "#079981", "#f8b51b", "#f53681", "#7838db", "#ff692f"];
 const isoDay = (date: Date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
@@ -39,6 +40,7 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [provider, setProvider] = useState("");
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
+  const [adding, setAdding] = useState(false);
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
   const load = useCallback(async (offset = 0) => {
     if (!facilityId || !canView || !facilityTimeZone) return;
@@ -69,9 +71,10 @@ export default function AppointmentsPage() {
   if (!ready || !facilityTimeZone) return <p>{s.loading}</p>;
   if (!canView) return <p role="alert">{s.unavailable}</p>;
   return <main style={{ color: "#172b4d", padding: 6 }}>
+    {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} onClose={() => setAdding(false)} onCreated={() => void load()} />}
     <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
       <div><h1 style={{ margin: 0, fontSize: 30 }}>🗓️ {s.title}</h1><p style={{ color: "#62738f", margin: "5px 0" }}>{s.subtitle}</p></div>
-      <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} disabled title={s.unavailable}>{"+ " + s.add}</button>
+      <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} onClick={() => setAdding(true)} disabled={!roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER"].includes(role))}>{"+ " + s.add}</button>
     </header>
     <nav aria-label={s.title} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
       <div style={{ display: "flex", gap: 6 }}>{[s.title, "Today's Visits", "Nursing / MA", "Billing", "Laboratory"].map((tab, i) => <span key={tab} style={{ ...control, background: i === 0 ? "#e7f2ff" : "#fff" }}>{tab}</span>)}</div>
