@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchChartSummary, type ChartSummary } from "@/lib/chartApi";
+import { apiFetch } from "@/lib/apiClient";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
@@ -17,9 +18,9 @@ const dayInZone = (instant: string, zone: string) => {
   return ["year", "month", "day"].map((key) => parts.find((part) => part.type === key)?.value).join("-");
 };
 const strings = {
-  en: { title: "Appointments", subtitle: "View and manage patient appointments. Click on a date to see the list of appointments.", today: "Today", add: "Add Appointment", search: "Search by patient name or reason...", all: "All Providers", time: "Time", patient: "Patient", reason: "Reason", provider: "Provider", status: "Status", actions: "Actions", visits: "Visits", empty: "No appointments for this day", retry: "Retry", more: "Load more", loading: "Loading appointments...", failed: "Unable to load appointments", month: "Month", week: "Week", day: "Day", details: "Appointment Details", date: "Date", selected: "Appointments for", unavailable: "Not available in this phase" },
-  es: { title: "Citas", subtitle: "Consulte y gestione las citas. Seleccione una fecha para ver la lista.", today: "Hoy", add: "Añadir cita", search: "Buscar por paciente o motivo...", all: "Todos los proveedores", time: "Hora", patient: "Paciente", reason: "Motivo", provider: "Proveedor", status: "Estado", actions: "Acciones", visits: "Visitas", empty: "No hay citas para este día", retry: "Reintentar", more: "Cargar más", loading: "Cargando citas...", failed: "No se pudieron cargar las citas", month: "Mes", week: "Semana", day: "Día", details: "Detalles de la cita", date: "Fecha", selected: "Citas para", unavailable: "No disponible en esta fase" },
-  fr: { title: "Rendez-vous", subtitle: "Consultez et gérez les rendez-vous. Choisissez une date pour voir la liste.", today: "Aujourd'hui", add: "Ajouter un rendez-vous", search: "Rechercher un patient ou un motif...", all: "Tous les praticiens", time: "Heure", patient: "Patient", reason: "Motif", provider: "Praticien", status: "Statut", actions: "Actions", visits: "Visites", empty: "Aucun rendez-vous ce jour", retry: "Réessayer", more: "Charger plus", loading: "Chargement des rendez-vous...", failed: "Impossible de charger les rendez-vous", month: "Mois", week: "Semaine", day: "Jour", details: "Détails du rendez-vous", date: "Date", selected: "Rendez-vous du", unavailable: "Indisponible à cette étape" },
+  en: { title: "Appointments", subtitle: "View and manage patient appointments. Click on a date to see the list of appointments.", today: "Today", add: "Add Appointment", search: "Search by patient name or reason...", all: "All Providers", time: "Time", patient: "Patient", reason: "Reason", provider: "Provider", status: "Status", actions: "Actions", visits: "Visits", empty: "No appointments for this day", retry: "Retry", more: "Load more", loading: "Loading appointments...", failed: "Unable to load appointments", month: "Month", week: "Week", day: "Day", details: "Appointment Details", date: "Date", selected: "Appointments for", unavailable: "Not available in this phase", arrive: "Mark arrived", checkIn: "Check in", confirmCheckIn: "Check in this patient and create a clinical encounter?", actionFailed: "Unable to update appointment", actionBusy: "Updating...", record: "View Full Record", recent: "Recent visits", previous: "Previous", nextLabel: "Next", unassigned: "Unassigned" },
+  es: { title: "Citas", subtitle: "Consulte y gestione las citas. Seleccione una fecha para ver la lista.", today: "Hoy", add: "Añadir cita", search: "Buscar por paciente o motivo...", all: "Todos los proveedores", time: "Hora", patient: "Paciente", reason: "Motivo", provider: "Proveedor", status: "Estado", actions: "Acciones", visits: "Visitas", empty: "No hay citas para este día", retry: "Reintentar", more: "Cargar más", loading: "Cargando citas...", failed: "No se pudieron cargar las citas", month: "Mes", week: "Semana", day: "Día", details: "Detalles de la cita", date: "Fecha", selected: "Citas para", unavailable: "No disponible en esta fase", arrive: "Marcar llegada", checkIn: "Registrar ingreso", confirmCheckIn: "¿Registrar el ingreso del paciente y crear una consulta clínica?", actionFailed: "No se pudo actualizar la cita", actionBusy: "Actualizando...", record: "Ver historia clínica", recent: "Visitas recientes", previous: "Anterior", nextLabel: "Siguiente", unassigned: "Sin asignar" },
+  fr: { title: "Rendez-vous", subtitle: "Consultez et gérez les rendez-vous. Choisissez une date pour voir la liste.", today: "Aujourd'hui", add: "Ajouter un rendez-vous", search: "Rechercher un patient ou un motif...", all: "Tous les praticiens", time: "Heure", patient: "Patient", reason: "Motif", provider: "Praticien", status: "Statut", actions: "Actions", visits: "Visites", empty: "Aucun rendez-vous ce jour", retry: "Réessayer", more: "Charger plus", loading: "Chargement des rendez-vous...", failed: "Impossible de charger les rendez-vous", month: "Mois", week: "Semaine", day: "Jour", details: "Détails du rendez-vous", date: "Date", selected: "Rendez-vous du", unavailable: "Indisponible à cette étape", arrive: "Marquer arrivé", checkIn: "Enregistrer l’arrivée", confirmCheckIn: "Enregistrer ce patient et créer une consultation clinique ?", actionFailed: "Impossible de mettre à jour le rendez-vous", actionBusy: "Mise à jour...", record: "Voir le dossier complet", recent: "Visites récentes", previous: "Précédent", nextLabel: "Suivant", unassigned: "Non assigné" },
 };
 const panel: React.CSSProperties = { background: "#fff", border: "1px solid #d5e2f6", borderRadius: 12, padding: 16, minWidth: 0 };
 const control: React.CSSProperties = { border: "1px solid #cbd8ec", borderRadius: 6, padding: "9px 12px", background: "#fff", color: "#172b4d", cursor: "pointer" };
@@ -44,6 +45,8 @@ export default function AppointmentsPage() {
   const [provider, setProvider] = useState("");
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
   const [adding, setAdding] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [chart, setChart] = useState<ChartSummary | null>(null);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartDenied, setChartDenied] = useState(false);
@@ -113,6 +116,21 @@ export default function AppointmentsPage() {
   const visible = dayItems.filter((item) => (!provider || item.providerName === provider) && `${item.patientName ?? ""} ${item.reason ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const displayDate = (value: string) => new Date(value + "T12:00:00").toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const time = (value: string) => new Date(value).toLocaleTimeString(locale, { timeZone: zone, hour: "numeric", minute: "2-digit" });
+  const updateAppointment = async (action: "arrive" | "check-in") => {
+    if (!facilityId || !focused || actionBusy || !roles.some((role) => ["FRONT_DESK", "ADMIN"].includes(role))) return;
+    if (action === "check-in" && !window.confirm(s.confirmCheckIn)) return;
+    setActionBusy(true); setActionError("");
+    try {
+      const result = await apiFetch(`/appointments/${focused.id}/${action}`, {
+        facilityId, method: "POST",
+        ...(action === "check-in" ? { body: JSON.stringify({ encounterType: "OUTPATIENT" }) } : {}),
+      }) as CalendarAppointment;
+      setFocused((previous) => previous?.id === focused.id ? { ...previous, status: result.status, encounterId: result.encounterId } : previous);
+      await load();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : s.actionFailed);
+    } finally { setActionBusy(false); }
+  };
   const move = (n: number) => {
     const d = view === "month" ? new Date(month.getFullYear(), month.getMonth() + n, 1) : new Date(selected + "T12:00:00");
     if (view !== "month") d.setDate(d.getDate() + n * (view === "week" ? 7 : 1));
@@ -129,7 +147,7 @@ export default function AppointmentsPage() {
     </header>
     <nav aria-label={s.title} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
       <div style={{ display: "flex", gap: 6 }}>{[s.title, "Today's Visits", "Nursing / MA", "Billing", "Laboratory"].map((tab, i) => <span key={tab} style={{ ...control, background: i === 0 ? "#e7f2ff" : "#fff" }}>{tab}</span>)}</div>
-      <div style={{ display: "flex", gap: 8 }}><button style={control} onClick={() => { const d = new Date(); setMonth(d); setSelected(isoDay(d)); }}>{s.today}</button><button style={control} onClick={() => move(-1)} aria-label="Previous month">‹</button><strong style={{ padding: 9 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</strong><button style={control} onClick={() => move(1)} aria-label="Next month">›</button>{(["month", "week", "day"] as const).map((mode) => <button key={mode} type="button" aria-pressed={view === mode} onClick={() => setView(mode)} style={{ ...control, background: view === mode ? "#e7f2ff" : "#fff" }}>{s[mode]}</button>)}</div>
+      <div style={{ display: "flex", gap: 8 }}><button style={control} onClick={() => { const d = new Date(); setMonth(d); setSelected(isoDay(d)); }}>{s.today}</button><button style={control} onClick={() => move(-1)} aria-label={s.previous}>‹</button><strong style={{ padding: 9 }}>{first.toLocaleDateString(locale, { month: "long", year: "numeric" })}</strong><button style={control} onClick={() => move(1)} aria-label={s.nextLabel}>›</button>{(["month", "week", "day"] as const).map((mode) => <button key={mode} type="button" aria-pressed={view === mode} onClick={() => setView(mode)} style={{ ...control, background: view === mode ? "#e7f2ff" : "#fff" }}>{s[mode]}</button>)}</div>
     </nav>
     {error && <p role="alert" style={{ color: "#b91c1c" }}>{s.failed} <button onClick={() => void load()}>{s.retry}</button></p>}
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 12 }}>
@@ -149,18 +167,23 @@ export default function AppointmentsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div><h2 style={{ margin: 0 }}>{chart ? `${chart.patient.firstName} ${chart.patient.lastName}` : (focused.patientName ?? s.patient)}</h2>
           {chart && <small>MRN: {chart.patient.mrn ?? "—"} · {chart.patient.sexAtBirth ?? "—"} · {chart.patient.phone ?? "—"}</small>}</div>
-        {canOpenChart && <Link href={`/app/patients/${focused.patientId}`} style={{ ...control, textDecoration: "none" }}>View Full Record</Link>}
+        {canOpenChart && <Link href={`/app/patients/${focused.patientId}`} style={{ ...control, textDecoration: "none" }}>{s.record}</Link>}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(240px,1fr)", gap: 12, marginTop: 14 }}>
         <div style={{ border: "1px solid #dce6f5", borderRadius: 10, padding: 14 }}>
           <strong>{s.details}</strong>
+          {roles.some((role) => ["FRONT_DESK", "ADMIN"].includes(role)) && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            {["SCHEDULED", "CONFIRMED"].includes(focused.status) && <button type="button" disabled={actionBusy} style={control} onClick={() => void updateAppointment("arrive")}>{actionBusy ? s.actionBusy : s.arrive}</button>}
+            {["SCHEDULED", "CONFIRMED", "ARRIVED"].includes(focused.status) && <button type="button" disabled={actionBusy} style={control} onClick={() => void updateAppointment("check-in")}>{actionBusy ? s.actionBusy : s.checkIn}</button>}
+          </div>}
+          {actionError && <p role="alert" style={{ color: "#b91c1c" }}>{actionError}</p>}
           <p style={{ marginBottom: 0 }}>{displayDate(dayInZone(focused.scheduledStartAt, zone))} · {time(focused.scheduledStartAt)} · {focused.reason ?? "—"} · {focused.providerName ?? "—"} · {focused.status}</p>
         </div>
         <div style={{ background: "#eef5ff", border: "1px solid #d6e5ff", borderRadius: 10, padding: 14 }}>
           <strong>{s.visits}</strong>
           {chartLoading && <p style={{ marginBottom: 0 }}>{s.loading}</p>}
           {chartDenied && <p style={{ marginBottom: 0 }}>{s.unavailable}</p>}
-          {chart && <><p style={{ margin: "6px 0" }}>{chart.recentEncounters.length} recent visits</p>
+          {chart && <><p style={{ margin: "6px 0" }}>{chart.recentEncounters.length} {s.recent.toLowerCase()}</p>
             <div style={{ display: "grid", gap: 5 }}>{chart.recentEncounters.slice(0, 5).map((encounter) => <Link key={encounter.id} href={`/app/patients/${focused.patientId}`} style={{ fontSize: 12 }}>{new Date(encounter.createdAt).toLocaleDateString(locale)} · {encounter.type} · {encounter.status}</Link>)}</div></>}
         </div>
       </div>
