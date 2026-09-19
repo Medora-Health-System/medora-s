@@ -173,3 +173,44 @@ export function applyCountryPolicyToFacilityConfiguration(
   }
   return next;
 }
+
+
+export type EffectiveFacilityFeatureCapability = Readonly<{
+  country: MedoraCountryCode | null;
+  feature: "carePlans";
+  parentModule: FacilityModuleKey;
+  countryDecision: CountryCapabilityDecision | "UNCONFIGURED_COUNTRY";
+  facilityEnabled: boolean;
+  effectiveEnabled: boolean;
+  reason: string;
+}>;
+
+/**
+ * Phase 3 granular clinical capability resolver.
+ *
+ * Granular features inherit the effective state of their parent module and may
+ * then be narrowed by their own facility setting. This prevents a child feature
+ * from resurrecting a disabled country/facility module.
+ */
+export function resolveEffectiveCarePlansCapability(input: {
+  country: string | null | undefined;
+  facilitySettings: FacilityConfigurationSettings;
+}): EffectiveFacilityFeatureCapability {
+  const hospital = resolveEffectiveFacilityModuleCapability({
+    country: input.country,
+    module: "hospital",
+    facilitySettings: input.facilitySettings,
+  });
+  const facilityEnabled = input.facilitySettings.digitalCare.carePlans;
+  return {
+    country: hospital.country,
+    feature: "carePlans",
+    parentModule: "hospital",
+    countryDecision: hospital.countryDecision,
+    facilityEnabled,
+    effectiveEnabled: hospital.effectiveEnabled && facilityEnabled,
+    reason: hospital.effectiveEnabled
+      ? "Care Plans are controlled by this facility after country and Hospital eligibility."
+      : "Care Plans are unavailable because the effective Hospital capability is disabled.",
+  };
+}
