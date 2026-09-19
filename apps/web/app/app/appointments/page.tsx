@@ -122,7 +122,7 @@ export default function AppointmentsPage() {
   if (!ready || !facilityTimeZone) return <p>{s.loading}</p>;
   if (!canView) return <p role="alert">{s.unavailable}</p>;
   return <main style={{ color: "#172b4d", padding: 6 }}>
-    {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} onClose={() => setAdding(false)} onCreated={() => void load()} />}
+    {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} facilityTimeZone={facilityTimeZone} onClose={() => setAdding(false)} onCreated={() => void load()} />}
     <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
       <div><h1 style={{ margin: 0, fontSize: 30 }}>🗓️ {s.title}</h1><p style={{ color: "#62738f", margin: "5px 0" }}>{s.subtitle}</p></div>
       <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} onClick={() => setAdding(true)} disabled={!roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER"].includes(role))}>{"+ " + s.add}</button>
