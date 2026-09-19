@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import type { PatientSearchHitV1 } from "@medora/shared";
 import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
 import { apiFetch } from "@/lib/apiClient";
+import { facilityLocalDateTimeToIso } from "@/lib/facilityCalendarBounds";
 import { useI18n } from "@/lib/i18n";
 
 type Provider = { id: string; displayName: string };
 const copy = {
-  en: { title: "Add Appointment", patient: "Select patient", date: "Date and time", reason: "Reason", provider: "Assigned provider", providerHint: "Type at least 3 letters and select a verified provider. An unmatched name will not be assigned.", none: "No matching active providers", save: "Save appointment", cancel: "Cancel", failed: "Unable to create appointment", required: "Select a patient and appointment time", saved: "Appointment created", search: "Search registered patients" },
-  es: { title: "Añadir cita", patient: "Seleccionar paciente", date: "Fecha y hora", reason: "Motivo", provider: "Profesional asignado", providerHint: "Escriba al menos 3 letras y seleccione un profesional verificado. Un nombre sin coincidencia no se asignará.", none: "No hay profesionales activos coincidentes", save: "Guardar cita", cancel: "Cancelar", failed: "No se pudo crear la cita", required: "Seleccione un paciente y una fecha y hora", saved: "Cita creada", search: "Buscar pacientes registrados" },
-  fr: { title: "Ajouter un rendez-vous", patient: "Sélectionner le patient", date: "Date et heure", reason: "Motif", provider: "Praticien assigné", providerHint: "Saisissez au moins 3 lettres et choisissez un praticien vérifié. Un nom sans correspondance ne sera pas assigné.", none: "Aucun praticien actif correspondant", save: "Enregistrer", cancel: "Annuler", failed: "Impossible de créer le rendez-vous", required: "Sélectionnez un patient et une date", saved: "Rendez-vous créé", search: "Rechercher un patient enregistré" },
+  en: { title: "Add Appointment", patient: "Select patient", date: "Date and time", reason: "Reason", provider: "Assigned provider", providerHint: "Type at least 3 letters and select a verified provider. An unmatched name will not be assigned.", none: "No matching active providers", save: "Save appointment", cancel: "Cancel", failed: "Unable to create appointment", required: "Select a patient and appointment time", invalidTime: "This time is invalid or ambiguous in the facility timezone. Choose another time.", saved: "Appointment created", search: "Search registered patients" },
+  es: { title: "Añadir cita", patient: "Seleccionar paciente", date: "Fecha y hora", reason: "Motivo", provider: "Profesional asignado", providerHint: "Escriba al menos 3 letras y seleccione un profesional verificado. Un nombre sin coincidencia no se asignará.", none: "No hay profesionales activos coincidentes", save: "Guardar cita", cancel: "Cancelar", failed: "No se pudo crear la cita", required: "Seleccione un paciente y una fecha y hora", invalidTime: "Esta hora no existe o es ambigua en la zona horaria del centro. Seleccione otra.", saved: "Cita creada", search: "Buscar pacientes registrados" },
+  fr: { title: "Ajouter un rendez-vous", patient: "Sélectionner le patient", date: "Date et heure", reason: "Motif", provider: "Praticien assigné", providerHint: "Saisissez au moins 3 lettres et choisissez un praticien vérifié. Un nom sans correspondance ne sera pas assigné.", none: "Aucun praticien actif correspondant", save: "Enregistrer", cancel: "Annuler", failed: "Impossible de créer le rendez-vous", required: "Sélectionnez un patient et une date", invalidTime: "Cette heure est inexistante ou ambiguë dans le fuseau horaire de l’établissement. Choisissez une autre heure.", saved: "Rendez-vous créé", search: "Rechercher un patient enregistré" },
 };
-export function AddAppointmentForm({ facilityId, onClose, onCreated }: {
-  facilityId: string; onClose: () => void; onCreated: () => void;
+export function AddAppointmentForm({ facilityId, facilityTimeZone, onClose, onCreated }: {
+  facilityId: string; facilityTimeZone: string; onClose: () => void; onCreated: () => void;
 }) {
   const { language } = useI18n();
   const s = copy[language === "es" ? "es" : language === "fr" ? "fr" : "en"];
@@ -39,11 +40,13 @@ export function AddAppointmentForm({ facilityId, onClose, onCreated }: {
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!patient || !start) { setError(s.required); return; }
+    const instant = facilityLocalDateTimeToIso(start, facilityTimeZone);
+    if (!instant) { setError(s.invalidTime); return; }
     setBusy(true); setError("");
     try {
       await apiFetch("/appointments", {
         facilityId, method: "POST", body: JSON.stringify({
-          patientId: patient.id, scheduledStartAt: new Date(start).toISOString(),
+          patientId: patient.id, scheduledStartAt: instant,
           reason: reason.trim() || undefined,
           // Only the explicitly selected, facility-verified provider can be assigned.
           providerId: chosen?.id,
@@ -57,7 +60,7 @@ export function AddAppointmentForm({ facilityId, onClose, onCreated }: {
     <form onSubmit={(event) => void save(event)} style={{ width: "min(100%, 520px)", background: "#fff", color: "#142846", borderRadius: 12, padding: 24, display: "grid", gap: 12, maxHeight: "90vh", overflow: "auto" }}>
       <h2 style={{ margin: 0 }}>{s.title}</h2>
       <PatientSearchAndSelect facilityId={facilityId} selectedPatientId={patient?.id} onSelect={setPatient} onClearSelection={() => setPatient(null)} label={s.patient} placeholder={s.search} />
-      <label>{s.date}<input required type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} style={{ display: "block", width: "100%", padding: 8 }} /></label>
+      <label>{s.date} ({facilityTimeZone})<input required type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} style={{ display: "block", width: "100%", padding: 8 }} /></label>
       <label>{s.reason}<textarea value={reason} maxLength={4000} onChange={(e) => setReason(e.target.value)} style={{ display: "block", width: "100%", padding: 8 }} /></label>
       <label>{s.provider}<input value={query} onChange={(e) => { setQuery(e.target.value); setChosen(null); }} autoComplete="off" style={{ display: "block", width: "100%", padding: 8 }} /></label>
       <small>{s.providerHint}</small>
