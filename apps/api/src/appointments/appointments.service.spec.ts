@@ -43,4 +43,34 @@ describe("AppointmentsService facility-scoped provider search", () => {
     prisma.user.findMany.mockResolvedValue([]);
     await expect(service.searchProviders(facilityId, "Smi")).resolves.toEqual([]);
   });
+  it("rejects an appointment provider without active membership in this facility", async () => {
+    const { service, prisma } = makeService();
+    const patientFindFirst = jest.fn().mockResolvedValue({ id: "patient-a" });
+    const providerFindFirst = jest.fn().mockResolvedValue(null);
+    const appointmentCreate = jest.fn();
+    Object.assign(prisma, {
+      patient: { findFirst: patientFindFirst },
+      appointment: { create: appointmentCreate },
+    });
+    Object.assign(prisma.user, { findFirst: providerFindFirst });
+    await expect(service.create(facilityId, {
+      patientId: "patient-a",
+      providerId: "provider-from-other-facility",
+      scheduledStartAt: new Date("2026-10-05T15:00:00.000Z"),
+    } as never)).rejects.toThrow("Active provider membership at this facility required");
+    expect(providerFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        id: "provider-from-other-facility",
+        isActive: true,
+        userRoles: { some: {
+          facilityId,
+          isActive: true,
+          facility: { isActive: true },
+          role: { code: "PROVIDER" },
+        } },
+      }),
+    }));
+    expect(appointmentCreate).not.toHaveBeenCalled();
+  });
+
 });
