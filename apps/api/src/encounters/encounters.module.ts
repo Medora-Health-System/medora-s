@@ -23,6 +23,7 @@ import { OrdersModule } from "../orders/orders.module";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { TrackboardModule } from "../trackboard/trackboard.module";
 import { FacilitiesModule } from "../facilities/facilities.module";
+import { FacilityConfigurationModule } from "../facility-configuration/facility-configuration.module";
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
@@ -65,7 +66,7 @@ import { InpatientFinalDischargeService } from "./inpatient-final-discharge.serv
 import { InpatientEncountersArchiveService } from "./inpatient-encounters-archive.service";
 
 @Module({
-  imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
+  imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule, FacilityConfigurationModule],
   controllers: [
     EncountersController,
     InternalPlacementController,
