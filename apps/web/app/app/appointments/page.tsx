@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
+import { fetchChartSummary, type ChartSummary } from "@/lib/chartApi";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { fetchAppointmentCalendar, type CalendarAppointment } from "@/lib/appointmentsCalendarApi";
@@ -43,6 +44,9 @@ export default function AppointmentsPage() {
   const [provider, setProvider] = useState("");
   const [focused, setFocused] = useState<CalendarAppointment | null>(null);
   const [adding, setAdding] = useState(false);
+  const [chart, setChart] = useState<ChartSummary | null>(null);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartDenied, setChartDenied] = useState(false);
   const canOpenChart = focused ? isAppPathAllowedForRoles(`/app/patients/${focused.patientId}`, roles) : false;
   const [view, setView] = useState<"month" | "week" | "day">("month");
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
@@ -60,6 +64,17 @@ export default function AppointmentsPage() {
     finally { setLoading(false); }
   }, [facilityId, canView, month, facilityTimeZone]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    setChart(null); setChartDenied(false);
+    if (!focused || !facilityId || !canOpenChart) return;
+    setChartLoading(true);
+    void fetchChartSummary(facilityId, focused.patientId, language)
+      .then((summary) => { if (active) setChart(summary); })
+      .catch(() => { if (active) setChartDenied(true); })
+      .finally(() => { if (active) setChartLoading(false); });
+    return () => { active = false; };
+  }, [focused, facilityId, canOpenChart, language]);
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const days = useMemo(() => {
     const start = new Date(first); start.setDate(1 - first.getDay());
@@ -112,6 +127,25 @@ export default function AppointmentsPage() {
         {next !== null && <button style={{ ...control, marginTop: 12 }} disabled={loading} onClick={() => void load(next)}>{s.more}</button>}
       </section>
     </div>
-    {focused && <section style={{ ...panel, marginTop: 16 }}><h2>{focused.patientName ?? s.patient}</h2><p>{s.details}: {displayDate(dayInZone(focused.scheduledStartAt, zone))} · {time(focused.scheduledStartAt)} · {focused.reason ?? "—"} · {focused.providerName ?? "—"} · {focused.status}</p>{canOpenChart && <Link href={`/app/patients/${focused.patientId}`}>{s.visits} · {s.patient}</Link>}</section>}
+    {focused && <section style={{ ...panel, marginTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div><h2 style={{ margin: 0 }}>{chart ? `${chart.patient.firstName} ${chart.patient.lastName}` : (focused.patientName ?? s.patient)}</h2>
+          {chart && <small>MRN: {chart.patient.mrn ?? "—"} · {chart.patient.sexAtBirth ?? "—"} · {chart.patient.phone ?? "—"}</small>}</div>
+        {canOpenChart && <Link href={`/app/patients/${focused.patientId}`} style={{ ...control, textDecoration: "none" }}>View Full Record</Link>}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(240px,1fr)", gap: 12, marginTop: 14 }}>
+        <div style={{ border: "1px solid #dce6f5", borderRadius: 10, padding: 14 }}>
+          <strong>{s.details}</strong>
+          <p style={{ marginBottom: 0 }}>{displayDate(dayInZone(focused.scheduledStartAt, zone))} · {time(focused.scheduledStartAt)} · {focused.reason ?? "—"} · {focused.providerName ?? "—"} · {focused.status}</p>
+        </div>
+        <div style={{ background: "#eef5ff", border: "1px solid #d6e5ff", borderRadius: 10, padding: 14 }}>
+          <strong>{s.visits}</strong>
+          {chartLoading && <p style={{ marginBottom: 0 }}>{s.loading}</p>}
+          {chartDenied && <p style={{ marginBottom: 0 }}>{s.unavailable}</p>}
+          {chart && <><p style={{ margin: "6px 0" }}>{chart.recentEncounters.length} recent visits</p>
+            <div style={{ display: "grid", gap: 5 }}>{chart.recentEncounters.slice(0, 5).map((encounter) => <Link key={encounter.id} href={`/app/patients/${focused.patientId}`} style={{ fontSize: 12 }}>{new Date(encounter.createdAt).toLocaleDateString(locale)} · {encounter.type} · {encounter.status}</Link>)}</div></>}
+        </div>
+      </div>
+    </section>}
   </main>;
 }
