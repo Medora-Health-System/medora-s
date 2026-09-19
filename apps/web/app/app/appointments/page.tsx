@@ -42,6 +42,8 @@ export default function AppointmentsPage() {
   const [dayLoading, setDayLoading] = useState(false);
   const [dayError, setDayError] = useState(false);
   const dayRequest = useRef(0);
+  const calendarRequest = useRef(0);
+  const hoverRequest = useRef(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [zone, setZone] = useState("UTC");
   const [total, setTotal] = useState(0);
@@ -65,6 +67,7 @@ export default function AppointmentsPage() {
   const canView = roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER", "RN"].includes(role));
   const load = useCallback(async (offset = 0) => {
     if (!facilityId || !canView || !facilityTimeZone) return;
+    const request = ++calendarRequest.current;
     setLoading(true); setError(false);
     try {
       let bounds: { from: string; to: string };
@@ -86,10 +89,11 @@ export default function AppointmentsPage() {
         }
       }
       const result = await fetchAppointmentCalendar(facilityId, bounds.from, bounds.to, offset);
+      if (request !== calendarRequest.current) return;
       setCounts(result.dailyCounts); setZone(result.timezone);
       setTotal(result.total);
-    } catch { setError(true); if (!offset) { setCounts({}); } }
-    finally { setLoading(false); }
+    } catch { if (request === calendarRequest.current) { setError(true); if (!offset) setCounts({}); } }
+    finally { if (request === calendarRequest.current) setLoading(false); }
   }, [facilityId, canView, month, selected, view, facilityTimeZone]);
   // The selected-day roster has its own facility-local query and pagination.
   // Monthly/weekly totals never stand in for the complete daily appointment list.
@@ -125,21 +129,27 @@ export default function AppointmentsPage() {
     setFocused(null);
     setHoverDay(null);
     setHoverRows([]);
+    setHoverTotal(0);
+    setHoverLoading(false);
+    setAdding(false);
   }, [facilityId, facilityTimeZone]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => () => { hoverRequest.current += 1; }, [facilityId, facilityTimeZone]);
+  useEffect(() => { void load(); return () => { calendarRequest.current += 1; }; }, [load]);
   const loadHoverRoster = useCallback(async (date: Date) => {
     if (!facilityId || !facilityTimeZone || !canView) return;
+    const request = ++hoverRequest.current;
     const key = isoDay(date);
     setHoverDay(key); setHoverRows([]); setHoverTotal(0); setHoverLoading(true);
     try {
       const { from, to } = facilityDayBounds(date, facilityTimeZone);
       const result = await fetchAppointmentCalendar(facilityId, from, to, 0);
+      if (request !== hoverRequest.current) return;
       setHoverRows(result.items.slice(0, 8));
       setHoverTotal(result.total);
       setZone(result.timezone);
     } catch {
-      setHoverRows([]); setHoverTotal(0);
-    } finally { setHoverLoading(false); }
+      if (request === hoverRequest.current) { setHoverRows([]); setHoverTotal(0); }
+    } finally { if (request === hoverRequest.current) setHoverLoading(false); }
   }, [facilityId, facilityTimeZone, canView]);
   useEffect(() => {
     let active = true;
