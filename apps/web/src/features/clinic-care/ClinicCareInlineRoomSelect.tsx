@@ -7,6 +7,7 @@
 
 import React, { useState } from "react";
 import { buildEncounterRoomSelectOptions } from "@/lib/encounterRoomOptions";
+import { formatEncounterRoomDisplay } from "@/lib/encounterRoomDisplay";
 import { updateEncounterRoomAssignment } from "@/lib/roomAssignmentApi";
 import { useI18n } from "@/lib/i18n";
 import { CLINIC_CARE_SHELL } from "./clinicCareTokens";
@@ -75,7 +76,7 @@ export function ClinicCareInlineRoomSelect({
         <option value="">{t("clinicCareD4c4.roomUnassigned")}</option>
         {options.map((r) => (
           <option key={r} value={r}>
-            {r}
+            {formatEncounterRoomDisplay(r, t)}
           </option>
         ))}
       </select>
