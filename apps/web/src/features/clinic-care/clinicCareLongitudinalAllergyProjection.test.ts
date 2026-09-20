@@ -8,7 +8,8 @@ describe("clinic longitudinal allergy projection", () => {
   it("uses active patient allergy entries as the chart summary", () => {
     expect(
       clinicCareLongitudinalAllergySummary({
-        version: 1,
+        version: "19T.3",
+        updatedAt: "2026-09-20T00:00:00.000Z",
         allergies: {
           nkda: false,
           entries: [
@@ -24,7 +25,8 @@ describe("clinic longitudinal allergy projection", () => {
   it("preserves explicit NKDA when the patient record has no active allergy", () => {
     expect(
       clinicCareLongitudinalAllergySummary({
-        version: 1,
+        version: "19T.3",
+        updatedAt: "2026-09-20T00:00:00.000Z",
         allergies: { nkda: true, entries: [] },
         provenance: {},
       })
