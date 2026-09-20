@@ -1,14 +1,9 @@
 "use client";
 
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
-import { buildClinicRadiologyEntryHref } from "@medora/shared";
+import { Suspense } from "react";
+import RadiologyPage from "@/app/app/radiology/page";
 
-/** MEDUI.D4C.7C — Clinic Care radiology alias → enterprise Liste imagerie + ambulatory filter. */
+/** Render the connected module inside the persistent, access-guarded Clinic Care shell. */
 export default function ClinicCareRadiologyPage() {
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href={buildClinicRadiologyEntryHref()}
-      labelKey="clinicCareD4c4.redirectingRadiology"
-    />
-  );
+  return <Suspense fallback={<p role="status">Loading…</p>}><RadiologyPage /></Suspense>;
 }
