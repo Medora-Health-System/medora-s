@@ -397,8 +397,34 @@ function EncounterDetailPageContent() {
   const { facilityId, roles, ready: rolesReady } = session;
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const ambulatoryWorkspace =
-    searchParams?.get("workspace") === "ambulatory";
+  const router = useRouter();
+  const ambulatoryWorkspace = searchParams?.get("workspace") === "ambulatory";
+  // Resolve encounter type through the facility-scoped API before mounting legacy UI.
+  // Never infer the clinical workspace from a URL or grant access on a failed lookup.
+  const [entry, setEntry] = useState<{ key: string; kind: "ambulatory" | "other" | "unavailable" } | null>(null);
+  const entryKey = `${facilityId ?? ""}:${encounterId ?? ""}`;
+  useEffect(() => {
+    if (!rolesReady || !facilityId || !encounterId || ambulatoryWorkspace) return;
+    let cancelled = false;
+    setEntry(null);
+    void (async () => {
+      try {
+        const raw = await apiFetch(`/encounters/${encodeURIComponent(encounterId)}`, { facilityId });
+        const encounter = asApiObject<{ type?: string | null }>(raw);
+        if (!cancelled) setEntry({ key: entryKey, kind: isClinicCareAmbulatoryEncounterType(encounter?.type) ? "ambulatory" : "other" });
+      } catch {
+        if (!cancelled) setEntry({ key: entryKey, kind: "unavailable" });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rolesReady, facilityId, encounterId, ambulatoryWorkspace, entryKey]);
+  useEffect(() => {
+    if (ambulatoryWorkspace || entry?.key !== entryKey || entry.kind !== "ambulatory") return;
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("workspace", "ambulatory");
+    if (!params.has("section")) params.set("section", "medical-evaluation");
+    router.replace(`/app/encounters/${encodeURIComponent(encounterId)}?${params.toString()}`);
+  }, [ambulatoryWorkspace, entry, entryKey, encounterId, router, searchParams]);
 
   const canFetchEncounterOrders =
     roles.includes("RN") ||
@@ -422,6 +448,10 @@ function EncounterDetailPageContent() {
         <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
       </div>
     );
+  }
+
+  if (!ambulatoryWorkspace && (entry?.key !== entryKey || entry.kind !== "other")) {
+    return <div style={ENCOUNTER_PAGE_SHELL} role="status">{t("common.loading")}</div>;
   }
 
   if (ambulatoryWorkspace) {
