@@ -34,6 +34,8 @@ type ClinicCareRow = {
   patientId: string;
   patientName: string;
   mrn: string | null;
+  patientDob?: string | null;
+  patientSexAtBirth?: string | null;
   encounterType: string;
   status: string;
   workflowState: string | null;
@@ -770,6 +772,16 @@ export function ClinicCareTrackboardView({
                             ? ` · ${row.chiefComplaint}`
                             : ""}
                         </div>
+                        {mode === "todaysVisits" ? (() => {
+                          const dob = row.patientDob ? new Date(row.patientDob) : null;
+                          const visitDate = row.arrivedAt || row.createdAt;
+                          const visit = new Date(visitDate);
+                          const valid = dob && !Number.isNaN(dob.getTime()) && !Number.isNaN(visit.getTime()) && dob <= visit;
+                          const age = valid ? visit.getUTCFullYear() - dob.getUTCFullYear() - (visit.getUTCMonth() < dob.getUTCMonth() || (visit.getUTCMonth() === dob.getUTCMonth() && visit.getUTCDate() < dob.getUTCDate()) ? 1 : 0) : null;
+                          const sex = row.patientSexAtBirth?.toUpperCase();
+                          const genderLabel = sex === "MALE" || sex === "M" ? (language === "es" ? "Masculino" : language === "fr" ? "Masculin" : "Male") : sex === "FEMALE" || sex === "F" ? (language === "es" ? "Femenino" : language === "fr" ? "Féminin" : "Female") : null;
+                          return <div style={{ fontSize: 11, color: "#64748b" }}>{[age !== null && age >= 0 && age <= 125 ? `${age} ${language === "es" ? "años" : language === "fr" ? "ans" : "years"}` : null, genderLabel].filter(Boolean).join(" · ") || dash}</div>;
+                        })() : null}
                       </td>
                       {mode === "todaysVisits" ? <td style={{ ...tdStyle, minWidth: 180, maxWidth: 260, overflowWrap: "anywhere" }}>{visibility.showChiefComplaint ? row.chiefComplaint || dash : dash}</td> : <>
                       <td style={tdStyle}>
