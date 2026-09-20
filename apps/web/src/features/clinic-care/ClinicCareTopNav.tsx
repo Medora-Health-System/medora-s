@@ -27,6 +27,7 @@ const CLINIC_COMPACT_TOP_NAV_HIDDEN_IDS = new Set<ClinicWorkspaceNavId>([
   "encounters",
   "publicHealth",
   "administration",
+  "billing", // Billing belongs in the permission-gated global sidebar, not Clinic Care tabs.
 ]);
 
 export function ClinicCareTopNav({ active }: { active: ClinicWorkspaceNavId }) {
