@@ -49,6 +49,24 @@ function trim(v: unknown, max = 240): string {
   return v.trim().slice(0, max);
 }
 
+/**
+ * Allergy documentation identifies the causative ingredient, never an orderable
+ * strength, dose, route, or dosage form. This is display/persistence normalization;
+ * the governed medication catalog remains unchanged.
+ */
+export function allergyMedicationIngredientName(value: string | null | undefined): string {
+  const withoutLabel = String(value ?? "")
+    .trim()
+    .replace(/^(?:drug allergy|medication allergy|alergia a medicamento|allergie médicamenteuse)\s*:\s*/i, "");
+  return withoutLabel
+    .replace(
+      /\s*[([]?\d+(?:[.,]\d+)?\s*(?:mcg|μg|ug|mg|g|kg|ml|l|units?|iu|meq|mmol)\b.*$/i,
+      ""
+    )
+    .replace(/[\s,;–—-]+$/g, "")
+    .trim();
+}
+
 function asStatus(v: unknown): AllergyRecordStatus {
   const s = String(v ?? "").toUpperCase();
   return (ALLERGY_RECORD_STATUSES as readonly string[]).includes(s)
@@ -71,7 +89,7 @@ function asSeverity(v: unknown): AllergySeverity | undefined {
 export function sanitizeEnterpriseAllergyEntry(raw: unknown): EnterpriseAllergyEntry | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
-  const substance = trim(o.substance, 160);
+  const substance = trim(allergyMedicationIngredientName(trim(o.substance, 160)), 160);
   if (!substance) return null;
   const id = trim(o.id, 64) || `alg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const entry: EnterpriseAllergyEntry = {
