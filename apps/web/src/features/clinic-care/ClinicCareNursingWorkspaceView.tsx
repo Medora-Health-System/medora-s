@@ -652,6 +652,20 @@ export function ClinicCareNursingWorkspaceView() {
                   >
                     {t("clinicCareD4c4.allergies")}
                   </button>
+                  <Link
+                    href={clinicCareAmbulatoryIntakeChartPath(selected.encounterId, "history")}
+                    style={compactBtn}
+                    data-testid="clinic-care-nursing-medrec-link"
+                  >
+                    {t("clinicCareD4c4.medRec")}
+                  </Link>
+                  <Link
+                    href={clinicCareAmbulatoryIntakeChartPath(selected.encounterId, "intake")}
+                    style={compactBtn}
+                    data-testid="clinic-care-nursing-pain-fall-link"
+                  >
+                    {t("clinicCareD4c4.painFallSafety")}
+                  </Link>
                   <Link href={chartHref} style={compactBtn}>
                     {t("clinicCareD4c4.notesChartHint")}
                   </Link>
