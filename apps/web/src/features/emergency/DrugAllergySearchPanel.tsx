@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { formatMedicationOptionForLocale } from "@/lib/localizedMedicationDisplay";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { allergyMedicationIngredientName } from "@medora/shared";
 import {
   DRUG_ALLERGY_REACTION_CODES,
   appendDrugAllergyLinesIfAbsent,
@@ -189,7 +190,10 @@ export function DrugAllergySearchPanel({
           }}
         >
           {results.map((item) => {
-            const { primary, subtitle } = formatMedicationOptionForLocale(item, language, t);
+            const { primary } = formatMedicationOptionForLocale(item, language, t);
+            const medicationName = allergyMedicationIngredientName(
+              item.metadata?.genericName || primary
+            );
             return (
               <li key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <button
@@ -206,10 +210,7 @@ export function DrugAllergySearchPanel({
                     fontSize: 13,
                   }}
                 >
-                  <div style={{ fontWeight: 600, color: "#0f172a" }}>{primary}</div>
-                  {subtitle ? (
-                    <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>{subtitle}</div>
-                  ) : null}
+                  <div style={{ fontWeight: 600, color: "#0f172a" }}>{medicationName}</div>
                 </button>
               </li>
             );
