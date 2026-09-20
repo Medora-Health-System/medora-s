@@ -281,6 +281,7 @@ export type EmergencyTriageV1SectionsProps = {
   onClearCarryForwardSection?: (section: TriageCarryForwardSectionKey) => void;
   /** D4C.5B.3 — hide trauma / safety / travel / preferred pharmacy for Haiti ambulatory. */
   hideEdTriageChrome?: boolean;
+  clinicMinimalSections?: boolean;
 };
 
 export function EmergencyTriageV1Sections({
@@ -297,6 +298,7 @@ export function EmergencyTriageV1Sections({
   onConfirmCarryForwardSection,
   onClearCarryForwardSection,
   hideEdTriageChrome = false,
+  clinicMinimalSections = false,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
 
@@ -517,6 +519,7 @@ export function EmergencyTriageV1Sections({
   return (
     <>
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {!clinicMinimalSections ? (<>
       <details open style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s1Title")}</span>
@@ -960,6 +963,8 @@ export function EmergencyTriageV1Sections({
         ) : null}
       </details>
       ) : null}
+
+      </>) : null}
 
       <details style={detailsShell}>
         <summary style={summaryRow}>
