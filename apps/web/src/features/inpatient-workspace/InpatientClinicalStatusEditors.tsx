@@ -384,6 +384,7 @@ export function InpatientAllergyEditorModal({
 
           {!section.nkda ? (
             <DrugAllergySearchPanel
+              allergyNamesOnly
               facilityId={facilityId}
               disabled={busy}
               medicationAllergiesDetail=""
