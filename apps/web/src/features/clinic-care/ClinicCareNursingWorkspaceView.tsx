@@ -27,7 +27,6 @@ import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
-import { EncounterVitalsPanel } from "@/features/encounters/EncounterVitalsPanel";
 import { InpatientAllergyEditorModal } from "@/features/inpatient-workspace/InpatientClinicalStatusEditors";
 import {
   resolveClinicBoardPatientNameHref,
@@ -151,9 +150,7 @@ export function ClinicCareNursingWorkspaceView() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [chiefDraft, setChiefDraft] = useState("");
-  const [showVitals, setShowVitals] = useState(false);
   const [showAllergies, setShowAllergies] = useState(false);
-  const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -211,33 +208,8 @@ export function ClinicCareNursingWorkspaceView() {
   );
 
   useEffect(() => {
-    if (!selected) {
-      setChiefDraft("");
-      setTriageSnapshot(null);
-      return;
-    }
-    setChiefDraft(selected.chiefComplaint ?? "");
-    if (!facilityId || !canClinicalIntake) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const enc = (await apiFetch(`/encounters/${selected.encounterId}`, {
-          facilityId,
-        })) as { vitals?: Record<string, unknown> | null; triage?: Record<string, unknown> | null };
-        if (cancelled) return;
-        setTriageSnapshot(
-          (enc.vitals as Record<string, unknown> | null) ??
-            (enc.triage as Record<string, unknown> | null) ??
-            null
-        );
-      } catch {
-        if (!cancelled) setTriageSnapshot(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, facilityId, canClinicalIntake]);
+    setChiefDraft(selected?.chiefComplaint ?? "");
+  }, [selected]);
 
   const runWorkflowTransition = useCallback(
     async (encounterId: string, workflowState: "TRIAGE" | "IN_TREATMENT") => {
@@ -636,15 +608,6 @@ export function ClinicCareNursingWorkspaceView() {
                 >
                   <button
                     type="button"
-                    data-testid="clinic-care-nursing-open-vitals"
-                    disabled={selected.status !== "OPEN"}
-                    onClick={() => setShowVitals(true)}
-                    style={compactBtn}
-                  >
-                    {t("clinicCareD4c4.vitals")}
-                  </button>
-                  <button
-                    type="button"
                     data-testid="clinic-care-nursing-open-allergies"
                     disabled={selected.status !== "OPEN"}
                     onClick={() => setShowAllergies(true)}
@@ -658,13 +621,6 @@ export function ClinicCareNursingWorkspaceView() {
                     data-testid="clinic-care-nursing-medrec-link"
                   >
                     {t("clinicCareD4c4.medRec")}
-                  </Link>
-                  <Link
-                    href={clinicCareAmbulatoryIntakeChartPath(selected.encounterId, "intake")}
-                    style={compactBtn}
-                    data-testid="clinic-care-nursing-pain-fall-link"
-                  >
-                    {t("clinicCareD4c4.painFallSafety")}
                   </Link>
                   <Link href={chartHref} style={compactBtn}>
                     {t("clinicCareD4c4.notesChartHint")}
@@ -708,21 +664,6 @@ export function ClinicCareNursingWorkspaceView() {
                   </>
                 ) : null}
               </div>
-
-              {showVitals && facilityId ? (
-                <EncounterVitalsPanel
-                  open={showVitals}
-                  onClose={() => setShowVitals(false)}
-                  encounterId={selected.encounterId}
-                  facilityId={facilityId}
-                  patientId={selected.patientId}
-                  triageSnapshot={triageSnapshot}
-                  onSaved={async () => {
-                    setShowVitals(false);
-                    await load();
-                  }}
-                />
-              ) : null}
 
               {showAllergies && facilityId ? (
                 <InpatientAllergyEditorModal
