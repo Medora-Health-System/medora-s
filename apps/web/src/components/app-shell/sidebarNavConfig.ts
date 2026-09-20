@@ -34,7 +34,7 @@ export type NavGroupId = "accueil"|"soins_dossiers"|"pharmacie"|"examens"|"factu
 export type SidebarNavItem={href:string;label:string;roles:string[];group:NavGroupId;accent:NavAccent;platformAdminOnly?:boolean;navAreas?:NavigationArea[]};
 type SidebarNavItemDef=Omit<SidebarNavItem,"label">&{labelKey:string};
 const SIDEBAR_NAV_DEFS:SidebarNavItemDef[]=[
-{href:"/app/clinic-care",labelKey:"nav.clinicCare",roles:["ADMIN","PROVIDER","RN","LAB","RADIOLOGY","PATIENT_CARE_TECH","FRONT_DESK"],group:"accueil",accent:"teal",navAreas:["CLINIC_CARE"]},
+{href:"/app/clinic-care",labelKey:"nav.clinicCare",roles:["ADMIN","PROVIDER","RN","LAB","RADIOLOGY","PATIENT_CARE_TECH"],group:"accueil",accent:"teal",navAreas:["CLINIC_CARE"]},
 {href:"/app/registration",labelKey:"nav.registration",roles:["FRONT_DESK","ADMIN","RN","PROVIDER"],group:"accueil",accent:"slate",navAreas:["REGISTRATION"]},
 {href:"/app/emergency/trackboard",labelKey:"nav.emergency",roles:["ADMIN","PROVIDER","RN","LAB","RADIOLOGY"],group:"accueil",accent:"slate",navAreas:["EMERGENCY"]},
 {href:"/app/dental",labelKey:"nav.dentalCare",roles:["ADMIN","PROVIDER","RN","FRONT_DESK","BILLING"],group:"accueil",accent:"indigo",navAreas:["DENTAL_CARE"]},
