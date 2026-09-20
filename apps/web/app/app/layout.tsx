@@ -447,6 +447,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pharmacyHrefPathname = (href: string) => href.split("?")[0] || href;
 
   let navItems = SIDEBAR_NAV_ITEMS.filter((item) => {
+    // Billing is a financial privilege, not an implicit clinical/admin/front-desk privilege.
+    if (item.href === "/app/billing" && !activeRoles.includes("BILLING")) return false;
     if (item.platformAdminOnly) {
       if (item.href === "/app/admin/mspp-access") {
         return (
