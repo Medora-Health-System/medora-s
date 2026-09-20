@@ -694,7 +694,7 @@ export function ClinicCareTrackboardView({
               <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr style={{ background: "#f8fafc", textAlign: "left" }}>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.patient")}</th>
-                  {mode === "todaysVisits" ? <th style={thStyle}>{t("clinicCareD4c2.columns.chiefComplaint")}</th> : <>
+                  {mode === "todaysVisits" ? <th style={thStyle}>{language === "es" ? "Motivo de consulta" : language === "fr" ? "Motif de consultation" : "Visit reason"}</th> : <>
                     <th style={thStyle}>{t("clinicCareD4c2.columns.visitOrigin")}</th>
                     <th style={thStyle}>{t("clinicCareD4c2.columns.visitType")}</th>
                     <th style={thStyle}>{t("clinicCareD4c2.columns.scheduled")}</th>
