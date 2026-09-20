@@ -24,7 +24,7 @@ describe("Appointments replaces legacy follow-up navigation", () => {
     expect(resolveClinicalUiMessage(locale, "nav.appointments")).toBe(label);
   });
 
-  it.each(["follow-ups", "clinic-care/follow-up"])(
+  it.each(["follow-ups"])(
     "redirects retired %s page without mounting the legacy UI",
     route => {
       const source = readRoute(route);
@@ -33,6 +33,13 @@ describe("Appointments replaces legacy follow-up navigation", () => {
       expect(source).not.toContain("@/lib/followUpsApi");
     }
   );
+
+  it("mounts the connected calendar within the persistent Clinic Care layout", () => {
+    const source = readRoute("clinic-care/follow-up");
+    expect(source).toContain("AppointmentsPage");
+    expect(source).not.toContain("redirect(");
+    expect(source).not.toContain("FollowUpsPage");
+  });
 
   it("keeps the new appointments calendar as the destination", () => {
     const source = readRoute("appointments");
