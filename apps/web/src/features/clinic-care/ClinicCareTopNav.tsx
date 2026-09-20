@@ -85,7 +85,7 @@ export function ClinicCareTopNav({ active }: { active: ClinicWorkspaceNavId }) {
               color: isActive ? "#0f766e" : "#334155",
             }}
           >
-            {t(item.labelKey)}
+            {item.id === "followUp" ? (t("clinicCareD4c2.calendarLabel")) : t(item.labelKey)}
           </Link>
         );
       })}
