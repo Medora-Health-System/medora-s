@@ -38,6 +38,7 @@ import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiag
 import { EnterpriseNursingClinicalWorkspaceD4b2 } from "@/features/clinical-documentation/EnterpriseNursingClinicalWorkspaceD4b2";
 import { ClinicCareAmbulatoryMedicalEvaluationPanel } from "@/features/clinic-care/ClinicCareAmbulatoryMedicalEvaluationPanel";
 import { ClinicCareAmbulatoryPrescriptionPanel } from "@/features/clinic-care/ClinicCareAmbulatoryPrescriptionPanel";
+import { projectClinicCareAllergyIntoTriageSnapshot } from "@/features/clinic-care/clinicCareLongitudinalAllergyProjection";
 
 export type ClinicCareAmbulatoryWorkspaceEncounter = {
   id: string;
@@ -281,6 +282,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   isLocked,
   resultsRefresh = 0,
   triageSnapshot = null,
+  longitudinalAllergyText = null,
   onUpdate,
 }: {
   section: ClinicCareAmbulatoryWorkspaceSection;
@@ -296,6 +298,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   isLocked: boolean;
   resultsRefresh?: number;
   triageSnapshot?: Record<string, unknown> | null;
+  longitudinalAllergyText?: string | null;
   onUpdate: () => void | Promise<void>;
 }) {
   const { t } = useI18n();
@@ -322,6 +325,14 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   const ordersMedicationMode = clinicAmbulatoryFacilityMedicationOrderMode({
     ambulatoryCareSetting: true,
   });
+  const allergyAwareTriageSnapshot = useMemo(
+    () =>
+      projectClinicCareAllergyIntoTriageSnapshot(
+        triageSnapshot,
+        longitudinalAllergyText
+      ),
+    [triageSnapshot, longitudinalAllergyText]
+  );
 
   switch (section) {
     case "intake":
@@ -404,7 +415,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           encounterAllergySource={{
             vitals: encounter.vitals ?? null,
             nursingAssessment: encounter.nursingAssessment ?? null,
-            triage: triageSnapshot,
+            triage: allergyAwareTriageSnapshot,
           }}
         />
       );
@@ -518,7 +529,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
             encounterId={encounter.id}
             facilityId={facilityId}
             encounter={encounter as never}
-            triageSnapshot={triageSnapshot}
+            triageSnapshot={allergyAwareTriageSnapshot}
             resultsRefresh={resultsRefresh}
             resultsTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "results")}
             diagnosticsTabHref={clinicCareAmbulatoryActiveWorkspacePath(encounter.id, "diagnoses")}
