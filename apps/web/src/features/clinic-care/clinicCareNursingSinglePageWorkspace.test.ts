@@ -50,8 +50,30 @@ describe("Clinic nursing single-page documentation", () => {
 
   it("reuses the enterprise intake and note engines so saved work remains part of the encounter summary source", () => {
     expect(source).toContain("<EmergencyTriagePanel");
-    expect(source).toContain('presentationMode="SIMPLE_CLINIC_INTAKE"');
+    expect(source).toContain('presentationMode="CLINIC_NURSING_MINIMAL"');
     expect(source).toContain("<EmergencyErNotesPanel");
     expect(source).toContain("Documentation stays on this page and saves to the encounter for Summary.");
+  });
+});
+
+
+describe("Clinic-only nursing and admission scope", () => {
+  const triage = readFileSync(join(__dirname, "../emergency/EmergencyTriagePanel.tsx"), "utf8");
+  const sections = readFileSync(join(__dirname, "../emergency/EmergencyTriageV1Sections.tsx"), "utf8");
+  it("limits Clinic Nursing intake to onset, completion, compact vitals, and sections 3 and 4", () => {
+    const minimal = triage.split(') : clinicNursingMinimal ? (')[1]?.split(') : (')[0] ?? "";
+    expect(minimal).toContain('data-testid="clinic-nursing-minimal-intake"');
+    expect(minimal).toContain("formData.onsetAt");
+    expect(minimal).toContain("formData.triageCompleteAt");
+    expect(minimal).toContain("<EmergencyTriageVitalsCompactSection");
+    expect(minimal).toContain("clinicMinimalSections />");
+    expect(minimal).not.toContain("sectionScreenings");
+    expect(sections).toContain("{!clinicMinimalSections ? (<>");
+    expect(sections).toContain('t("erTriage.v1.s3Title")');
+  });
+  it("does not change ED or inpatient triage presentation defaults", () => {
+    expect(triage).toContain('presentationMode = "FULL_ED_TRIAGE"');
+    expect(triage).toContain('presentationMode === "CLINIC_NURSING_MINIMAL"');
+    expect(triage).toContain('presentationMode !== "FULL_ED_TRIAGE"');
   });
 });
