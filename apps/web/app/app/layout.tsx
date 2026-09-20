@@ -432,6 +432,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isPharmacyOnly = activeRoles.includes("PHARMACY") && !activeRoles.includes("ADMIN") && !activeRoles.some((r) => ["PROVIDER", "RN"].includes(r));
   const registrationNavHrefs = new Set([
     "/app/registration",
+    "/app/clinic-care",
     "/app/patients",
     "/app/follow-ups",
     "/app/billing",
