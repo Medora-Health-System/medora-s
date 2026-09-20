@@ -411,7 +411,7 @@ export function ClinicCareAmbulatoryWorkspacePanels({
           roleCodes={roles}
           facilityTimeZone={facilityTimeZone}
           embeddedWorkspaceLayout
-          showFacilityMarShiftTimeline={!hideShiftTimeline}
+          showFacilityMarShiftTimeline
           encounterAllergySource={{
             vitals: encounter.vitals ?? null,
             nursingAssessment: encounter.nursingAssessment ?? null,
