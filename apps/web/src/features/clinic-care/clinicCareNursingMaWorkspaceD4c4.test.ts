@@ -88,11 +88,16 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
     expect(nursing).not.toContain('data-testid="clinic-care-nursing-open-vitals"');
     expect(nursing).not.toContain('data-testid="clinic-care-nursing-pain-fall-link"');
     const allergiesIndex = nursing.indexOf('data-testid="clinic-care-nursing-open-allergies"');
-    const medRecIndex = nursing.indexOf('data-testid="clinic-care-nursing-medrec-link"');
-    const notesIndex = nursing.indexOf('t("clinicCareD4c4.notesChartHint")');
+    const evaluationIndex = nursing.indexOf('data-testid="clinic-care-nursing-evaluation-link"');
+    const notesIndex = nursing.indexOf('data-testid="clinic-care-nursing-notes-link"');
     expect(allergiesIndex).toBeGreaterThan(-1);
-    expect(medRecIndex).toBeGreaterThan(allergiesIndex);
-    expect(notesIndex).toBeGreaterThan(medRecIndex);
+    expect(evaluationIndex).toBeGreaterThan(allergiesIndex);
+    expect(notesIndex).toBeGreaterThan(evaluationIndex);
+    expect(nursing).toContain('"Evaluación de enfermería"');
+    expect(nursing).toContain('"Évaluation infirmière"');
+    expect(nursing).toContain('"Nursing evaluation"');
+    expect(nursing).not.toContain("clinicCareD4c4.notesChartHint");
+    expect(nursing).not.toContain("clinicCareD4c4.medRec");
     expect(CLINIC_CARE_MA_ASSIGNMENT_ADAPTER.ambulatoryNativeRoleDeferred).toBe(true);
     expect(CLINIC_CARE_MA_ASSIGNMENT_ADAPTER.enterpriseSlot).toBe("TECHNICIAN");
   });
@@ -136,7 +141,11 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
   it("F — room + provider assignment reuse enterprise APIs (no ClinicRoom* / ClinicUserAssignment*)", () => {
     const room = read("ClinicCareInlineRoomSelect.tsx");
     expect(room).toContain("updateEncounterRoomAssignment");
+    expect(room).toContain("formatEncounterRoomDisplay(r, t)");
     expect(room).not.toMatch(/ClinicRoom/);
+    const nursing = read("ClinicCareNursingWorkspaceView.tsx");
+    expect(nursing).toContain("formatEncounterRoomDisplay(row.roomLabel");
+    expect(nursing).toContain("formatEncounterRoomDisplay(selected.roomLabel");
     const trackboard = read("ClinicCareTrackboardView.tsx");
     expect(trackboard).toContain("assignProviderSelf");
     expect(existsSync(join(featureDir, "ClinicRoom.ts"))).toBe(false);

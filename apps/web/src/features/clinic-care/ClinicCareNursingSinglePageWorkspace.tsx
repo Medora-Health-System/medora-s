@@ -59,6 +59,9 @@ function isTriageOrHistoryHref(href: string): boolean {
 
 export function ClinicCareNursingSinglePageWorkspace() {
   const { t, language } = useI18n();
+  const nursingEvaluationLabel =
+    language === "es" ? "Evaluación de enfermería" : language === "fr" ? "Évaluation infirmière" : "Nursing evaluation";
+  const notesLabel = language === "es" ? "Notas" : "Notes";
   const { facilityId, roles } = useFacilityAndRoles();
   const searchParams = useSearchParams();
   const initialEncounterId = searchParams?.get("encounterId") ?? null;
@@ -165,18 +168,18 @@ export function ClinicCareNursingSinglePageWorkspace() {
       if (!encounterId) return;
 
       const label = (anchor.textContent ?? "").trim();
-      const isMedicationReconciliation = anchor.dataset.testid === "clinic-care-nursing-medrec-link";
+      const isNursingEvaluation = anchor.dataset.testid === "clinic-care-nursing-evaluation-link";
       const isOpenIntake = anchor.dataset.testid === "clinic-care-nursing-open-intake-chart";
       const isIntakeDestination = isTriageOrHistoryHref(href);
-      const isNotesAction = label === t("clinicCareD4c4.notesChartHint");
+      const isNotesAction = anchor.dataset.testid === "clinic-care-nursing-notes-link";
 
-      if (isMedicationReconciliation || isOpenIntake || isIntakeDestination || isNotesAction) {
+      if (isNursingEvaluation || isOpenIntake || isIntakeDestination || isNotesAction) {
         event.preventDefault();
         event.stopPropagation();
         if (isNotesAction) {
           void openInlineTool("notes", href, label);
         } else {
-          void openInlineTool("intake", href, label || t("clinicCareD4c4.medRec"));
+          void openInlineTool("intake", href, label || nursingEvaluationLabel);
         }
         return;
       }
@@ -187,11 +190,11 @@ export function ClinicCareNursingSinglePageWorkspace() {
       event.stopPropagation();
       rememberSelectedEncounter(encounterId);
     },
-    [openInlineTool, rememberSelectedEncounter, startIntakeOnBoard, t]
+    [nursingEvaluationLabel, openInlineTool, rememberSelectedEncounter, startIntakeOnBoard]
   );
 
   const drawerTitle =
-    toolLabel || (tool === "notes" ? t("clinicCareD4c4.notesChartHint") : t("clinicCareD4c4.medRec"));
+    toolLabel || (tool === "notes" ? notesLabel : nursingEvaluationLabel);
   const nursingPageHref = encounter?.id
     ? `/app/clinic-care/nursing?encounterId=${encodeURIComponent(encounter.id)}`
     : "/app/clinic-care/nursing";

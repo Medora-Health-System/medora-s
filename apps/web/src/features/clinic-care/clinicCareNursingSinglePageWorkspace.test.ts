@@ -19,8 +19,9 @@ describe("Clinic nursing single-page documentation", () => {
   it("recognizes the actual triage/history query links and keeps documentation inline", () => {
     expect(source).toContain('url.searchParams.get("tab")');
     expect(source).toContain('tab === "triage" || tab === "history"');
-    expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-medrec-link"');
+    expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-evaluation-link"');
     expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-open-intake-chart"');
+    expect(source).toContain('anchor.dataset.testid === "clinic-care-nursing-notes-link"');
     expect(source).toContain('openInlineTool("notes"');
     expect(source).not.toContain('href.startsWith("/app/")');
   });
@@ -56,7 +57,7 @@ describe("Clinic nursing single-page documentation", () => {
     expect(source).not.toContain("La documentación permanece en esta página");
   });
 
-  it("labels the Clinic Nursing medication reconciliation content as Evaluation and uses audited vitals attribution", () => {
+  it("labels the Clinic Nursing content as Evaluation and uses audited vitals attribution", () => {
     const triage = readFileSync(join(__dirname, "../emergency/EmergencyTriagePanel.tsx"), "utf8");
     expect(triage).toContain('? "Evaluación"');
     expect(triage).toContain("fetchLatestVitalsHistoryEntry(encounter.id, facilityId)");

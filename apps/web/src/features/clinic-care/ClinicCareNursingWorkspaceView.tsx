@@ -24,6 +24,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { assignNurseSelf, patchEncounterWorkflowState } from "@/lib/clinicalWorklistApi";
 import { assignHospitalRoleToMe } from "@/features/hospital-care/hospitalAssignmentApi";
 import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
+import { formatEncounterRoomDisplay } from "@/lib/encounterRoomDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card/medoraCardTokens";
@@ -132,6 +133,9 @@ const compactBtn: React.CSSProperties = {
 export function ClinicCareNursingWorkspaceView() {
   const { t, language } = useI18n();
   const locale = productUiBcp47Tag(language);
+  const nursingEvaluationLabel =
+    language === "es" ? "Evaluación de enfermería" : language === "fr" ? "Évaluation infirmière" : "Nursing evaluation";
+  const notesLabel = language === "es" ? "Notas" : "Notes";
   const searchParams = useSearchParams();
   const focusEncounterId = searchParams?.get("encounterId") ?? null;
   const { facilityId, roles, ready } = useFacilityAndRoles();
@@ -455,7 +459,7 @@ export function ClinicCareNursingWorkspaceView() {
                         dash
                       )}
                       {" · "}
-                      {row.roomLabel || t("clinicCareD4c4.roomUnassigned")}
+                      {formatEncounterRoomDisplay(row.roomLabel, t, t("clinicCareD4c4.roomUnassigned"))}
                     </div>
                     <div style={{ marginTop: 2, fontSize: 11, color: "#475569" }}>
                       {t("clinicCareD4c2.columns.provider")}: {row.providerName || dash}
@@ -470,7 +474,7 @@ export function ClinicCareNursingWorkspaceView() {
                         {t("clinicCareD4c4.allergies")}:{" "}
                         {t(intakeStatusLabelKey(row.intakeStatus.allergies))}
                         {" · "}
-                        {t("clinicCareD4c4.medRec")}: {t(intakeStatusLabelKey(row.intakeStatus.medRec))}
+                        {nursingEvaluationLabel}: {t(intakeStatusLabelKey(row.intakeStatus.medRec))}
                       </div>
                     ) : null}
                   </button>
@@ -535,7 +539,7 @@ export function ClinicCareNursingWorkspaceView() {
                         testId={`clinic-care-nursing-room-${selected.encounterId}`}
                       />
                     ) : (
-                      <span style={{ fontSize: 13, color: "#0f172a" }}>{selected.roomLabel || dash}</span>
+                      <span style={{ fontSize: 13, color: "#0f172a" }}>{formatEncounterRoomDisplay(selected.roomLabel, t, dash)}</span>
                     )}
                   </div>
                 </label>
@@ -618,12 +622,12 @@ export function ClinicCareNursingWorkspaceView() {
                   <Link
                     href={clinicCareAmbulatoryIntakeChartPath(selected.encounterId, "history")}
                     style={compactBtn}
-                    data-testid="clinic-care-nursing-medrec-link"
+                    data-testid="clinic-care-nursing-evaluation-link"
                   >
-                    {t("clinicCareD4c4.medRec")}
+                    {nursingEvaluationLabel}
                   </Link>
-                  <Link href={chartHref} style={compactBtn}>
-                    {t("clinicCareD4c4.notesChartHint")}
+                  <Link href={chartHref} style={compactBtn} data-testid="clinic-care-nursing-notes-link">
+                    {notesLabel}
                   </Link>
                 </div>
               ) : (
