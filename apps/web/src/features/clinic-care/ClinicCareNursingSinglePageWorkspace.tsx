@@ -303,7 +303,7 @@ export function ClinicCareNursingSinglePageWorkspace() {
                     isLocked={encounter.status !== "OPEN"}
                     encounterTriageTabHref={nursingPageHref}
                     onSaved={handleDrawerSaved}
-                    presentationMode="SIMPLE_CLINIC_INTAKE"
+                    presentationMode="CLINIC_NURSING_MINIMAL"
                   />
                 )
               ) : null}
