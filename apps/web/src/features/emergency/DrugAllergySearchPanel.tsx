@@ -58,9 +58,11 @@ export function DrugAllergySearchPanel({
   additionalAllergyInfo,
   allergyDetailSelections,
   onSaveAllergies,
+  allergyNamesOnly = false,
 }: {
   facilityId: string;
   disabled?: boolean;
+  allergyNamesOnly?: boolean;
   medicationAllergiesDetail: string;
   additionalAllergyInfo: string;
   allergyDetailSelections: string[];
@@ -72,6 +74,9 @@ export function DrugAllergySearchPanel({
 }) {
   const { t, language } = useI18n();
   const [searchInput, setSearchInput] = useState("");
+  const allergyName = (item: CatalogSearchItem): string =>
+    item.metadata?.genericName?.trim() ||
+    formatMedicationOptionForLocale(item, language, t).primary.replace(/\s+\d+(?:[.,]\d+)?\s*(?:mg|mcg|g|ml|units?|iu|%)\b.*$/i, "").trim();
   const [results, setResults] = useState<CatalogSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SelectedDrugAllergy[]>([]);
@@ -114,6 +119,10 @@ export function DrugAllergySearchPanel({
   const addSelection = useCallback(
     (item: CatalogSearchItem) => {
       const entry = selectedDrugAllergyFromCatalog(item, language, t);
+      if (allergyNamesOnly) {
+        entry.displayName = allergyName(item);
+        entry.genericName = "";
+      }
       setSelected((prev) => {
         if (prev.some((p) => p.catalogId === entry.catalogId)) return prev;
         return [...prev, entry];
@@ -121,7 +130,7 @@ export function DrugAllergySearchPanel({
       setSearchInput("");
       setResults([]);
     },
-    [language, t]
+    [language, t, allergyNamesOnly]
   );
 
   const removeSelection = (catalogId: string) => {
@@ -190,6 +199,7 @@ export function DrugAllergySearchPanel({
         >
           {results.map((item) => {
             const { primary, subtitle } = formatMedicationOptionForLocale(item, language, t);
+            const displayPrimary = allergyNamesOnly ? allergyName(item) : primary;
             return (
               <li key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <button
@@ -206,8 +216,8 @@ export function DrugAllergySearchPanel({
                     fontSize: 13,
                   }}
                 >
-                  <div style={{ fontWeight: 600, color: "#0f172a" }}>{primary}</div>
-                  {subtitle ? (
+                  <div style={{ fontWeight: 600, color: "#0f172a" }}>{displayPrimary}</div>
+                  {!allergyNamesOnly && subtitle ? (
                     <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>{subtitle}</div>
                   ) : null}
                 </button>
