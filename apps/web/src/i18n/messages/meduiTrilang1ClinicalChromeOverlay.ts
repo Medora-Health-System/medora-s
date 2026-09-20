@@ -3,6 +3,7 @@
  * Provider-authored discharge narrative is not in this overlay.
  */
 export const MEDUI_TRILANG_1_CLINICAL_CHROME_OVERLAY: Record<string, string> = {
+  "nav.appointments": "Citas",
   "clinicalSafetyGuardrails.latestVitalsTitle": "Últimos signos vitales",
   "clinicalSafetyGuardrails.latestVitalsRecorded": "Registrados: {datetime}",
   "clinicalSafetyGuardrails.latestVitalsEmpty": "No hay signos vitales estructurados en el historial.",

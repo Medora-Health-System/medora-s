@@ -193,6 +193,7 @@ export default {
     hospitalisation: "Hospital Care",
     observation: "Observation",
     followUps: "Follow-up",
+    appointments: "Appointments",
     radWorklist: "Radiology worklist",
     labWorklist: "Lab worklist",
     pharmacyQueue: "Pharmacy",
