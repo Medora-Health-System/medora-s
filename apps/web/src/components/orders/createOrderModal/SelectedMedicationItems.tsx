@@ -69,6 +69,7 @@ const confirmationStyle: React.CSSProperties = {
   lineHeight: 1.35,
 };
 
+
 export function SelectedMedicationItems({
   items,
   onPatch,
