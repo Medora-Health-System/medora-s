@@ -215,7 +215,12 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
 
   const clinicalStrip = useMemo(() => {
     const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
-    if (!parsed) return { pairs: undefined as { label: string; value: string }[] | undefined, allergyText: undefined as string | undefined };
+    if (!parsed) {
+      return {
+        pairs: undefined as { label: string; value: string }[] | undefined,
+        allergyText: longitudinalAllergyText ?? undefined,
+      };
+    }
     const pairs = buildErWorkspaceVitalPairs(parsed.slice, language);
     const pain = parsed.slice.painScore?.trim();
     if (pain) {
