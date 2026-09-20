@@ -11,14 +11,17 @@ import {
 const CLINIC_PRESENTATION_OVERRIDES: Record<ProductUiLanguage, Record<string, string>> = {
   en: {
     "nav.appointments": "Appointments",
+    "clinicCareD4c2.calendarLabel": "Calendar",
     "clinicCareD4c7e.mar.emptyFacility": "No medication scheduled.",
   },
   fr: {
     "nav.appointments": "Rendez-vous",
+    "clinicCareD4c2.calendarLabel": "Calendrier",
     "clinicCareD4c7e.mar.emptyFacility": "Aucun médicament programmé.",
   },
   es: {
     "nav.appointments": "Citas",
+    "clinicCareD4c2.calendarLabel": "Calendario",
     "clinicCareD4c7e.mar.emptyFacility": "No hay medicamentos programados.",
   },
 };
