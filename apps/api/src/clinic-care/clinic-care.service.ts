@@ -115,6 +115,8 @@ export type ClinicCareTrackboardRowDto = {
   patientId: string;
   patientName: string;
   mrn: string | null;
+  patientDob: string | null;
+  patientSexAtBirth: string | null;
   encounterType: string;
   status: string;
   workflowState: string | null;
@@ -370,6 +372,8 @@ export class ClinicCareService {
         patientId: e.patientId,
         patientName: personName(e.patient) ?? "—",
         mrn: e.patient?.mrn?.trim() || null,
+        patientDob: e.patient?.dob?.toISOString() ?? null,
+        patientSexAtBirth: e.patient?.sexAtBirth ?? null,
         encounterType: e.type,
         status: e.status,
         workflowState: e.workflowState ?? null,
