@@ -53,6 +53,9 @@ import { ClinicCareAmbulatoryWorkspacePanels } from "@/features/clinic-care/Clin
 import { ClinicCareAmbulatoryClosurePendingModal } from "@/features/clinic-care/ClinicCareAmbulatoryClosurePendingModal";
 import { pickProductUiCopy, productUiBcp47Tag } from "@/i18n/config";
 import {
+  clinicCareLongitudinalAllergySummary,
+} from "@/features/clinic-care/clinicCareLongitudinalAllergyProjection";
+import {
   INITIAL_D4C7J_CLOSURE_STATE,
   canDispatchD4c7jClose,
   classifyD4c7jCloseError,
@@ -130,6 +133,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [triageSnapshot, setTriageSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [longitudinalAllergyText, setLongitudinalAllergyText] = useState<string | null>(null);
   const [resultsRefresh, setResultsRefresh] = useState(0);
   const [activeSection, setActiveSection] = useState<ClinicCareAmbulatoryWorkspaceSection>(
     () => parseClinicCareAmbulatoryWorkspaceSection(searchParams?.get("section")) ?? "summary"
@@ -187,6 +191,28 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
     void loadTriage();
   }, [loadTriage]);
 
+  const loadLongitudinalAllergies = useCallback(async () => {
+    const patientId = encounter?.patient?.id;
+    if (!patientId || !facilityId) {
+      setLongitudinalAllergyText(null);
+      return;
+    }
+    try {
+      const profile = await apiFetch(
+        `/patients/${encodeURIComponent(patientId)}/clinical-history-profile`,
+        { facilityId }
+      );
+      setLongitudinalAllergyText(clinicCareLongitudinalAllergySummary(profile));
+    } catch {
+      // Older/unavailable profiles fall back to the encounter triage projection.
+      setLongitudinalAllergyText(null);
+    }
+  }, [encounter?.patient?.id, facilityId]);
+
+  useEffect(() => {
+    void loadLongitudinalAllergies();
+  }, [loadLongitudinalAllergies]);
+
   const clinicalStrip = useMemo(() => {
     const parsed = triagePreviewSliceFromTriageGet(triageSnapshot, language);
     if (!parsed) return { pairs: undefined as { label: string; value: string }[] | undefined, allergyText: undefined as string | undefined };
@@ -200,9 +226,11 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
     }
     return {
       pairs,
-      allergyText: buildAllergyStripSummary(parsed.slice, parsed.er, language),
+      allergyText:
+        longitudinalAllergyText ||
+        buildAllergyStripSummary(parsed.slice, parsed.er, language),
     };
-  }, [triageSnapshot, language]);
+  }, [triageSnapshot, language, longitudinalAllergyText]);
 
   const goToSection = useCallback(
     (section: ClinicCareAmbulatoryWorkspaceSection) => {
@@ -617,6 +645,7 @@ export function ClinicCareActiveAmbulatoryWorkspaceView() {
           isLocked={isLocked}
           resultsRefresh={resultsRefresh}
           triageSnapshot={triageSnapshot}
+          longitudinalAllergyText={longitudinalAllergyText}
           onUpdate={async () => {
             await load();
             await loadTriage();
