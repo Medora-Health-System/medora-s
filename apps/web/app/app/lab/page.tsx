@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
+import { clinicOrderDisplayLabel } from "@/features/clinic-care/clinicOrderDisplayLabel";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tOrderItemStatusForWorklist, tOrderPriority } from "@/lib/encounterChromeI18n";
@@ -151,7 +152,7 @@ export default function LabPage() {
                         {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
                       </td>
                       <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? t("common.dash")}</td>
-                      <td style={{ padding: 12 }}>{item.catalogItemId}</td>
+                      <td style={{ padding: 12 }}>{clinicOrderDisplayLabel(item, language)}</td>
                       <td style={{ padding: 12 }}>{tOrderPriority(t, String(order.priority ?? "ROUTINE"))}</td>
                       <td style={{ padding: 12 }}>{tOrderItemStatusForWorklist(t, String(item.status))}</td>
                       <td style={{ padding: 12 }}>
