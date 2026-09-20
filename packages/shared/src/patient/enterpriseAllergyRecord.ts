@@ -186,6 +186,11 @@ export function syncLegacyAllergyTextFields(
       .join("; ");
     next.allergyNote = active.map((e) => e.substance).join(", ");
     next.allergyDetailSelections = (next.allergyDetailSelections ?? []).filter((c) => c !== "NKDA");
+  } else if (next.entries !== undefined) {
+    // A deliberate removal of the last active entry must not resurrect stale legacy text.
+    next.medicationAllergiesDetail = "";
+    next.allergyNote = "";
+    next.allergyDetailSelections = (next.allergyDetailSelections ?? []).filter((c) => c !== "NKDA");
   }
   return next;
 }
