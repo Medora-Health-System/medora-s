@@ -559,11 +559,12 @@ export function ClinicCareTrackboardView({
           })}
         </section>
 
-        <section style={{ ...MEDORA_CARD_SHELL, padding: 8, marginBottom: 8 }}>
+        {mode === "todaysVisits" ? <h2 style={{ fontSize: 18, fontWeight: 750, margin: "12px 0" }}>{t("clinicCareD4c2.nav.todaysVisits")} ({filteredRows.length})</h2> : null}
+        <section style={{ ...MEDORA_CARD_SHELL, padding: 14, marginBottom: 14 }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(160px, 1.4fr) repeat(auto-fit, minmax(100px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
               gap: 6,
               alignItems: "end",
             }}
@@ -576,16 +577,6 @@ export function ClinicCareTrackboardView({
                 placeholder={t("clinicCareD4c2.filters.searchPlaceholder")}
                 style={{ ...inputStyle, marginTop: 4 }}
               />
-            </label>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
-              {t("clinicCareD4c2.filters.view")}
-              <select value={view} onChange={(e) => setView(e.target.value as ClinicCareTrackboardView)} style={{ ...selectStyle, width: "100%", marginTop: 4 }}>
-                {CLINIC_CARE_TRACKBOARD_VIEWS.map((v) => (
-                  <option key={v} value={v}>
-                    {t(viewLabelKey(v))}
-                  </option>
-                ))}
-              </select>
             </label>
             <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
               {t("clinicCareD4c2.filters.status")}
@@ -613,14 +604,6 @@ export function ClinicCareTrackboardView({
               </select>
             </label>
             <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
-              {t("clinicCareD4c2.filters.visitType")}
-              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ ...selectStyle, width: "100%", marginTop: 4 }}>
-                <option value="">{t("clinicCareD4c2.filters.all")}</option>
-                <option value="OUTPATIENT">{t("clinicCareD4c2.encounterTypes.outpatient")}</option>
-                <option value="URGENT_CARE">{t("clinicCareD4c2.encounterTypes.urgentCare")}</option>
-              </select>
-            </label>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
               {t("clinicCareD4c2.filters.provider")}
               <select value={filterProvider} onChange={(e) => setFilterProvider(e.target.value)} style={{ ...selectStyle, width: "100%", marginTop: 4 }}>
                 <option value="">{t("clinicCareD4c2.filters.all")}</option>
@@ -640,18 +623,6 @@ export function ClinicCareTrackboardView({
                     {r}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
-              {t("clinicCareD4c2.filters.sort")}
-              <select
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as "arrival" | "patient" | "status")}
-                style={{ ...selectStyle, width: "100%", marginTop: 4 }}
-              >
-                <option value="arrival">{t("clinicCareD4c2.filters.sortArrival")}</option>
-                <option value="patient">{t("clinicCareD4c2.filters.sortPatient")}</option>
-                <option value="status">{t("clinicCareD4c2.filters.sortStatus")}</option>
               </select>
             </label>
           </div>
@@ -723,11 +694,13 @@ export function ClinicCareTrackboardView({
               <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
                 <tr style={{ background: "#f8fafc", textAlign: "left" }}>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.patient")}</th>
-                  <th style={thStyle}>{t("clinicCareD4c2.columns.visitOrigin")}</th>
-                  <th style={thStyle}>{t("clinicCareD4c2.columns.visitType")}</th>
-                  <th style={thStyle}>{t("clinicCareD4c2.columns.scheduled")}</th>
+                  {mode === "todaysVisits" ? <th style={thStyle}>{t("clinicCareD4c2.columns.chiefComplaint")}</th> : <>
+                    <th style={thStyle}>{t("clinicCareD4c2.columns.visitOrigin")}</th>
+                    <th style={thStyle}>{t("clinicCareD4c2.columns.visitType")}</th>
+                    <th style={thStyle}>{t("clinicCareD4c2.columns.scheduled")}</th>
+                  </>}
                   <th style={thStyle}>{t("clinicCareD4c2.columns.arrival")}</th>
-                  <th style={thStyle}>{t("clinicCareD4c2.columns.checkIn")}</th>
+                  {mode !== "todaysVisits" ? <th style={thStyle}>{t("clinicCareD4c2.columns.checkIn")}</th> : null}
                   <th style={thStyle}>{t("clinicCareD4c2.columns.status")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.room")}</th>
                   <th style={thStyle}>{t("clinicCareD4c2.columns.provider")}</th>
@@ -737,7 +710,7 @@ export function ClinicCareTrackboardView({
                   {visibility.showResultsPendingCount ? (
                     <th style={thStyle}>{t("clinicCareD4c2.columns.results")}</th>
                   ) : null}
-                  {visibility.showNextStepHint ? (
+                  {mode !== "todaysVisits" && visibility.showNextStepHint ? (
                     <th style={thStyle}>{t("clinicCareD4c2.columns.nextStep")}</th>
                   ) : null}
                   <th style={thStyle}>{t("clinicCareD4c2.columns.actions")}</th>
@@ -793,11 +766,12 @@ export function ClinicCareTrackboardView({
                         </Link>
                         <div style={{ fontSize: 10, color: "#64748b" }}>
                           {row.mrn ? `${t("clinicCareD4c2.mrnPrefix")} ${row.mrn}` : dash}
-                          {visibility.showChiefComplaint && row.chiefComplaint
+                          {mode !== "todaysVisits" && visibility.showChiefComplaint && row.chiefComplaint
                             ? ` · ${row.chiefComplaint}`
                             : ""}
                         </div>
                       </td>
+                      {mode === "todaysVisits" ? <td style={{ ...tdStyle, minWidth: 180, maxWidth: 260, overflowWrap: "anywhere" }}>{visibility.showChiefComplaint ? row.chiefComplaint || dash : dash}</td> : <>
                       <td style={tdStyle}>
                         {t(visitOriginLabelKey(row.visitOriginDisplay || row.visitOrigin || "LEGACY"))}
                       </td>
@@ -812,6 +786,7 @@ export function ClinicCareTrackboardView({
                             )
                           : dash}
                       </td>
+                      </>}
                       <td style={tdStyle}>
                         {formatArrivalTime(
                           row.arrivedAt || row.createdAt,
@@ -820,6 +795,7 @@ export function ClinicCareTrackboardView({
                           dash
                         )}
                       </td>
+                      {mode !== "todaysVisits" ? <>
                       <td style={tdStyle}>
                         {row.checkedInAt
                           ? formatArrivalTime(
@@ -830,6 +806,7 @@ export function ClinicCareTrackboardView({
                             )
                           : dash}
                       </td>
+                      </> : null}
                       <td style={tdStyle}>
                         <span
                           style={{
@@ -932,11 +909,11 @@ export function ClinicCareTrackboardView({
                           )}
                         </td>
                       ) : null}
-                      {visibility.showNextStepHint ? (
+                      {mode !== "todaysVisits" && visibility.showNextStepHint ? (
                         <td style={tdStyle}>{t(nextStepLabelKey(row.nextStepHint))}</td>
                       ) : null}
                       <td style={tdStyle}>
-                        {showOpenAction ? (
+                        {showOpenAction || (mode === "todaysVisits" && visibility.showClinicalActionLinks && access?.canAccessEncounters) ? (
                           <Link
                             href={openHref}
                             data-testid={`clinic-care-action-chart-${row.encounterId}`}
