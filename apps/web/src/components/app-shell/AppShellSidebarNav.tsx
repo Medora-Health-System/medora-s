@@ -103,8 +103,7 @@ export function AppShellSidebarNav({
                 const active = isSidebarNavItemActive(pathname, item.href, mounted);
                 const label = t(item.label);
                 return (
-                  <div key={item.href} className="flex items-center gap-1">
-                  <Link
+                  <Link key={item.href}
                     draggable={true}
                     onDragStart={(event) => { setDragged(item.href); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.href); }}
                     onDragOver={(event) => { if (dragged && dragged !== item.href) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
@@ -115,7 +114,7 @@ export function AppShellSidebarNav({
                     aria-label={label}
                     aria-current={active ? "page" : undefined}
                     onClick={onNavLinkClick}
-                    className={`flex-1 min-w-0 group relative isolate origin-left overflow-hidden rounded-lg transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-sm ${
+                    className={`group relative isolate origin-left overflow-hidden rounded-lg transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-sm ${
                       active
                         ? "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-lg before:bg-transparent before:transition-colors hover:before:bg-white/10"
                         : "bg-[rgba(15,23,42,0.38)] hover:bg-white/10"
@@ -153,31 +152,6 @@ export function AppShellSidebarNav({
                       </span>
                     ) : null}
                   </Link>
-                  <button
-                    type="button"
-                    aria-label={`Move ${label} up`}
-                    title={`Move ${label} up`}
-                    disabled={visibleSections.flatMap(section => section.items)[0]?.href === item.href}
-                    onClick={() => {
-                      const items = visibleSections.flatMap(section => section.items);
-                      const index = items.findIndex(candidate => candidate.href === item.href);
-                      if (index > 0) moveItem(item.href, items[index - 1].href);
-                    }}
-                    className="shrink-0 rounded px-1.5 py-2 text-white/80 hover:bg-white/10 disabled:opacity-30"
-                  >↑</button>
-                  <button
-                    type="button"
-                    aria-label={`Move ${label} down`}
-                    title={`Move ${label} down`}
-                    disabled={visibleSections.flatMap(section => section.items).at(-1)?.href === item.href}
-                    onClick={() => {
-                      const items = visibleSections.flatMap(section => section.items);
-                      const index = items.findIndex(candidate => candidate.href === item.href);
-                      if (index >= 0 && index < items.length - 1) moveItem(item.href, items[index + 1].href);
-                    }}
-                    className="shrink-0 rounded px-1.5 py-2 text-white/80 hover:bg-white/10 disabled:opacity-30"
-                  >↓</button>
-                  </div>
                 );
               })}
             </div>
