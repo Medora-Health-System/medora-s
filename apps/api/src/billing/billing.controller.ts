@@ -115,14 +115,14 @@ export class BillingController {
   }
 
   @Get("billing/encounters/:encounterId/readiness")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getEncounterBillingItemReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getEncounterOrderItemReadiness(facilityId, encounterId);
   }
 
   @Get("billing/encounters/:encounterId/autobill-decisions")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getEncounterAutoBillDecisions(
     @Param("encounterId") encounterId: string,
     @Query("language") language: string | undefined,
@@ -133,7 +133,7 @@ export class BillingController {
   }
 
   @Get("billing/manual-review")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getManualBillingReviewQueue(@Query("language") language: string | undefined, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getManualBillingReviewQueue(facilityId, language);
@@ -141,7 +141,7 @@ export class BillingController {
 
   /** Phase 19UCED.6 — read-only charge capture / revenue review queue (no claim submission). */
   @Get("billing/charge-review")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getChargeReviewQueue(
     @Req() req: any,
     @Query("status") statusRaw?: string,
@@ -198,7 +198,7 @@ export class BillingController {
 
   /** Phase 19UCED.7 — read-only coding integrity / documentation review queue. */
   @Get("coding/review-queue")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getCodingReviewQueue(
     @Req() req: any,
     @Query("status") statusRaw?: string,
@@ -255,7 +255,7 @@ export class BillingController {
 
   /** Phase 19UCED.8 — read-only claim assembly / export orchestration preview queue. */
   @Get("billing/claim-assembly-preview")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getClaimAssemblyPreviewQueue(
     @Req() req: any,
     @Query("status") statusRaw?: string,
@@ -313,7 +313,7 @@ export class BillingController {
   }
 
   @Get("billing/encounters/:encounterId/manual-review-gate")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getEncounterManualReviewGate(
     @Param("encounterId") encounterId: string,
     @Query("language") language: string | undefined,
@@ -324,14 +324,14 @@ export class BillingController {
   }
 
   @Get("billing/encounters/:encounterId/readiness-explainer")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getEncounterReadinessExplainer(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getEncounterReadinessExplainer(facilityId, encounterId);
   }
 
   @Get("billing/encounters/:encounterId/review-decisions")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getEncounterBillingReviewDecisions(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getEncounterBillingReviewDecisions(facilityId, encounterId);
@@ -396,7 +396,7 @@ export class BillingController {
   }
 
   @Get("billing/encounters/:encounterId/export")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportEncounterBillingItems(
     @Param("encounterId") encounterId: string,
     @Query("format") formatRaw: string | undefined,
@@ -421,7 +421,7 @@ export class BillingController {
   }
 
   @Get("billing/external/encounters/:encounterId/export")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingEncounter(
     @Param("encounterId") encounterId: string,
     @Query("format") formatRaw: string | undefined,
@@ -478,7 +478,7 @@ export class BillingController {
   }
 
   @Get("billing/external/daily-export")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingDaily(
     @Query("date") date: string,
     @Query("format") formatRaw: string | undefined,
@@ -533,7 +533,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/daily.json")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingDailyJson(@Query("date") date: string, @Req() req: any) {
     if (!date?.trim()) throw new BadRequestException("date is required (YYYY-MM-DD)");
     const facilityId = req.facilityId;
@@ -551,7 +551,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/daily.csv")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingDailyCsv(
     @Query("date") date: string,
     @Req() req: any,
@@ -576,7 +576,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/weekly.json")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingWeeklyJson(@Query("weekStart") weekStart: string, @Req() req: any) {
     if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
     const facilityId = req.facilityId;
@@ -594,7 +594,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/weekly.csv")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingWeeklyCsv(
     @Query("weekStart") weekStart: string,
     @Req() req: any,
@@ -619,21 +619,21 @@ export class BillingController {
   }
 
   @Get("billing/external-export/daily/certification")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getExternalBillingDailyCertification(@Query("date") date: string, @Req() req: any) {
     if (!date?.trim()) throw new BadRequestException("date is required (YYYY-MM-DD)");
     return this.externalBillingExport.getDailyExportCertification(req.facilityId, date.trim());
   }
 
   @Get("billing/external-export/weekly/certification")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getExternalBillingWeeklyCertification(@Query("weekStart") weekStart: string, @Req() req: any) {
     if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
     return this.externalBillingExport.getWeeklyExportCertification(req.facilityId, weekStart.trim());
   }
 
   @Get("billing/external-export/monthly.json")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingMonthlyJson(@Query("month") month: string, @Req() req: any) {
     if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
     const facilityId = req.facilityId;
@@ -651,7 +651,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/monthly.csv")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async exportExternalBillingMonthlyCsv(
     @Query("month") month: string,
     @Req() req: any,
@@ -676,7 +676,7 @@ export class BillingController {
   }
 
   @Get("billing/external-export/monthly/certification")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async getExternalBillingMonthlyCertification(@Query("month") month: string, @Req() req: any) {
     if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
     return this.externalBillingExport.getMonthlyExportCertification(req.facilityId, month.trim());
