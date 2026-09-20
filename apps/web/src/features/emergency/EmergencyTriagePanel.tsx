@@ -64,8 +64,7 @@ import {
   measuredAtIsoFromLocalInputs,
   splitMeasuredAtLocal,
 } from "@/lib/vitalsMeasurementContextDisplay";
-import { fetchAuthMeSession } from "@/lib/authSessionMe";
-import { vitalSummaryInitials } from "@/components/patients/VitalSummaryPanel";
+import { fetchLatestVitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import {
   emptyErTraumaActivationForm,
   emptyErTriageV1Form,
@@ -836,21 +835,24 @@ export function EmergencyTriagePanel({
         );
       }
 
-      const me = await fetchAuthMeSession();
-      const meData = me.ok && me.data ? me.data : null;
-      const firstName = typeof meData?.firstName === "string" ? meData.firstName : "";
-      const lastName = typeof meData?.lastName === "string" ? meData.lastName : "";
-      const displayName = `${firstName} ${lastName}`.trim();
-      const initials = vitalSummaryInitials({ firstName, lastName, displayName });
-      const recordedAtLabel = new Date().toLocaleString(productUiBcp47Tag(language), {
-        dateStyle: "short",
-        timeStyle: "short",
-      });
+      const savedEntry = await fetchLatestVitalsHistoryEntry(encounter.id, facilityId);
+      const displayName = savedEntry?.recordedBy?.displayName?.trim() || "—";
+      const roleTitle =
+        savedEntry?.recordedBy?.roleTitle?.trim() ||
+        savedEntry?.recordedBy?.role?.trim() ||
+        "—";
+      const recordedAtLabel = new Date(savedEntry?.recordedAt ?? Date.now()).toLocaleString(
+        productUiBcp47Tag(language),
+        {
+          dateStyle: "short",
+          timeStyle: "short",
+        }
+      );
       setVitalsAttributionLine(
         t("vitalsContext.recordedByLine")
-          .replace("{initials}", initials)
-          .replace("{name}", displayName || "—")
-          .replace("{role}", "")
+          .replace("{initials}", displayName)
+          .replace("{name}", roleTitle)
+          .replace("{role}", roleTitle)
           .replace("{datetime}", recordedAtLabel)
       );
 
@@ -1078,9 +1080,15 @@ export function EmergencyTriagePanel({
       <MedoraCardInner>
         <MedoraCardTitle
           title={
-            simpleClinicIntake
-              ? t("clinicCareD4c5b3.intake.title")
-              : t("erTriage.panel.title")
+            clinicNursingMinimal
+              ? language === "es"
+                ? "Evaluación"
+                : language === "fr"
+                  ? "Évaluation"
+                  : "Evaluation"
+              : simpleClinicIntake
+                ? t("clinicCareD4c5b3.intake.title")
+                : t("erTriage.panel.title")
           }
         />
         {simpleClinicIntake ? (
