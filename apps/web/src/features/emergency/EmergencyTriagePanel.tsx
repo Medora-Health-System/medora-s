@@ -284,10 +284,11 @@ export function EmergencyTriagePanel({
   patientChartHref?: string;
   onSaved: () => void | Promise<void>;
   onRequestDocumentEcg?: () => void;
-  presentationMode?: "SIMPLE_CLINIC_INTAKE" | "FULL_ED_TRIAGE";
+  presentationMode?: "SIMPLE_CLINIC_INTAKE" | "CLINIC_NURSING_MINIMAL" | "FULL_ED_TRIAGE";
 }) {
   const { t, language } = useI18n();
-  const simpleClinicIntake = presentationMode === "SIMPLE_CLINIC_INTAKE";
+  const clinicNursingMinimal = presentationMode === "CLINIC_NURSING_MINIMAL";
+  const simpleClinicIntake = presentationMode !== "FULL_ED_TRIAGE";
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [formData, setFormData] = useState<TriageFormState>(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -1090,6 +1091,33 @@ export function EmergencyTriagePanel({
 
         {loading ? (
           <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>
+        ) : clinicNursingMinimal ? (
+          <div data-testid="clinic-nursing-minimal-intake" style={{ display: "grid", gap: 16, marginTop: 16 }}>
+            <div style={grid2}>
+              <label style={labelStyle}>{t("erTriage.panel.onsetAt")}
+                <input type="datetime-local" value={formData.onsetAt} onChange={(e) => setFormData((v) => ({ ...v, onsetAt: e.target.value }))} disabled={formDisabled} style={inputBase} />
+              </label>
+              <label style={labelStyle}>{t("erTriage.panel.triageCompleteAt")}
+                <input type="datetime-local" value={formData.triageCompleteAt} onChange={(e) => setFormData((v) => ({ ...v, triageCompleteAt: e.target.value }))} disabled={formDisabled} style={inputBase} />
+              </label>
+            </div>
+            <EmergencyTriageVitalsCompactSection
+              values={{ tempC: formData.tempC, hr: formData.hr, rr: formData.rr, bpSys: formData.bpSys, bpDia: formData.bpDia, spo2: formData.spo2, weightKg: formData.weightKg, heightCm: formData.heightCm, painScore: formData.painScore, tempInputUnit: formData.tempInputUnit, weightInputUnit: formData.weightInputUnit, heightInputMode: formData.heightInputMode, heightFeet: formData.heightFeet, heightInches: formData.heightInches, temperatureSite: formData.temperatureSite, oxygenDevice: formData.oxygenDevice, oxygenFlowLpm: formData.oxygenFlowLpm, oxygenFiO2Percent: formData.oxygenFiO2Percent, oxygenDeviceNotes: formData.oxygenDeviceNotes, measuredDate: formData.measuredDate, measuredTime: formData.measuredTime }}
+              onChange={patchVitalsCompact} disabled={formDisabled} saving={savingVitals || saving}
+              onSaveVitals={() => void handleSaveVitals()} onClearVitals={handleClearVitalsFields}
+              statusMessage={vitalsSaveInfo} statusTone={vitalsSaveTone} attributionLine={vitalsAttributionLine}
+            />
+            <EmergencyTriageV1Sections er={formData.erV1} patchErV1={patchErV1} formDisabled={formDisabled}
+              inputBase={inputBase} labelStyle={labelStyle} grid2={grid2} grid3={grid3}
+              sectionHeading={sectionHeading} patientChartHref={patientChartHref} facilityId={facilityId}
+              carryForwardMeta={carryForwardMeta} onConfirmCarryForwardSection={handleConfirmCarryForwardSection}
+              onClearCarryForwardSection={handleClearCarryForwardSection} hideEdTriageChrome clinicMinimalSections />
+            {saveInfo ? <p role="status">{saveInfo}</p> : null}
+            {!formDisabled ? <button type="button" onClick={() => void handleSave()} disabled={saving}
+              style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: "#0f172a", color: "#fff", justifySelf: "start" }}>
+              {saving ? t("erTriage.panel.saveSaving") : t("erTriage.panel.saveButton")}
+            </button> : null}
+          </div>
         ) : (
           <>
             {saveInfo ? (
