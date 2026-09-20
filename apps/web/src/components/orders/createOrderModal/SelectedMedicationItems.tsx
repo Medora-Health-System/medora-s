@@ -70,23 +70,6 @@ const confirmationStyle: React.CSSProperties = {
 };
 
 
-/** Translate the suggestion surface only; the selected directions remain clinician-editable. */
-function localizeDirectionSuggestion(value: string, language: string): string {
-  if (language !== "es" && language !== "fr") return value;
-  const replacements: readonly (readonly [RegExp, string, string])[] = [
-    [/\\btablets?\\b/gi, "comprimido", "comprimé"],
-    [/\\btabs?\\b/gi, "comprimido", "comprimé"],
-    [/\\bcapsules?\\b/gi, "cápsula", "gélule"],
-    [/\\bnow\\b/gi, "ahora", "maintenant"],
-    [/\\bdaily\\b/gi, "diariamente", "chaque jour"],
-    [/\\bBID\\b/gi, "dos veces al día", "deux fois par jour"],
-    [/\\bTID\\b/gi, "tres veces al día", "trois fois par jour"],
-    [/\\bPO\\b/gi, "vía oral", "voie orale"],
-    [/\\bwide open\\b/gi, "a flujo máximo", "à débit maximal"],
-    [/\\bbolus\\b/gi, "bolo", "bolus"],
-  ];
-  return replacements.reduce((text, [pattern, es, fr]) => text.replace(pattern, language === "es" ? es : fr), value);
-}
 export function SelectedMedicationItems({
   items,
   onPatch,
@@ -309,7 +292,7 @@ export function SelectedMedicationItems({
                 />
                 <datalist id={lineDirectionsListId}>
                   {directionQuickPicks.map((option) => (
-                    <option key={option} value={localizeDirectionSuggestion(option, language)} />
+                    <option key={option} value={t(`createOrderModal.directionQuickPick.${option}`)} />
                   ))}
                 </datalist>
                 {missingDirections ? (
