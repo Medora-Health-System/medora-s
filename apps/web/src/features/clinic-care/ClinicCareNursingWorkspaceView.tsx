@@ -498,18 +498,6 @@ export function ClinicCareNursingWorkspaceView() {
                     {t(queueLabelKey(selected.nursingStage))}
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <Link
-                    href={clinicCareAmbulatoryIntakeChartPath(selected.encounterId, "intake")}
-                    style={compactBtn}
-                    data-testid="clinic-care-nursing-open-intake-chart"
-                  >
-                    {t("clinicCareD4c4.openIntakeChart")}
-                  </Link>
-                  <Link href={chartHref} style={compactBtn}>
-                    {t("clinicCareD4c4.openChart")}
-                  </Link>
-                </div>
               </div>
 
               {actionError ? (
@@ -676,8 +664,9 @@ export function ClinicCareNursingWorkspaceView() {
                   encounterId={selected.encounterId}
                   facilityId={facilityId}
                   patientId={selected.patientId}
+                  title="Allergies"
                   onSaved={async () => {
-                    setShowAllergies(false);
+                    await load();
                   }}
                 />
               ) : null}
