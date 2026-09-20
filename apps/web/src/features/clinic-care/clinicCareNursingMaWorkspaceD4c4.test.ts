@@ -85,6 +85,12 @@ describe("MEDUI.D4C.4 ambulatory nursing / MA workspace", () => {
     expect(nursing).toContain("EncounterVitalsPanel");
     expect(nursing).toContain("InpatientAllergyEditorModal");
     expect(nursing).toContain("clinicCareAmbulatoryIntakeChartPath");
+    const medRecIndex = nursing.indexOf('data-testid="clinic-care-nursing-medrec-link"');
+    const painFallIndex = nursing.indexOf('data-testid="clinic-care-nursing-pain-fall-link"');
+    const notesIndex = nursing.indexOf('t("clinicCareD4c4.notesChartHint")');
+    expect(medRecIndex).toBeGreaterThan(-1);
+    expect(painFallIndex).toBeGreaterThan(medRecIndex);
+    expect(notesIndex).toBeGreaterThan(painFallIndex);
     expect(CLINIC_CARE_MA_ASSIGNMENT_ADAPTER.ambulatoryNativeRoleDeferred).toBe(true);
     expect(CLINIC_CARE_MA_ASSIGNMENT_ADAPTER.enterpriseSlot).toBe("TECHNICIAN");
   });
