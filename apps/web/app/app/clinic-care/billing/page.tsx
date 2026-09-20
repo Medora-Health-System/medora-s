@@ -1,12 +1,9 @@
 "use client";
 
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
+import { Suspense } from "react";
+import BillingPage from "@/app/app/billing/page";
 
+/** Render the connected module inside the persistent, access-guarded Clinic Care shell. */
 export default function ClinicCareBillingPage() {
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href="/app/billing"
-      labelKey="clinicCareD4c4.redirectingBilling"
-    />
-  );
+  return <Suspense fallback={<p role="status">Loading…</p>}><BillingPage /></Suspense>;
 }

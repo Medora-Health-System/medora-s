@@ -1,13 +1,9 @@
 "use client";
 
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
-import { buildClinicPharmacyEntryHref } from "@medora/shared";
+import { Suspense } from "react";
+import PharmacyPage from "@/app/app/pharmacy/page";
 
+/** Render the connected module inside the persistent, access-guarded Clinic Care shell. */
 export default function ClinicCarePharmacyPage() {
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href={buildClinicPharmacyEntryHref({ ambulatory: true, source: "clinic-care" })}
-      labelKey="clinicCareD4c4.redirectingPharmacy"
-    />
-  );
+  return <Suspense fallback={<p role="status">Loading…</p>}><PharmacyPage /></Suspense>;
 }
