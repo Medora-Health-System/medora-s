@@ -191,7 +191,7 @@ const APP_ROUTE_RULES: RouteRule[] = [
       "PATIENT_CARE_TECH",
     ],
   },
-  { prefix: "/app/billing", roles: ["ADMIN", "BILLING", "FRONT_DESK"] },
+  { prefix: "/app/billing", roles: ["BILLING"] },
   { prefix: "/app/fracture", roles: ["ADMIN"] },
   {
     prefix: "/app/admin/roi",
