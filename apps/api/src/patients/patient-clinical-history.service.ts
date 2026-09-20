@@ -157,7 +157,8 @@ export class PatientClinicalHistoryService {
       !sanitized.nkda &&
       !(sanitized.entries?.length) &&
       !sanitized.medicationAllergiesDetail &&
-      !sanitized.allergyNote
+      !sanitized.allergyNote &&
+      sanitized.entries === undefined
     ) {
       throw new BadRequestException("Allergy payload empty");
     }

@@ -115,9 +115,11 @@ export function InpatientAllergyEditorModal({
   facilityId,
   patientId,
   onSaved,
+  title,
 }: {
   open: boolean;
   onClose: () => void;
+  title?: string;
   encounterId: string;
   facilityId: string;
   patientId: string;
@@ -194,7 +196,11 @@ export function InpatientAllergyEditorModal({
       });
       setSection(allergies);
       setInfo(t("inpatientHeaderNursingD4a33.allergyEditor.saveOk"));
-      await onSaved();
+      try {
+        await onSaved();
+      } catch {
+        // The allergy update was committed; a parent refresh failure must not report a failed save.
+      }
     } catch {
       setError(t("inpatientHeaderNursingD4a33.allergyEditor.saveError"));
     } finally {
@@ -242,7 +248,7 @@ export function InpatientAllergyEditorModal({
   return (
     <ModalShell
       testId="inpatient-allergy-editor"
-      title={t("inpatientHeaderNursingD4a33.allergyEditor.title")}
+      title={title ?? t("inpatientHeaderNursingD4a33.allergyEditor.title")}
       subtitle={t("inpatientHeaderNursingD4a33.allergyEditor.subtitle")}
       onClose={onClose}
     >
@@ -378,6 +384,7 @@ export function InpatientAllergyEditorModal({
 
           {!section.nkda ? (
             <DrugAllergySearchPanel
+              allergyNamesOnly
               facilityId={facilityId}
               disabled={busy}
               medicationAllergiesDetail=""
