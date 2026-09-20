@@ -242,24 +242,11 @@ export function ClinicCareNursingSinglePageWorkspace() {
                 top: 0,
                 zIndex: 2,
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                padding: "12px 16px",
-                borderBottom: "1px solid #e2e8f0",
+                justifyContent: "flex-end",
+                padding: "8px 16px 0",
                 background: "#fff",
               }}
             >
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 750, color: "#0f172a" }}>{drawerTitle}</div>
-                <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>
-                  {language === "es"
-                    ? "La documentación permanece en esta página y se guarda en el expediente para Resumen."
-                    : language === "fr"
-                      ? "La documentation reste sur cette page et est enregistrée dans le dossier pour le Résumé."
-                      : "Documentation stays on this page and saves to the encounter for Summary."}
-                </div>
-              </div>
               <button
                 type="button"
                 onClick={closeTool}
