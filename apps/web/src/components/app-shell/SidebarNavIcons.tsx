@@ -13,8 +13,10 @@ function IconMsppAlerts(){return <StrokeIcon><path d="M18 8A6 6 0 0 0 6 8c0 7-3 
 function IconMsppValidation(){return <StrokeIcon><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></StrokeIcon>}
 function IconMsppAccessAdmin(){return <StrokeIcon><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></StrokeIcon>}
 function IconDentalTooth(){return <StrokeIcon testId="sidebar-icon-dental"><path d="M12 3c-2.2 0-4 1.4-4 3.6 0 1.1.3 2 .7 3 .5 1.2.8 2.4.8 3.7V19c0 .8.5 1.4 1.2 1.4.5 0 .9-.3 1.1-.8l.2-.5.2.5c.2.5.6.8 1.1.8.7 0 1.2-.6 1.2-1.4v-5.7c0-1.3.3-2.5.8-3.7.4-1 .7-1.9.7-3C16 4.4 14.2 3 12 3z"/></StrokeIcon>}
+function IconAppointments(){return <StrokeIcon testId="sidebar-icon-appointments"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/><path d="m8 15 2.5 2.5L16 12"/></StrokeIcon>}
 function IconDigitalCare(){return <StrokeIcon testId="sidebar-icon-digital-care"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="10" y1="5" x2="14" y2="5"/><circle cx="12" cy="19" r="0.8" fill="currentColor" stroke="none"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9.5" y1="12" x2="14.5" y2="12"/></StrokeIcon>}
 export function SidebarNavIcon({href}:{href:string}){
+ if(href==="/app/appointments")return <IconAppointments/>;
  if(href==="/app/mspp/dashboard")return <MsppBrandMark/>;
  if(href==="/app/mspp/alerts")return <IconMsppAlerts/>;
  if(href==="/app/mspp/rapport"||href==="/app/mspp/bulletin"||href==="/app/mspp/exports"||href==="/app/mspp/audit")return <IconMsppRapport/>;
