@@ -292,7 +292,7 @@ export function SelectedMedicationItems({
                 />
                 <datalist id={lineDirectionsListId}>
                   {directionQuickPicks.map((option) => (
-                    <option key={option} value={t(`createOrderModal.directionQuickPick.${option}`)} />
+                    <option key={option} value={option} />
                   ))}
                 </datalist>
                 {missingDirections ? (
