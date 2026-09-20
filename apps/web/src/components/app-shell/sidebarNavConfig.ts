@@ -39,7 +39,6 @@ const SIDEBAR_NAV_DEFS:SidebarNavItemDef[]=[
 {href:"/app/emergency/trackboard",labelKey:"nav.emergency",roles:["ADMIN","PROVIDER","RN","LAB","RADIOLOGY"],group:"accueil",accent:"slate",navAreas:["EMERGENCY"]},
 {href:"/app/dental",labelKey:"nav.dentalCare",roles:["ADMIN","PROVIDER","RN","FRONT_DESK","BILLING"],group:"accueil",accent:"indigo",navAreas:["DENTAL_CARE"]},
 {href:"/app/hospitalisation",labelKey:"nav.hospitalisation",roles:["ADMIN","PROVIDER","RN","LAB","RADIOLOGY"],group:"accueil",accent:"slate",navAreas:["HOSPITAL"]},
-{href:"/app/trackboard",labelKey:"nav.trackboard",roles:["ADMIN","PROVIDER","RN"],group:"accueil",accent:"slate",navAreas:["DASHBOARD"]},
 {href:"/app/digital-care",labelKey:"nav.digitalCare",roles:["ADMIN","RN","PROVIDER"],group:"soins_dossiers",accent:"teal",navAreas:["EMERGENCY","HOSPITAL","CLINIC_CARE"]},
 {href:"/app/patients",labelKey:"nav.patients",roles:["RN","PROVIDER","ADMIN","FRONT_DESK"],group:"soins_dossiers",accent:"slate",navAreas:["DASHBOARD","EMERGENCY","HOSPITAL","CLINIC_CARE"]},
 {href:"/app/appointments",labelKey:"nav.appointments",roles:["RN","PROVIDER","ADMIN","FRONT_DESK"],group:"soins_dossiers",accent:"slate",navAreas:["EMERGENCY","HOSPITAL","CLINIC_CARE"]},
