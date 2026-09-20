@@ -1,14 +1,9 @@
 "use client";
 
-import { ClinicCareDirectCanonicalRedirect } from "@/features/clinic-care/ClinicCareDirectCanonicalRedirect";
-import { buildClinicLaboratoryEntryHref } from "@medora/shared";
+import { Suspense } from "react";
+import LabPage from "@/app/app/lab/page";
 
-/** MEDUI.D4C.7C — Clinic Care laboratory alias → enterprise Liste laboratoire + ambulatory filter. */
+/** Render the connected module inside the persistent, access-guarded Clinic Care shell. */
 export default function ClinicCareLaboratoryPage() {
-  return (
-    <ClinicCareDirectCanonicalRedirect
-      href={buildClinicLaboratoryEntryHref()}
-      labelKey="clinicCareD4c4.redirectingLaboratory"
-    />
-  );
+  return <Suspense fallback={<p role="status">Loading…</p>}><LabPage /></Suspense>;
 }
