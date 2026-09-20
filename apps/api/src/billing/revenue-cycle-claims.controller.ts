@@ -27,7 +27,7 @@ export class RevenueCycleClaimsController {
   ) {}
 
   @Get("billing/revenue-cycle/claims")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING)
   async getRevenueCycleClaims(
     @Req() req: { facilityId: string },
     @Query("queue") queueRaw?: string,
@@ -48,7 +48,7 @@ export class RevenueCycleClaimsController {
   }
 
   @Get("billing/revenue-cycle/claims/:claimId/audit")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  @RequireRoles(RoleCode.BILLING)
   async getRevenueCycleClaimAudit(
     @Req() req: { facilityId: string },
     @Param("claimId") claimId: string
