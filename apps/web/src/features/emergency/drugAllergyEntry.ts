@@ -1,6 +1,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatMedicationOptionForLocale } from "@/lib/localizedMedicationDisplay";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { allergyMedicationIngredientName } from "@medora/shared";
 
 export type DrugAllergyReactionCode =
   | "rash"
@@ -32,12 +33,13 @@ export function selectedDrugAllergyFromCatalog(
   t: (key: string) => string
 ): SelectedDrugAllergy {
   const { primary, subtitle } = formatMedicationOptionForLocale(item, language, t);
-  const generic = item.metadata?.genericName?.trim() ?? "";
+  const generic = allergyMedicationIngredientName(item.metadata?.genericName);
+  const ingredientName = allergyMedicationIngredientName(generic || primary);
   return {
     catalogId: item.id,
-    displayName: primary,
-    genericName: generic,
-    subtitle,
+    displayName: ingredientName,
+    genericName: ingredientName,
+    subtitle: "",
   };
 }
 
