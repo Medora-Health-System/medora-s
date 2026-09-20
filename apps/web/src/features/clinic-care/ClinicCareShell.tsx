@@ -49,6 +49,7 @@ export function ClinicCareShell({
   } = useFacilityAndRoles();
 
   const active = resolveClinicWorkspaceActiveNavId(pathname) ?? "trackboard";
+  const billingDenied = pathname.startsWith("/app/clinic-care/billing") && !roles.includes("BILLING");
   const resolved = ready
     ? resolveClinicWorkspaceAccess({
         roleCodes: roles,
@@ -61,6 +62,10 @@ export function ClinicCareShell({
 
   useEffect(() => {
     if (!ready || !resolved) return;
+    if (billingDenied) {
+      router.replace("/app/clinic-care");
+      return;
+    }
     if (!resolved.access.canAccessClinicCareShell) {
       router.replace("/app");
       return;
@@ -73,12 +78,12 @@ export function ClinicCareShell({
         })
       );
     }
-  }, [ready, resolved, pathname, router]);
+  }, [ready, resolved, pathname, router, billingDenied]);
 
   const denied =
     ready &&
     resolved &&
-    (!resolved.access.canAccessClinicCareShell ||
+    (billingDenied || !resolved.access.canAccessClinicCareShell ||
       !isClinicWorkspacePathAllowed(pathname, resolved.access));
 
   return (
