@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { clinicOrderDisplayLabel } from "@/features/clinic-care/clinicOrderDisplayLabel";
 import Link from "next/link";
+import { clinicCareAmbulatoryOpenWorkspacePath } from "@/features/clinic-care/clinicCareAmbulatoryChartAdapter";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tOrderItemStatusForWorklist, tOrderPriority } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
@@ -183,7 +184,7 @@ export default function LabPage() {
                             {t("worklistDepartments.shared.complete")}
                           </button>
                         )}
-                        <Link href={`/app/encounters/${order.encounterId}`}>{t("worklistDepartments.lab.viewEncounter")}</Link>
+                        <Link href={clinicCareAmbulatoryOpenWorkspacePath(order.encounterId)}>{t("worklistDepartments.lab.viewEncounter")}</Link>
                       </td>
                     </tr>
                   ))
@@ -227,7 +228,7 @@ export default function LabPage() {
                       <td style={{ padding: 12 }}>
                         <span style={{ fontSize: 12, color: "#666" }}>{row.encounterId}</span>
                         <br />
-                        <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
+                        <Link href={clinicCareAmbulatoryOpenWorkspacePath(row.encounterId)} style={{ fontSize: 13 }}>
                           {t("worklistDepartments.shared.visitLink")}
                         </Link>
                       </td>
