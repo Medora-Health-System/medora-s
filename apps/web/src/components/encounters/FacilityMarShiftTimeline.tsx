@@ -310,9 +310,9 @@ export function FacilityMarShiftTimeline({
     const tz = data.shift.timeZone || facilityTimeZone || undefined;
     const currentHour = new Intl.DateTimeFormat("en-US", {
       hour: "2-digit", hour12: true, timeZone: tz,
-    }).format(new Date()).replace(/\\s/g, "").toUpperCase();
+    }).format(new Date()).replace(/[^0-9APM]/gi, "").toUpperCase().replace(/(AM|PM)$/, (suffix) => suffix[0]!);
     const columnIndex = data.shift.columns.findIndex((column) =>
-      column.label.replace(/\\s/g, "").toUpperCase() === currentHour
+      column.label.replace(/[^0-9APM]/gi, "").toUpperCase().replace(/(AM|PM)$/, (suffix) => suffix[0]!) === currentHour
     );
     if (columnIndex < 0) return;
     const viewport = timelineScrollRef.current;
