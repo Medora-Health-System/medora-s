@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
+"use client";
 
-/** Retired Clinic Care follow-up UI now opens the Appointments calendar. */
+import { Suspense } from "react";
+import AppointmentsPage from "@/app/app/appointments/page";
+
+/** Keep the Clinic Care header and top tabs mounted while showing the connected calendar. */
 export default function ClinicCareFollowUpPage() {
-  redirect("/app/appointments");
+  return <Suspense fallback={<p role="status">Loading…</p>}><AppointmentsPage /></Suspense>;
 }
