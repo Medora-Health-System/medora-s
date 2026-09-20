@@ -52,7 +52,18 @@ describe("Clinic nursing single-page documentation", () => {
     expect(source).toContain("<EmergencyTriagePanel");
     expect(source).toContain('presentationMode="CLINIC_NURSING_MINIMAL"');
     expect(source).toContain("<EmergencyErNotesPanel");
-    expect(source).toContain("Documentation stays on this page and saves to the encounter for Summary.");
+    expect(source).not.toContain("Documentation stays on this page and saves to the encounter for Summary.");
+    expect(source).not.toContain("La documentación permanece en esta página");
+  });
+
+  it("labels the Clinic Nursing medication reconciliation content as Evaluation and uses audited vitals attribution", () => {
+    const triage = readFileSync(join(__dirname, "../emergency/EmergencyTriagePanel.tsx"), "utf8");
+    expect(triage).toContain('? "Evaluación"');
+    expect(triage).toContain("fetchLatestVitalsHistoryEntry(encounter.id, facilityId)");
+    expect(triage).toContain("savedEntry?.recordedBy?.displayName");
+    expect(triage).toContain("savedEntry?.recordedBy?.roleTitle");
+    expect(triage).toContain("savedEntry?.recordedAt");
+    expect(triage).not.toContain("fetchAuthMeSession");
   });
 });
 
