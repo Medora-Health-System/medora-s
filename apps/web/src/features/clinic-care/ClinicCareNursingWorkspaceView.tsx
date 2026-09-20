@@ -664,7 +664,7 @@ export function ClinicCareNursingWorkspaceView() {
                   encounterId={selected.encounterId}
                   facilityId={facilityId}
                   patientId={selected.patientId}
-                  title="Allergies"
+                  title={t("clinicCareD4c4.allergies")}
                   onSaved={async () => {
                     await load();
                   }}
