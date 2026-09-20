@@ -49,7 +49,7 @@ export function ClinicCareShell({
   } = useFacilityAndRoles();
 
   const active = resolveClinicWorkspaceActiveNavId(pathname) ?? "trackboard";
-  const billingDenied = pathname.startsWith("/app/clinic-care/billing") && !roles.includes("BILLING");
+  const billingDenied = pathname.startsWith("/app/clinic-care/billing") && !roles.some((role) => role === "BILLING" || role === "ADMIN");
   const resolved = ready
     ? resolveClinicWorkspaceAccess({
         roleCodes: roles,
