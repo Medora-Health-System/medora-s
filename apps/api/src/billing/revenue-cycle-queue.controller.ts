@@ -20,7 +20,7 @@ export class RevenueCycleQueueController {
   constructor(private readonly revenueCycleQueueService: RevenueCycleQueueService) {}
 
   @Get("billing/revenue-cycle/queue")
-  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  @RequireRoles(RoleCode.BILLING)
   async getRevenueCycleQueue(
     @Req() req: { facilityId: string },
     @Query("queue") queueRaw?: string,

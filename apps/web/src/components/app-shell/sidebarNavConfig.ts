@@ -50,7 +50,7 @@ const SIDEBAR_NAV_DEFS:SidebarNavItemDef[]=[
 {href:"/app/pharmacy/dispense",labelKey:"nav.pharmacyDispense",roles:["PHARMACY","ADMIN"],group:"pharmacie",accent:"green",navAreas:["PHARMACY"]},
 {href:"/app/pharmacy/low-stock",labelKey:"nav.pharmacyLowStock",roles:["PHARMACY","ADMIN"],group:"pharmacie",accent:"green",navAreas:["PHARMACY"]},
 {href:"/app/pharmacy/expiring",labelKey:"nav.pharmacyExpiring",roles:["PHARMACY","ADMIN"],group:"pharmacie",accent:"green",navAreas:["PHARMACY"]},
-{href:"/app/billing",labelKey:"nav.billing",roles:["BILLING","ADMIN"],group:"facturation",accent:"indigo",navAreas:["BILLING"]},
+{href:"/app/billing",labelKey:"nav.billing",roles:["BILLING"],group:"facturation",accent:"indigo",navAreas:["BILLING"]},
 {href:"/app/fracture",labelKey:"nav.fracture",roles:["ADMIN"],group:"facturation",accent:"slate",navAreas:["ADMINISTRATION"]},
 {href:"/app/public-health/summary",labelKey:"nav.publicHealth",roles:["RN","PROVIDER","ADMIN"],group:"sante_publique",accent:"orange"},
 {href:"/app/public-health/vaccinations",labelKey:"nav.vaccinations",roles:["RN","PROVIDER","ADMIN"],group:"sante_publique",accent:"orange"},
