@@ -76,8 +76,8 @@ const ROLE_LANDING: Array<{ role: string; path: string }> = [
   { role: "BILLING", path: "/app/billing" },
 ];
 
-/** When no ROLE_LANDING role matches (edge case), send user to clinical trackboard */
-const DEFAULT_LANDING = "/app/trackboard";
+/** Safe fallback when no role landing matches. */
+const DEFAULT_LANDING = "/app/registration";
 
 /**
  * Phase 19V — default post-login landing for clinical trackboard roles.
@@ -102,7 +102,6 @@ export const LANDING_HOME_I18N_KEY_BY_PATH: Record<string, string> = {
   "/app/rad-worklist": "landingHome.previewRadWorklist",
   "/app/billing": "landingHome.previewBilling",
   "/app/fracture": "landingHome.previewFracture",
-  "/app/trackboard": "landingHome.previewTrackboard",
   "/app/emergency/trackboard": "landingHome.previewTrackboard",
 };
 
@@ -173,7 +172,6 @@ const APP_ROUTE_RULES: RouteRule[] = [
     roles: ["ADMIN", "PROVIDER", "RN"],
   },
   { prefix: "/app/nursing", roles: ["ADMIN", "PROVIDER", "RN"] },
-  { prefix: "/app/trackboard", roles: ["ADMIN", "PROVIDER", "RN"] },
   { prefix: "/app/emergency", roles: ["ADMIN", "PROVIDER", "RN"] },
   {
     prefix: "/app/hospitalisation",
@@ -263,8 +261,6 @@ function hasTrackboardDefaultLanding(set: Set<string>): boolean {
 
 function isDefaultLandingPath(pathname: string): boolean {
   return (
-    pathname === DEFAULT_LANDING ||
-    pathname.startsWith(`${DEFAULT_LANDING}/`) ||
     pathname === DEFAULT_POST_LOGIN_PATH ||
     pathname.startsWith(`${DEFAULT_POST_LOGIN_PATH}/`)
   );
@@ -286,7 +282,7 @@ function isDigitalCareStaffPath(pathname: string): boolean {
 
 /** MEDUI.NAV.ROLE.1 — path prefixes allowed when navigation area is visible (UI route guard only). */
 const NAVIGATION_AREA_ROUTE_PREFIXES: Partial<Record<NavigationArea, readonly string[]>> = {
-  DASHBOARD: ["/app/trackboard", "/app/provider", "/app/nursing"],
+  DASHBOARD: ["/app/provider", "/app/nursing"],
   REGISTRATION: ["/app/registration", "/app/patients", "/app/clinic-care/registration"],
   EMERGENCY: ["/app/emergency", "/app/digital-care"],
   HOSPITAL: ["/app/hospitalisation", "/app/digital-care"],
