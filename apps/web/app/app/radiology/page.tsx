@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { clinicOrderDisplayLabel } from "@/features/clinic-care/clinicOrderDisplayLabel";
 import Link from "next/link";
+import { clinicCareAmbulatoryOpenWorkspacePath } from "@/features/clinic-care/clinicCareAmbulatoryChartAdapter";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { tOrderItemStatusForWorklist, tOrderPriority } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
@@ -109,7 +110,7 @@ export default function RadiologyPage() {
                           {t("worklistDepartments.shared.complete")}
                         </button>
                       )}
-                      <Link href={`/app/encounters/${order.encounterId}`}>{t("worklistDepartments.radiology.viewEncounter")}</Link>
+                      <Link href={clinicCareAmbulatoryOpenWorkspacePath(order.encounterId)}>{t("worklistDepartments.radiology.viewEncounter")}</Link>
                     </td>
                   </tr>
                 ))
