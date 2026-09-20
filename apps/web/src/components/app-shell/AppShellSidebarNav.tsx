@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
 import { SidebarNavIcon } from "./SidebarNavIcons";
 import { isSidebarNavItemActive } from "./appShellNavHelpers";
@@ -30,6 +31,35 @@ export function AppShellSidebarNav({
   onNavLinkClick,
 }: AppShellSidebarNavProps) {
   const iconOnly = !showLabels;
+  const [savedOrder, setSavedOrder] = useState<string[]>([]);
+  const [dragged, setDragged] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("medora.sidebar.order.v1");
+      const value: unknown = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(value) && value.every((href) => typeof href === "string")) setSavedOrder(value);
+    } catch { /* storage may be unavailable */ }
+  }, []);
+  const visibleSections = useMemo(() => {
+    if (!savedOrder.length) return groupedNavSections;
+    const all = groupedNavSections.flatMap(section => section.items);
+    const ranks = new Map(savedOrder.map((href, index) => [href, index]));
+    return [{ groupId: groupedNavSections[0]?.groupId ?? "accueil", title: "", items: all
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => (ranks.get(a.item.href) ?? (savedOrder.length + a.index)) - (ranks.get(b.item.href) ?? (savedOrder.length + b.index)))
+      .map(({ item }) => item) }];
+  }, [groupedNavSections, savedOrder]);
+  const moveItem = (source: string, target: string) => {
+    if (source === target) return;
+    const current = visibleSections.flatMap(section => section.items).map(item => item.href);
+    const from = current.indexOf(source);
+    const to = current.indexOf(target);
+    if (from < 0 || to < 0) return;
+    current.splice(from, 1);
+    current.splice(to, 0, source);
+    setSavedOrder(current);
+    try { window.localStorage.setItem("medora.sidebar.order.v1", JSON.stringify(current)); } catch { /* session-only preference */ }
+  };
 
   return (
     <nav
@@ -49,7 +79,7 @@ export function AppShellSidebarNav({
           {t("common.loading")}
         </p>
       ) : (
-        groupedNavSections.map((section, si) => (
+        visibleSections.map((section, si) => (
           <div
             key={section.groupId}
             className={si > 0 ? "border-t border-white/10" : undefined}
@@ -72,6 +102,11 @@ export function AppShellSidebarNav({
                 return (
                   <Link
                     key={item.href}
+                    draggable={true}
+                    onDragStart={(event) => { setDragged(item.href); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.href); }}
+                    onDragOver={(event) => { if (dragged && dragged !== item.href) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } }}
+                    onDrop={(event) => { event.preventDefault(); if (dragged) moveItem(dragged, item.href); setDragged(null); }}
+                    onDragEnd={() => setDragged(null)}
                     href={item.href}
                     title={label}
                     aria-label={label}
