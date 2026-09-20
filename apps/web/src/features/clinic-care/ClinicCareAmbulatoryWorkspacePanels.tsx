@@ -13,7 +13,6 @@ import {
   clinicAmbulatoryFacilityMedicationOrderMode,
   isHaitiPublicHealthJurisdiction,
   resolveHaitiAmbulatoryIntakePresentation,
-  shouldHideMarShiftTimelineForHaitiAmbulatory,
   clinicCareAmbulatoryActiveWorkspacePath,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
@@ -313,10 +312,6 @@ export function ClinicCareAmbulatoryWorkspacePanels({
   const canEditFollowUp = roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
   const patientId = encounter.patient?.id ?? "";
   const haitiAmbulatory = isHaitiPublicHealthJurisdiction(facilityCountry ?? null);
-  const hideShiftTimeline = shouldHideMarShiftTimelineForHaitiAmbulatory({
-    facilityCountry,
-    ambulatoryCareSetting: true,
-  });
   const intakePresentation = resolveHaitiAmbulatoryIntakePresentation({
     facilityCountry,
     ambulatoryCareSetting: true,
