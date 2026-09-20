@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchChartSummary, type ChartSummary } from "@/lib/chartApi";
 import { apiFetch } from "@/lib/apiClient";
@@ -31,6 +32,7 @@ const control: React.CSSProperties = { border: "1px solid #cbd8ec", borderRadius
 export default function AppointmentsPage() {
   const { facilityId, ready, roles, facilityTimeZone } = useFacilityAndRoles();
   const { language } = useI18n();
+  const isClinicCalendar = usePathname()?.startsWith("/app/clinic-care/follow-up") ?? false;
   // The authenticated app shell bridges the registered active-facility language into useI18n.
   // Never offer a page-local language switch or read a staff browser preference here.
   const locale = language === "es" ? "es" : language === "fr" ? "fr" : "en";
@@ -221,7 +223,7 @@ export default function AppointmentsPage() {
   return <main style={{ color: "#172b4d", padding: 6 }}>
     {adding && facilityId && <AddAppointmentForm key={facilityId} facilityId={facilityId} facilityTimeZone={facilityTimeZone} onClose={() => setAdding(false)} onCreated={() => { void load(); void loadDay(); }} />}
     <header style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
-      <div><h1 style={{ margin: 0, fontSize: 30 }}>🗓️ {s.title}</h1><p style={{ color: "#62738f", margin: "5px 0" }}>{s.subtitle}</p></div>
+      <div><h1 style={{ margin: 0, fontSize: 30 }}>🗓️ {isClinicCalendar ? (locale === "es" ? "Calendario" : locale === "fr" ? "Calendrier" : "Calendar") : s.title}</h1><p style={{ color: "#62738f", margin: "5px 0" }}>{s.subtitle}</p></div>
       <button type="button" style={{ ...control, background: "#008d85", color: "#fff" }} onClick={() => setAdding(true)} disabled={!roles.some((role) => ["FRONT_DESK", "ADMIN", "PROVIDER"].includes(role))}>{"+ " + s.add}</button>
     </header>
     <nav aria-label={s.title} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
