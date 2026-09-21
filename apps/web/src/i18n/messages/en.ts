@@ -11109,6 +11109,9 @@ export default {
     },
   },
   providerDocumentationWorkspace: {
+    clinicMedicalDocumentation: "Medical Documentation",
+    providerSignature: "Provider signature",
+    providerSavedBy: "Provider documentation saved by",
     titleEd: "Provider documentation (ED)",
     titleObservation: "Provider documentation (Observation)",
     titleAmbulatory: "Provider documentation (Ambulatory)",
