@@ -1166,7 +1166,7 @@ export function buildProviderDocumentationMetadata(input: {
     documentType: documentTypeForEncounterMode(input.encounterMode),
     savedAt: input.savedAt,
     savedBy: input.savedBy,
-    savedByTitle: input.savedByTitle ?? null,
+    ...(input.savedByTitle?.trim() ? { savedByTitle: input.savedByTitle.trim() } : {}),
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
     activeTemplateId: input.activeTemplateId ?? null,
   };
@@ -1217,7 +1217,7 @@ export function buildProviderDocumentationSavePayload(input: {
     signature: {
       savedAt: input.metadata.savedAt,
       savedByDisplayName: input.metadata.savedBy,
-      savedByTitle: input.metadata.savedByTitle ?? null,
+      ...(input.metadata.savedByTitle?.trim() ? { savedByTitle: input.metadata.savedByTitle.trim() } : {}),
     },
     workspaceMetadata: input.metadata,
   };
@@ -1445,7 +1445,7 @@ export function readProviderDocumentationWorkspaceMetadata(
     documentType,
     savedAt,
     savedBy,
-    savedByTitle,
+    ...(savedByTitle ? { savedByTitle } : {}),
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
     activeTemplateId: templateIdFromUnknown(meta.activeTemplateId),
   };
