@@ -134,11 +134,13 @@ describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
     expect(provider).toContain("orders");
     const rn = getVisibleClinicCareAmbulatoryWorkspaceSections(["RN"]);
     expect(rn).not.toContain("medical-evaluation");
-    expect(rn).toContain("intake");
+    expect(rn).not.toContain("intake");
+    expect(rn).not.toContain("nursing");
+    expect(rn).toContain("clinical-data");
     expect(canAccessClinicCareAmbulatoryWorkspaceSection(["FRONT_DESK"], "orders")).toBe(false);
     expect(canAccessClinicCareAmbulatoryWorkspaceSection(["FRONT_DESK"], "follow-up")).toBe(true);
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["PROVIDER"])).toBe("medical-evaluation");
-    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("intake");
+    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("clinical-data");
     const view = read("ClinicCareActiveAmbulatoryWorkspaceView.tsx");
     expect(view).toContain("canAccessClinicCareAmbulatoryWorkspaceSection");
   });

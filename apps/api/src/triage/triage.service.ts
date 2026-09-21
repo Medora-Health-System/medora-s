@@ -51,7 +51,7 @@ export class TriageService {
     const row = await this.prisma.triage.findUnique({
       where: { encounterId },
     });
-    return this.enrichTriageWithDisplay(row);
+    return this.enrichTriageWithDisplay(row, facilityId);
   }
 
   /**
@@ -78,22 +78,27 @@ export class TriageService {
     });
   }
 
-  /** Ajoute `updatedByDisplayFr` pour l’UI (sans changement de schéma). */
-  private async enrichTriageWithDisplay(triage: Triage | null) {
-    if (!triage) {
-      return null;
-    }
+  /**
+   * Add the immutable author presentation needed by clinical summary surfaces.
+   * Role is resolved from active membership in this facility, never from a client claim.
+   */
+  private async enrichTriageWithDisplay(triage: Triage | null, facilityId: string) {
+    if (!triage) return null;
     if (!triage.updatedByUserId) {
-      return triage;
+      return {
+        ...triage,
+        updatedByDisplayFr: null,
+        updatedByRoleTitle: null,
+        updatedByInitials: null,
+      };
     }
-    const u = await this.prisma.user.findUnique({
-      where: { id: triage.updatedByUserId },
-      select: { firstName: true, lastName: true },
-    });
-    if (!u) {
-      return { ...triage, updatedByDisplayFr: null };
-    }
-    return { ...triage, updatedByDisplayFr: `${u.firstName} ${u.lastName}`.trim() };
+    const performer = await this.resolveTriagePerformer(facilityId, triage.updatedByUserId);
+    return {
+      ...triage,
+      updatedByDisplayFr: performer.performerDisplayName || null,
+      updatedByRoleTitle: performer.performerRoleTitle || null,
+      updatedByInitials: performer.performerInitials || null,
+    };
   }
 
   /**
@@ -441,7 +446,7 @@ export class TriageService {
       });
     }
 
-    const enriched = await this.enrichTriageWithDisplay(triage);
+    const enriched = await this.enrichTriageWithDisplay(triage, facilityId);
     return clinicalHistoryReconciliation
       ? { ...enriched, clinicalHistoryReconciliation }
       : enriched;

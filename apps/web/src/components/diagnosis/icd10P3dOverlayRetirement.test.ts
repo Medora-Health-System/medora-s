@@ -71,25 +71,20 @@ describe("MEDUI.TRILANG.DX.P3D overlay retirement", () => {
     expect(`${missing.primary}${missing.metadata ?? ""}`).not.toContain("·");
   });
 
-  it("same ICD pick under EN/FR/ES persists the canonical code once", () => {
+  it("persists the selected localized PMH name and canonical code once", () => {
     const line = formatPmhIcdPickLine(r1085Es);
-    expect(line).toBe("R10.85");
-    expect(line).not.toBe(r1085Es.displayLabel);
-    expect(line).not.toContain("Generalized");
+    expect(line).toBe("Dolor abdominal en varios sitios (R10.85)");
     let pmh = "";
-    pmh = appendDiagnosisToPmh(pmh, { ...r1085Es, displayLabel: "Generalized abdominal pain", displayResolution: "EXACT_SOURCE_LABEL" });
-    pmh = appendDiagnosisToPmh(pmh, r1085Fr);
     pmh = appendDiagnosisToPmh(pmh, r1085Es);
-    expect(pmh).toBe("R10.85");
-    expect(pmh).not.toContain("Dolor");
+    pmh = appendDiagnosisToPmh(pmh, r1085Fr);
+    expect(pmh).toBe("Dolor abdominal en varios sitios (R10.85)");
     expect(pmh).not.toContain("Douleur");
-    expect(pmh).not.toContain("Generalized");
   });
 
   it("existing and manual PMH text stay unchanged", () => {
     const existing = "Hypertension diagnosed 2018";
     expect(appendDiagnosisToPmh(existing, { ...r1085Es, code: "" })).toBe(existing);
-    expect(appendDiagnosisToPmh(existing, r1085Es)).toBe(`${existing}, R10.85`);
+    expect(appendDiagnosisToPmh(existing, r1085Es)).toBe(`${existing}, Dolor abdominal en varios sitios (R10.85)`);
     const manual = "HTA, diabète type 2";
     expect(appendDiagnosisToPmh(manual, { ...r1085Es, code: "" })).toBe(manual);
   });

@@ -297,18 +297,17 @@ describe("PMH diagnosis search append", () => {
     shortDescription: "Essential (primary) hypertension",
     longDescription: null,
     isBillable: true,
-    displayLabel: "I10",
-    displayResolution: "UNLOCALIZED_CODE",
+    displayLabel: "Hipertensión esencial (primaria)",
+    displayResolution: "EXACT_GOVERNED_LABEL",
   };
 
-  it("appends canonical ICD code only, not English or locale labels", () => {
+  it("appends the localized diagnosis name with its canonical ICD code", () => {
     const next = appendDiagnosisToPmh("", hit);
-    expect(next).toBe("I10");
-    expect(next).not.toMatch(/hypertension/i);
+    expect(next).toBe("Hipertensión esencial (primaria) (I10)");
     const again = appendDiagnosisToPmh(next, hit);
     expect(again).toBe(next);
-    const esAgain = appendDiagnosisToPmh(next, { ...hit, displayLabel: "Hipertensión esencial" });
-    expect(esAgain).toBe(next);
+    const alternateLabelAgain = appendDiagnosisToPmh(next, { ...hit, displayLabel: "Essential hypertension" });
+    expect(alternateLabelAgain).toBe(next);
   });
 });
 

@@ -1075,6 +1075,46 @@ export function EmergencyTriagePanel({
       }
     : { minWidth: 0 };
 
+  const savedDocumentAuthor =
+    typeof triage?.updatedByDisplayFr === "string" && triage.updatedByDisplayFr.trim()
+      ? triage.updatedByDisplayFr.trim()
+      : null;
+  const savedDocumentRole =
+    typeof triage?.updatedByRoleTitle === "string" && triage.updatedByRoleTitle.trim()
+      ? triage.updatedByRoleTitle.trim()
+      : null;
+  const savedDocumentAt =
+    triage?.updatedAt && !Number.isNaN(new Date(triage.updatedAt as string).getTime())
+      ? new Date(triage.updatedAt as string)
+      : null;
+  const nursingSummaryCopy =
+    language === "es"
+      ? {
+          title: "Resumen",
+          empty: "La evaluación de enfermería aún no se ha guardado.",
+          documentedBy: "Documentado por",
+          professionalTitle: "Título",
+          date: "Fecha",
+          time: "Hora",
+        }
+      : language === "fr"
+        ? {
+            title: "Résumé",
+            empty: "L’évaluation infirmière n’a pas encore été enregistrée.",
+            documentedBy: "Documenté par",
+            professionalTitle: "Titre",
+            date: "Date",
+            time: "Heure",
+          }
+        : {
+            title: "Summary",
+            empty: "The nursing evaluation has not been saved yet.",
+            documentedBy: "Documented by",
+            professionalTitle: "Title",
+            date: "Date",
+            time: "Time",
+          };
+
   return (
     <MedoraCard leftAccentColor={simpleClinicIntake ? "#0d9488" : "#b91c1c"} variant="default">
       <MedoraCardInner>
@@ -1100,7 +1140,8 @@ export function EmergencyTriagePanel({
         {loading ? (
           <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#64748b" }}>{t("common.loading")}</p>
         ) : clinicNursingMinimal ? (
-          <div data-testid="clinic-nursing-minimal-intake" style={{ display: "grid", gap: 16, marginTop: 16 }}>
+          <div data-testid="clinic-nursing-minimal-intake" style={{ ...workspaceStyle, marginTop: 16 }}>
+            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
             <div style={grid2}>
               <label style={labelStyle}>{t("erTriage.panel.onsetAt")}
                 <input type="datetime-local" value={formData.onsetAt} onChange={(e) => setFormData((v) => ({ ...v, onsetAt: e.target.value }))} disabled={formDisabled} style={inputBase} />
@@ -1125,6 +1166,64 @@ export function EmergencyTriagePanel({
               style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: "#0f172a", color: "#fff", justifySelf: "start" }}>
               {saving ? t("erTriage.panel.saveSaving") : t("erTriage.panel.saveButton")}
             </button> : null}
+            </div>
+
+            <aside style={resumeColumnStyle} aria-live="polite" data-testid="clinic-nursing-evaluation-summary">
+              <p style={sectionHeading}>{nursingSummaryCopy.title}</p>
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                {previewModel.sections.map((sec) => (
+                  <MedoraCard
+                    key={sec.id}
+                    leftAccentColor={PREVIEW_SECTION_ACCENTS[sec.id] ?? "#94a3b8"}
+                    variant="default"
+                  >
+                    <MedoraCardInner>
+                      <MedoraCardIdentity initials={sec.title.charAt(0)}>
+                        <MedoraCardTitle title={sec.title} />
+                      </MedoraCardIdentity>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+                        {sec.lines.map((line, index) => (
+                          <p key={`${sec.id}-clinic-${index}`} style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </MedoraCardInner>
+                  </MedoraCard>
+                ))}
+
+                <MedoraCard leftAccentColor="#0f766e" variant="default">
+                  <MedoraCardInner>
+                    <MedoraCardIdentity initials="S">
+                      <MedoraCardTitle title={nursingSummaryCopy.title} />
+                    </MedoraCardIdentity>
+                    {!savedDocumentAt ? (
+                      <p style={{ margin: "10px 0 0", fontSize: 13, color: "#64748b" }}>
+                        {nursingSummaryCopy.empty}
+                      </p>
+                    ) : (
+                      <dl style={{ margin: "10px 0 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 10px", fontSize: 13 }}>
+                        <dt style={{ color: "#64748b" }}>{nursingSummaryCopy.documentedBy}</dt>
+                        <dd style={{ margin: 0, color: "#0f172a", fontWeight: 600 }}>{savedDocumentAuthor ?? "—"}</dd>
+                        <dt style={{ color: "#64748b" }}>{nursingSummaryCopy.professionalTitle}</dt>
+                        <dd style={{ margin: 0, color: "#0f172a" }}>{savedDocumentRole ?? "—"}</dd>
+                        <dt style={{ color: "#64748b" }}>{nursingSummaryCopy.date}</dt>
+                        <dd style={{ margin: 0, color: "#0f172a" }}>
+                          {savedDocumentAt.toLocaleDateString(productUiBcp47Tag(language))}
+                        </dd>
+                        <dt style={{ color: "#64748b" }}>{nursingSummaryCopy.time}</dt>
+                        <dd style={{ margin: 0, color: "#0f172a" }}>
+                          {savedDocumentAt.toLocaleTimeString(productUiBcp47Tag(language), {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </dd>
+                      </dl>
+                    )}
+                  </MedoraCardInner>
+                </MedoraCard>
+              </div>
+            </aside>
           </div>
         ) : (
           <>

@@ -37,7 +37,7 @@ describe("Clinic Care release readiness", () => {
 
   it("preserves role-authorized Clinic workspace defaults", () => {
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["PROVIDER"])).toBe("medical-evaluation");
-    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("intake");
+    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("clinical-data");
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["PHARMACIST"])).toBe("prescriptions");
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["FRONT_DESK"])).toBe("follow-up");
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["FRONT_DESK"])).not.toContain("medical-evaluation");

@@ -36,12 +36,13 @@ describe("Clinic Care end-to-end certification", () => {
 
   it("preserves role separation across the encounter lifecycle", () => {
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["PROVIDER"])).toBe("medical-evaluation");
-    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("intake");
+    expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["RN"])).toBe("clinical-data");
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["PHARMACIST"])).toBe("prescriptions");
     expect(getDefaultClinicCareAmbulatoryWorkspaceSection(["FRONT_DESK"])).toBe("follow-up");
 
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["FRONT_DESK"])).not.toContain("medical-evaluation");
-    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["RN"])).toContain("nursing");
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["RN"])).not.toContain("intake");
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["RN"])).not.toContain("nursing");
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).toContain("diagnoses");
   });
 
