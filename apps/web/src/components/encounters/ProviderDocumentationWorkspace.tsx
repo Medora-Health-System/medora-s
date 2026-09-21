@@ -1693,7 +1693,7 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
           </p>
         ) : (
-          previewSections.map((section) => (
+          previewSections.filter((section) => !(isClinicSimplified && section.id === "ros")).map((section) => (
             <div key={section.id} style={{ marginBottom: 10 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
                 {t(section.titleKey)}
