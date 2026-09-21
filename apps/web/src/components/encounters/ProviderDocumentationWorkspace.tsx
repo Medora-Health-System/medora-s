@@ -1709,7 +1709,7 @@ export function ProviderDocumentationWorkspace({
       </div>
       {isClinicSimplified ? (
         <ContextCard
-          title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
+          title={signedMetadata ? (appUiLanguage === "es" ? "Firma del profesional" : appUiLanguage === "fr" ? "Signature du professionnel" : "Provider signature") : (appUiLanguage === "es" ? "Documentación guardada por" : appUiLanguage === "fr" ? "Documentation enregistrée par" : "Provider documentation saved by")}
           lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
           empty={t("common.dash")}
         />
