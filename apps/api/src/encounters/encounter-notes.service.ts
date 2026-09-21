@@ -414,10 +414,7 @@ export class EncounterNotesService {
     if (existing.voidedAt) {
       throw new BadRequestException("Note already voided.");
     }
-    // Governance roles cannot void another clinician's authored note.
-    if (existing.authorUserId !== userId) {
-      throw new ForbiddenException("Only the original author may void this note.");
-    }
+    await this.assertCanVoid(userId, facilityId, existing.authorUserId);
 
     const voided = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterNote.update({
