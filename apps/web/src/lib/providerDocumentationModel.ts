@@ -1018,16 +1018,24 @@ export function applyProviderDocumentationTemplate(input: {
   };
 }
 
-/** Removes exact repeated documentation paragraphs while preserving the first authored copy and all unique text. */
+/** Removes repeated generated complete-normal ROS blocks without rewriting clinician-authored paragraphs. */
 export function dedupeRepeatedDocumentationBlocks(text: string): string {
-  const blocks = text.split(/\n\s*\n/u).map((block) => block.trim()).filter(Boolean);
-  const seen = new Set<string>();
-  return blocks.filter((block) => {
+  const parts = text.split(/(\n\s*\n)/u);
+  const seenGeneratedBlocks = new Set<string>();
+  const output: string[] = [];
+  for (let index = 0; index < parts.length; index += 2) {
+    const block = parts[index] ?? "";
+    const systemLineCount = block.split("\n").filter((line) => /^[^:\n]{1,64}:\s*/u.test(line.trim())).length;
+    const isGeneratedNormalRos =
+      /^(?:Review of Systems|Revisión por sistemas|Revue des systèmes):\s*$/imu.test(block) &&
+      systemLineCount >= 8;
     const key = normalizeBlock(block);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).join("\n\n");
+    if (isGeneratedNormalRos && seenGeneratedBlocks.has(key)) continue;
+    if (isGeneratedNormalRos) seenGeneratedBlocks.add(key);
+    if (output.length > 0) output.push(parts[index - 1] ?? "\n\n");
+    output.push(block);
+  }
+  return output.join("");
 }
 
 export function applyCompleteNormalRosPrefill(input: {
