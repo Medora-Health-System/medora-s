@@ -108,17 +108,15 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     setSaving(true);
     try {
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
-      let savedByTitle = roles[0]?.replaceAll("_", " ").trim() || (productUiLanguage === "es" ? "Profesional clínico" : productUiLanguage === "fr" ? "Professionnel clinique" : "Clinical provider");
+      let savedByTitle = providerProfessionalTitle || (productUiLanguage === "es" ? "Profesional clínico" : productUiLanguage === "fr" ? "Professionnel clinique" : "Clinical provider");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
         if (me && typeof me === "object" && !Array.isArray(me)) {
-          const profile = me as { fullName?: string; professionalTitle?: string; jobTitle?: string; title?: string };
+          const profile = me as { fullName?: string };
           const fn = profile.fullName?.trim();
-          const explicitTitle = [profile.professionalTitle, profile.jobTitle, profile.title].find((entry) => typeof entry === "string" && entry.trim())?.trim();
-          if (fn) savedByDisplayName = fn;
-          if (explicitTitle) savedByTitle = explicitTitle;
-        }
+           if (fn) savedByDisplayName = fn;
+         }
       } catch {
         /* fallback only */
       }
@@ -156,7 +154,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     } finally {
       setSaving(false);
     }
-  }, [canAuthor, value, encounter, facilityId, language, onUpdate, productUiLanguage, roles, t]);
+  }, [canAuthor, value, encounter, facilityId, language, onUpdate, productUiLanguage, providerProfessionalTitle, t]);
 
   const sign = useCallback(async () => {
     setMessage(null);
