@@ -11,6 +11,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { fetchAuthMeSession } from "@/lib/authSessionMe";
+import { clinicianProfessionalTitleFromProfession } from "@medora/shared";
 import { canAuthorAmbulatoryProviderDocumentation } from "@medora/shared";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
@@ -71,6 +73,19 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
   const [value, setValue] = useState<ProviderDocumentationWorkspaceState>(() =>
     hydrateProviderDocumentationWorkspaceState({ encounter })
   );
+  const [providerProfessionalTitle, setProviderProfessionalTitle] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setProviderProfessionalTitle(null);
+    void fetchAuthMeSession().then((session) => {
+      if (!active || !session.ok || !session.data) return;
+      const assignments = Array.isArray(session.data.facilityRoles) ? session.data.facilityRoles : [];
+      const assignment = assignments.find((entry) => entry && typeof entry === "object" && (entry as { facilityId?: unknown }).facilityId === facilityId && (entry as { role?: unknown }).role === "PROVIDER") as { professionCode?: unknown } | undefined;
+      const title = typeof assignment?.professionCode === "string" ? clinicianProfessionalTitleFromProfession(assignment.professionCode) : null;
+      if (active) setProviderProfessionalTitle(title);
+    }).catch(() => { if (active) setProviderProfessionalTitle(null); });
+    return () => { active = false; };
+  }, [facilityId]);
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
   const [message, setMessage] = useState<{ variant: "success" | "error" | "queued"; text: string } | null>(
@@ -184,6 +199,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         encounterMode="AMBULATORY"
         presentationVariant="clinic-simplified"
         rosSectionTitle={reviewOfSystemsTitle}
+        providerProfessionalTitle={providerProfessionalTitle}
         facilityCountry={facilityCountry}
         authoredDocumentLocale={bilingualStorageLocaleOrEn(language)}
         value={value}
