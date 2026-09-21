@@ -93,12 +93,18 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     setSaving(true);
     try {
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
+      let savedByTitle = roles[0]?.replaceAll("_", " ").trim() || (productUiLanguage === "es" ? "Profesional clínico" : productUiLanguage === "fr" ? "Professionnel clinique" : "Clinical provider");
       try {
         const meRes = await fetch("/api/auth/me");
         const me = await parseApiResponse(meRes);
         if (me && typeof me === "object" && !Array.isArray(me)) {
-          const fn = (me as { fullName?: string }).fullName?.trim();
+          const profile = me as { fullName?: string; professionalTitle?: string; jobTitle?: string; title?: string };
+          const fn = profile.fullName?.trim();
+          const explicitTitle = [profile.professionalTitle, profile.jobTitle, profile.title]
+            .find((entry) => typeof entry === "string" && entry.trim())
+            ?.trim();
           if (fn) savedByDisplayName = fn;
+          if (explicitTitle) savedByTitle = explicitTitle;
         }
       } catch {
         /* fallback only */
@@ -110,6 +116,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
           encounterMode: "AMBULATORY",
           savedAt: new Date().toISOString(),
           savedBy: savedByDisplayName,
+          savedByTitle,
           activeTemplateId: value.activeTemplateId,
         }),
       });
@@ -136,7 +143,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     } finally {
       setSaving(false);
     }
-  }, [canAuthor, value, encounter, facilityId, language, onUpdate, t]);
+  }, [canAuthor, value, encounter, facilityId, language, onUpdate, productUiLanguage, roles, t]);
 
   const sign = useCallback(async () => {
     setMessage(null);
