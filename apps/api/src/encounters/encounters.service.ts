@@ -1243,6 +1243,13 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       throw new BadRequestException("Un motif non vide est requis pour déverrouiller l'évaluation médicale.");
     }
 
+    // Fail closed until an append-only, signed amendment endpoint is available.
+    // The legacy unlock flow clears the active signature and permits overwriting
+    // a shared workspace; an immutable snapshot alone does not make that safe.
+    throw new ForbiddenException(
+      "Signed documentation is immutable. Record a separately authored amendment; legacy unlock is disabled."
+    );
+
     const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
     const previousSignedAt = encounter.providerDocumentationSignedAt;
     const previousStatus = encounter.providerDocumentationStatus;
