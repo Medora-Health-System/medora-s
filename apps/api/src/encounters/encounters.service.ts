@@ -1271,16 +1271,17 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         },
       });
       if (u.count === 0) throwEncounterConcurrentModification();
-      if (activeVersion) {
-        await tx.encounterProviderDocumentationVersion.updateMany({
-          where: { id: activeVersion.id, unlockedAt: null },
-          data: {
-            unlockedAt,
-            unlockedByUserId: userId,
-            unlockReason: reasonTrim,
-          },
-        });
-      }
+      const versionUnlock = await tx.encounterProviderDocumentationVersion.updateMany({
+        where: { id: activeVersion.id, unlockedAt: null, signedByUserId: userId },
+        data: {
+          unlockedAt,
+          unlockedByUserId: userId,
+          unlockReason: reasonTrim,
+        },
+      });
+      // Both writes are in the same transaction. If another request already
+      // unlocked the signed version, roll back the encounter signature change.
+      if (versionUnlock.count !== 1) throwEncounterConcurrentModification();
       await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
         userId,
         facilityId,
