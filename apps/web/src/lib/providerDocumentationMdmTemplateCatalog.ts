@@ -126,7 +126,7 @@ export function buildMdmTemplateDropdownOptions(
   encounterMode: ProviderDocumentationEncounterMode | D4c7aProviderDocumentationEncounterMode = "ED"
 ): MdmTemplateOption[] {
   const highValue: MdmTemplateOption[] = HIGH_VALUE_MDM_TEMPLATES.map((item) => {
-    const field = resolveAmbulatoryHighValueMdmTargetField({
+    const resolvedField = resolveAmbulatoryHighValueMdmTargetField({
       templateId: item.id,
       defaultField: item.field,
       encounterMode,
@@ -139,7 +139,7 @@ export function buildMdmTemplateDropdownOptions(
       id: item.id,
       group: "highValue" as const,
       labelKey: item.labelKey,
-      field,
+      field: resolvedField === "mdmDifferentialSynthesis" || resolvedField === "mdmConsultsDiscussed" ? "mdmWorkingAssessment" : resolvedField,
       fragmentKey,
       highValue: true,
     };
@@ -153,15 +153,20 @@ export function buildMdmTemplateDropdownOptions(
   const seen = new Set<string>();
 
   const add = (field: ProviderDocumentationTemplateStringField, fragmentKey: string) => {
-    if (hideAmbulatoryMdmChrome && isAmbulatoryHiddenMdmPresentationField(field)) return;
-    const dedupeKey = `${field}::${fragmentKey}`;
+    // New differential and consultation fragments belong in Working Assessment.
+    // Existing persisted field values remain untouched for historical review.
+    const targetField = field === "mdmDifferentialSynthesis" || field === "mdmConsultsDiscussed"
+      ? "mdmWorkingAssessment"
+      : field;
+    if (hideAmbulatoryMdmChrome && isAmbulatoryHiddenMdmPresentationField(targetField)) return;
+    const dedupeKey = `${targetField}::${fragmentKey}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
     existing.push({
       id: dedupeKey,
       group: "existing",
       labelKey: fragmentKey,
-      field,
+      field: targetField,
       fragmentKey,
     });
   };
