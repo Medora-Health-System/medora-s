@@ -318,7 +318,22 @@ export function resolveClinicCareAmbulatoryWorkspaceRoleGroup(
   return "UNKNOWN";
 }
 
-const ALL_SECTIONS = [...CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS];
+/**
+ * Admission/intake and the duplicate Nursing/MA board are intentionally not exposed in the
+ * Active Clinic Workspace. Nursing Evaluation remains in the facility-scoped Nursing/MA
+ * worklist; keeping the legacy ids parseable preserves old deep links without rendering tiles.
+ */
+export const CLINIC_CARE_AMBULATORY_WORKSPACE_HIDDEN_SECTIONS = [
+  "intake",
+  "nursing",
+] as const satisfies readonly ClinicCareAmbulatoryWorkspaceSection[];
+
+const HIDDEN_SECTION_SET = new Set<ClinicCareAmbulatoryWorkspaceSection>(
+  CLINIC_CARE_AMBULATORY_WORKSPACE_HIDDEN_SECTIONS
+);
+const ALL_SECTIONS = CLINIC_CARE_AMBULATORY_WORKSPACE_SECTIONS.filter(
+  (section) => !HIDDEN_SECTION_SET.has(section)
+);
 
 const ROLE_TILES: Record<
   ClinicCareAmbulatoryWorkspaceRoleGroup,
@@ -327,20 +342,18 @@ const ROLE_TILES: Record<
   ADMIN: ALL_SECTIONS,
   PROVIDER: ALL_SECTIONS,
   RN: [
-    "intake",
     "orders",
     "medications",
     "results",
     "clinical-data",
-    "nursing",
     "notes",
     "prescriptions",
     "follow-up",
     "summary",
   ],
   PHARMACIST: ["medications", "orders", "prescriptions", "summary"],
-  TECH: ["intake", "orders", "results", "nursing", "summary"],
-  FRONT_DESK: ["intake", "follow-up", "summary"],
+  TECH: ["orders", "results", "clinical-data", "summary"],
+  FRONT_DESK: ["follow-up", "summary"],
   UNKNOWN: ["summary"],
 };
 
@@ -362,7 +375,7 @@ export function getDefaultClinicCareAmbulatoryWorkspaceSection(
       return "medical-evaluation";
     case "RN":
     case "TECH":
-      return "intake";
+      return "clinical-data";
     case "PHARMACIST":
       return "prescriptions";
     case "FRONT_DESK":
