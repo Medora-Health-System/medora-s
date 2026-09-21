@@ -1044,6 +1044,8 @@ export type FluidBolusCompleteDto = z.infer<typeof fluidBolusCompleteDtoSchema>;
 /** POST /encounters/:id/provider-addenda — append-only after signed provider documentation (V1). */
 export const encounterProviderAddendumCreateDtoSchema = z.object({
   text: z.string().trim().min(1).max(5000),
+  amendmentReason: z.string().trim().min(1).max(1000),
+  signedVersionId: z.string().uuid(),
 });
 
 export type EncounterProviderAddendumCreateDto = z.infer<typeof encounterProviderAddendumCreateDtoSchema>;
