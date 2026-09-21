@@ -1218,6 +1218,13 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       throw new BadRequestException("L'évaluation médicale n'est pas verrouillée par signature.");
     }
 
+    // A privileged role is not authority to remove another clinician's signature.
+    // Legacy signed records without a resolvable signer remain locked.
+    if (!encounter.providerDocumentationSignedByUserId ||
+        encounter.providerDocumentationSignedByUserId !== userId) {
+      throw new ForbiddenException("Only the original signer may unlock their documentation.");
+    }
+
     const reasonTrim = dto.reason?.trim();
     if (!reasonTrim) {
       throw new BadRequestException("Un motif non vide est requis pour déverrouiller l'évaluation médicale.");
