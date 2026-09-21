@@ -1082,6 +1082,19 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       throw new BadRequestException("L'évaluation médicale est déjà signée.");
     }
 
+    // Re-signing a previously signed shared workspace must not transfer
+    // ownership of its clinical content to a different provider.
+    const latestSignedVersion = await this.prisma.encounterProviderDocumentationVersion.findFirst({
+      where: { encounterId, facilityId },
+      orderBy: { versionNumber: "desc" },
+      select: { signedByUserId: true },
+    });
+    if (latestSignedVersion && latestSignedVersion.signedByUserId !== userId) {
+      throw new ForbiddenException(
+        "A different clinician must create their own documentation; they cannot re-sign another clinician's workspace."
+      );
+    }
+
     if (!encounterHasSignableProviderContent(encounter)) {
       throw new BadRequestException(
         "Renseignez au moins une impression clinique, un plan de traitement ou la documentation médicale (HPI, ROS, examen, MDM) avant de signer."
