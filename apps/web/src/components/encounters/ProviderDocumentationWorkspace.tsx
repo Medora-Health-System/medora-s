@@ -170,6 +170,8 @@ export type ProviderDocumentationWorkspaceProps = {
   presentationVariant?: "default" | "clinic-simplified";
   /** Optional localized section title used by a presentation variant. */
   rosSectionTitle?: string;
+  /** Verified provider title from the authenticated provider profile, when available. */
+  providerProfessionalTitle?: string | null;
   t: (key: string) => string;
 };
 
@@ -480,6 +482,7 @@ export function ProviderDocumentationWorkspace({
   quickActions = null,
   presentationVariant = "default",
   rosSectionTitle,
+  providerProfessionalTitle = null,
   t,
 }: ProviderDocumentationWorkspaceProps) {
   const { language: appUiLanguage } = useI18n();
@@ -1706,8 +1709,8 @@ export function ProviderDocumentationWorkspace({
       </div>
       {isClinicSimplified ? (
         <ContextCard
-          title={signedMetadata ? "Provider signature" : "Provider documentation saved by"}
-          lines={signedMetadata ? [`${signedMetadata.signedBy} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy} · ${lastSaved.savedAt}`] : []}
+          title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
+          lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
           empty={t("common.dash")}
         />
       ) : (
