@@ -179,6 +179,8 @@ describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
     const me = read("ClinicCareAmbulatoryMedicalEvaluationPanel.tsx");
     expect(me).toContain("ProviderDocumentationWorkspace");
     expect(me).toContain('encounterMode="AMBULATORY"');
+    expect(me).toContain('presentationVariant="clinic-simplified"');
+    expect(me).toContain("rosSectionTitle={reviewOfSystemsTitle}");
     expect(me).toContain("canAuthorAmbulatoryProviderDocumentation");
     expect(me).not.toContain("ClinicHpi");
     expect(me).not.toMatch(/\besiLevel\b/);

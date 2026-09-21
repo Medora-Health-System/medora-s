@@ -54,7 +54,14 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
   onUpdate: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
+  const productUiLanguage = resolveProductUiLanguageOrDefault(language);
   const dateLocale = productUiBcp47Tag(language);
+  const reviewOfSystemsTitle =
+    productUiLanguage === "es"
+      ? "Revisión por sistemas"
+      : productUiLanguage === "fr"
+        ? "Revue des systèmes"
+        : "Review of Systems";
 
   const canAuthor = canAuthorAmbulatoryProviderDocumentation(roles);
   const readOnlyEncounter = (encounter.status ?? "").trim() !== "OPEN";
@@ -175,6 +182,8 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
       <ProviderDocumentationWorkspace
         encounterId={encounter.id}
         encounterMode="AMBULATORY"
+        presentationVariant="clinic-simplified"
+        rosSectionTitle={reviewOfSystemsTitle}
         facilityCountry={facilityCountry}
         authoredDocumentLocale={bilingualStorageLocaleOrEn(language)}
         value={value}

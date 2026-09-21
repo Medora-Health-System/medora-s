@@ -163,6 +163,13 @@ export type ProviderDocumentationWorkspaceProps = {
   keyInformation?: string[];
   encounterSummary?: string[];
   quickActions?: React.ReactNode;
+  /**
+   * Clinic-only visual simplification. This changes presentation only; all documentation
+   * fields remain in state, persistence, templates, previews, and signed records.
+   */
+  presentationVariant?: "default" | "clinic-simplified";
+  /** Optional localized section title used by a presentation variant. */
+  rosSectionTitle?: string;
   t: (key: string) => string;
 };
 
@@ -468,9 +475,12 @@ export function ProviderDocumentationWorkspace({
   keyInformation = [],
   encounterSummary = [],
   quickActions = null,
+  presentationVariant = "default",
+  rosSectionTitle,
   t,
 }: ProviderDocumentationWorkspaceProps) {
   const { language: appUiLanguage } = useI18n();
+  const isClinicSimplified = presentationVariant === "clinic-simplified";
   const hideHaitiRoutineMedEval = shouldHideHaitiAmbulatoryRoutineMedEvalFields({
     facilityCountry,
     encounterMode,
@@ -1618,21 +1628,25 @@ export function ProviderDocumentationWorkspace({
             >
               {t("providerDocumentationWorkspace.templates")}
             </button>
-            <button
-              type="button"
-              disabled={readOnly || !onClear}
-              onClick={onClear}
-              style={touchHeaderButton(compactSecondaryButton(readOnly || !onClear))}
-            >
-              {t("providerDocumentationWorkspace.clear")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowPreview((v) => !v)}
-              style={touchHeaderButton(compactSecondaryButton(false))}
-            >
-              {t("providerDocumentationWorkspace.preview")}
-            </button>
+            {!isClinicSimplified ? (
+              <>
+                <button
+                  type="button"
+                  disabled={readOnly || !onClear}
+                  onClick={onClear}
+                  style={touchHeaderButton(compactSecondaryButton(readOnly || !onClear))}
+                >
+                  {t("providerDocumentationWorkspace.clear")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview((v) => !v)}
+                  style={touchHeaderButton(compactSecondaryButton(false))}
+                >
+                  {t("providerDocumentationWorkspace.preview")}
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               disabled={readOnly || saving}
@@ -1687,20 +1701,24 @@ export function ProviderDocumentationWorkspace({
           data-testid="provider-documentation-header-nav"
           style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: isStackedLayout ? 8 : 4, alignItems: "center" }}
         >
-          <button
-            type="button"
-            onClick={() => focusRelativeDictationTarget(-1)}
-            style={touchHeaderButton(compactNavButton)}
-          >
-            {t("providerDocumentationWorkspace.dictationPreviousSection")}
-          </button>
-          <button
-            type="button"
-            onClick={() => focusRelativeDictationTarget(1)}
-            style={touchHeaderButton(compactNavButton)}
-          >
-            {t("providerDocumentationWorkspace.dictationNextSection")}
-          </button>
+          {!isClinicSimplified ? (
+            <>
+              <button
+                type="button"
+                onClick={() => focusRelativeDictationTarget(-1)}
+                style={touchHeaderButton(compactNavButton)}
+              >
+                {t("providerDocumentationWorkspace.dictationPreviousSection")}
+              </button>
+              <button
+                type="button"
+                onClick={() => focusRelativeDictationTarget(1)}
+                style={touchHeaderButton(compactNavButton)}
+              >
+                {t("providerDocumentationWorkspace.dictationNextSection")}
+              </button>
+            </>
+          ) : null}
           {DICTATION_NAV_TARGETS.map((target) => (
             <button
               key={target.id}
@@ -2001,13 +2019,15 @@ export function ProviderDocumentationWorkspace({
             </Field>
             {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
             {complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi")}
-            {hpiChipGroups.map((group) => (
-              <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
-                  fieldText: value.hpi,
-                })}
-              </ChipGroupView>
-            ))}
+            {!isClinicSimplified
+              ? hpiChipGroups.map((group) => (
+                  <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
+                    {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
+                      fieldText: value.hpi,
+                    })}
+                  </ChipGroupView>
+                ))
+              : null}
             {encounterMode === "OBSERVATION" ? (
               <ChipGroupView title={t("providerDocumentationWorkspace.observationChips")}>
                 {chipRow(OBSERVATION_CHIPS, (chip) => toggleField("hpi", chip.fragmentKey), {
@@ -2020,7 +2040,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="ros"
-            title={t("providerDocumentationWorkspace.sectionRos")}
+            title={rosSectionTitle ?? t("providerDocumentationWorkspace.sectionRos")}
             summary={accordionSummaries.ros}
             selectedCount={accordionSelectedCounts.ros}
             status={sectionStatusById.ros}
@@ -2053,36 +2073,58 @@ export function ProviderDocumentationWorkspace({
               </button>
             </div>
             <div
+              data-testid={isClinicSimplified ? "clinic-focused-impression" : undefined}
               style={{
                 display: "grid",
-                gridTemplateColumns: isStackedLayout ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+                gridTemplateColumns: isClinicSimplified
+                  ? "minmax(0, 1fr)"
+                  : isStackedLayout
+                    ? "1fr"
+                    : "repeat(auto-fit, minmax(220px, 1fr))",
                 gap: 10,
+                ...(isClinicSimplified
+                  ? {
+                      padding: "16px",
+                      border: "1px solid #99f6e4",
+                      borderRadius: 14,
+                      background: "linear-gradient(135deg, #f0fdfa 0%, #ffffff 72%)",
+                      boxShadow: "0 8px 20px rgba(15, 118, 110, 0.08)",
+                    }
+                  : {}),
               }}
             >
-              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantPositives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives)}</Field>
-              <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantNegatives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives)}</Field>
-              <Field label={t("providerDocumentationWorkspace.redFlags")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosRedFlags", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags)}</Field>
+              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", isClinicSimplified ? 4 : 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
+              {!isClinicSimplified ? (
+                <>
+                  <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantPositives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives)}</Field>
+                  <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantNegatives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives)}</Field>
+                  <Field label={t("providerDocumentationWorkspace.redFlags")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosRedFlags", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags)}</Field>
+                </>
+              ) : null}
             </div>
-            {templateTextChips(
-              activeTemplate,
-              ["rosFocusedImpression", "rosImportantPositives", "rosImportantNegatives", "rosRedFlags"],
-              "providerDocumentationWorkspace.activeTemplateRos"
-            )}
-            {rosChipGroups.map((group) => (
-              <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {group.field === "rosImportantNegatives" ? (
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "#92400e" }}>{t("providerDocumentationWorkspace.negativesWarning")}</p>
-                ) : null}
-                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
-                  tone: group.field === "rosImportantNegatives" ? "warn" : undefined,
-                  fieldText: String(value[group.field] ?? ""),
-                })}
-              </ChipGroupView>
-            ))}
-            {complaintIntelligenceFieldChips(activeTemplate, "rosImportantPositives", "providerDocumentationWorkspace.complaintIntelSectionRosPositives")}
-            {complaintIntelligenceFieldChips(activeTemplate, "rosImportantNegatives", "providerDocumentationWorkspace.complaintIntelSectionRosNegatives")}
-            {complaintIntelligenceFieldChips(activeTemplate, "rosRedFlags", "providerDocumentationWorkspace.complaintIntelSectionRosRedFlags")}
+            {!isClinicSimplified ? (
+              <>
+                {templateTextChips(
+                  activeTemplate,
+                  ["rosFocusedImpression", "rosImportantPositives", "rosImportantNegatives", "rosRedFlags"],
+                  "providerDocumentationWorkspace.activeTemplateRos"
+                )}
+                {rosChipGroups.map((group) => (
+                  <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
+                    {group.field === "rosImportantNegatives" ? (
+                      <p style={{ margin: "4px 0 0", fontSize: 11, color: "#92400e" }}>{t("providerDocumentationWorkspace.negativesWarning")}</p>
+                    ) : null}
+                    {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
+                      tone: group.field === "rosImportantNegatives" ? "warn" : undefined,
+                      fieldText: String(value[group.field] ?? ""),
+                    })}
+                  </ChipGroupView>
+                ))}
+                {complaintIntelligenceFieldChips(activeTemplate, "rosImportantPositives", "providerDocumentationWorkspace.complaintIntelSectionRosPositives")}
+                {complaintIntelligenceFieldChips(activeTemplate, "rosImportantNegatives", "providerDocumentationWorkspace.complaintIntelSectionRosNegatives")}
+                {complaintIntelligenceFieldChips(activeTemplate, "rosRedFlags", "providerDocumentationWorkspace.complaintIntelSectionRosRedFlags")}
+              </>
+            ) : null}
           </ProviderDocumentationAccordionSection>
 
           <ProviderDocumentationAccordionSection
