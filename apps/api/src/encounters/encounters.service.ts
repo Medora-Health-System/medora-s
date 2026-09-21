@@ -1252,8 +1252,15 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       const activeVersion = await tx.encounterProviderDocumentationVersion.findFirst({
         where: { encounterId, facilityId },
         orderBy: { versionNumber: "desc" },
-        select: { id: true, versionNumber: true, snapshotHash: true, unlockedAt: true },
+        select: { id: true, versionNumber: true, snapshotHash: true, unlockedAt: true, signedByUserId: true },
       });
+      // Never clear a signature unless its immutable signed snapshot exists and
+      // is owned by the requesting signer. Legacy records require migration.
+      if (!activeVersion || activeVersion.signedByUserId !== userId || activeVersion.unlockedAt) {
+        throw new ForbiddenException(
+          "Signed documentation cannot be unlocked without an intact, author-owned signed version."
+        );
+      }
       const u = await tx.encounter.updateMany({
         where: { id: encounterId, facilityId, version: encounter.version },
         data: {
