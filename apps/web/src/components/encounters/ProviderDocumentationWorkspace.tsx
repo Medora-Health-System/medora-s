@@ -1706,7 +1706,7 @@ export function ProviderDocumentationWorkspace({
       </div>
       {isClinicSimplified ? (
         <ContextCard
-          title="Provider signature"
+          title={signedMetadata ? "Provider signature" : "Provider documentation saved by"}
           lines={signedMetadata ? [`${signedMetadata.signedBy} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy} · ${lastSaved.savedAt}`] : []}
           empty={t("common.dash")}
         />
