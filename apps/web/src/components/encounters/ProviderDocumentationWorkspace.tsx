@@ -2152,7 +2152,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="hpi"
-            title={t("providerDocumentationWorkspace.sectionHpi")}
+            title={isClinicSimplified ? t("providerDocumentationWorkspace.hpi") : t("providerDocumentationWorkspace.sectionHpi")}
             summary={accordionSummaries.hpi}
             selectedCount={accordionSelectedCounts.hpi}
             status={sectionStatusById.chiefComplaintHpi}
