@@ -120,6 +120,8 @@ export function FacilityMarShiftTimeline({
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
   const dateLocale = productUiBcp47Tag(language);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const lastFocusedShiftRef = useRef<string | null>(null);
   const shiftHydratedRef = useRef(false);
   const firstReadyNotifiedRef = useRef(false);
   const onReadyRef = useRef(onReady);
@@ -299,6 +301,27 @@ export function FacilityMarShiftTimeline({
     }
   })();
   const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale, facilityTimeZone);
+  // Keep the current administration hour visible when a shift first loads.
+  // Do not move the timeline again while a nurse is reviewing another hour.
+  useEffect(() => {
+    if (!data?.shift?.columns?.length || !timelineScrollRef.current) return;
+    const focusKey = [facilityId, encounterId, selectedDateLocal, shiftCode, data.shift.startAt].join("|");
+    if (lastFocusedShiftRef.current === focusKey) return;
+    const tz = data.shift.timeZone || facilityTimeZone || undefined;
+    const currentHour = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit", hour12: true, timeZone: tz,
+    }).format(new Date()).replace(/[^0-9APM]/gi, "").toUpperCase().replace(/(AM|PM)$/, (suffix) => suffix[0]!);
+    const columnIndex = data.shift.columns.findIndex((column) =>
+      column.label.replace(/[^0-9APM]/gi, "").toUpperCase().replace(/(AM|PM)$/, (suffix) => suffix[0]!) === currentHour
+    );
+    if (columnIndex < 0) return;
+    const viewport = timelineScrollRef.current;
+    const header = viewport.querySelectorAll<HTMLTableCellElement>("thead th")[columnIndex + 1];
+    if (!header) return;
+    viewport.scrollLeft = Math.max(0, header.offsetLeft - viewport.clientWidth / 2);
+    lastFocusedShiftRef.current = focusKey;
+  }, [data, facilityId, encounterId, selectedDateLocal, shiftCode, facilityTimeZone]);
+
   const uiLocale = resolveProductUiLanguageOrDefault(language);
 
   return (
@@ -446,6 +469,7 @@ export function FacilityMarShiftTimeline({
         </p>
       ) : data ? (
         <div
+          ref={timelineScrollRef}
           data-testid="mar-shift-timeline-grid-scroll"
           style={{
             overflowX: "auto",
