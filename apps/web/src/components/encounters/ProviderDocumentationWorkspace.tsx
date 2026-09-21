@@ -1716,7 +1716,7 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
           </p>
         ) : (
-          previewSections.filter((section) => !(isClinicSimplified && section.id === "ros")).map((section) => (
+          previewSections.map((section) => (
             <div key={section.id} style={{ marginBottom: 10 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
                 {isClinicSimplified && section.id === "hpi" ? clinicDocumentationCopy.hpi : isClinicSimplified && section.id === "ros" ? (rosSectionTitle ?? t(section.titleKey)) : isClinicSimplified && section.id === "mdm" ? clinicDocumentationCopy.medicalDocumentation : t(section.titleKey)}
@@ -1733,7 +1733,7 @@ export function ProviderDocumentationWorkspace({
       {isClinicSimplified ? (
         <ContextCard
           title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
-          lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
+          lines={signedMetadata ? [`${signedMetadata.signedBy}${savedMetadata?.savedByTitle ? `, ${savedMetadata.savedByTitle}` : providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${savedMetadata.savedByTitle ? `, ${savedMetadata.savedByTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
           empty={t("common.dash")}
         />
       ) : (
