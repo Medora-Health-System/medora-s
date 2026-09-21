@@ -37,9 +37,18 @@ export function parseIcd10PresentationFields(
   };
 }
 
-/** Stable PMH ICD pick: canonical code only. Never displayLabel or catalog prose. */
-export function formatPmhIcdPickLine(hit: { code: string }): string {
-  return (formatIcd10CmDisplayCode(hit.code) || hit.code.trim());
+/**
+ * Stable PMH ICD pick for the patient-facing history.
+ * Persist the server-resolved localized clinical name and retain the canonical code for
+ * traceability/deduplication. Unlocalized results safely fall back to the code.
+ */
+export function formatPmhIcdPickLine(hit: {
+  code: string;
+  displayLabel?: string | null;
+  displayResolution?: string | null;
+}): string {
+  const display = formatIcd10ServerResolvedOneLineDisplay(hit);
+  return display.metadata ? `${display.primary} (${display.metadata})` : display.primary;
 }
 
 export function pmhContainsCanonicalIcdCode(pmh: string, code: string): boolean {
