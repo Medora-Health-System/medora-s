@@ -787,6 +787,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     rows: Array<{
       id: string;
       text: string;
+      amendmentReason: string | null;
+      signedVersionId: string | null;
+      createdByUserId: string;
       createdAt: Date;
       createdBy: { firstName: string; lastName: string };
     }>
@@ -794,6 +797,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     return rows.map((a) => ({
       id: a.id,
       text: a.text,
+      amendmentReason: a.amendmentReason,
+      signedVersionId: a.signedVersionId,
+      createdByUserId: a.createdByUserId,
       createdAt: a.createdAt,
       createdByDisplayFr: `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim(),
     }));
