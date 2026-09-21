@@ -157,6 +157,9 @@ export const ENCOUNTER_DETAIL_SELECT = {
     select: {
       id: true,
       text: true,
+      amendmentReason: true,
+      signedVersionId: true,
+      createdByUserId: true,
       createdAt: true,
       createdBy: { select: { firstName: true, lastName: true } },
     },
