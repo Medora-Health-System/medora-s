@@ -1709,7 +1709,7 @@ export function ProviderDocumentationWorkspace({
       </div>
       {isClinicSimplified ? (
         <ContextCard
-          title={signedMetadata ? (appUiLanguage === "es" ? "Firma del profesional" : appUiLanguage === "fr" ? "Signature du professionnel" : "Provider signature") : (appUiLanguage === "es" ? "Documentación guardada por" : appUiLanguage === "fr" ? "Documentation enregistrée par" : "Provider documentation saved by")}
+          title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
           lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
           empty={t("common.dash")}
         />
@@ -2371,7 +2371,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="mdm"
-            title={isClinicSimplified ? (appUiLanguage === "es" ? "Documentación médica" : appUiLanguage === "fr" ? "Documentation médicale" : "Medical Documentation") : t("providerDocumentationWorkspace.sectionMdm")}
+            title={isClinicSimplified ? t("providerDocumentationWorkspace.clinicMedicalDocumentation") : t("providerDocumentationWorkspace.sectionMdm")}
             summary={accordionSummaries.mdm}
             selectedCount={accordionSelectedCounts.mdm}
             status={sectionStatusById.mdm}
