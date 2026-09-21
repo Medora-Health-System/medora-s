@@ -731,13 +731,14 @@ export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS: Rec
 export function applyCompleteNormalPhysicalExamPrefill(input: {
   state: ProviderDocumentationWorkspaceState;
   resolveFragment: (key: string) => string;
+  sectionIds?: readonly ProviderDocumentationExamSectionId[];
 }): ProviderDocumentationWorkspaceState {
   const next = {
     ...input.state,
     physicalExam: { ...input.state.physicalExam },
   };
 
-  for (const sectionId of PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS) {
+  for (const sectionId of input.sectionIds ?? PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS) {
     if (next.physicalExam[sectionId].trim()) continue;
     const fragmentKeys = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS[sectionId];
     let current = next.physicalExam[sectionId];
