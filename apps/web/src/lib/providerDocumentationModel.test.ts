@@ -146,6 +146,11 @@ describe("providerDocumentationModel", () => {
     expect(dedupeRepeatedDocumentationBlocks(`Patient reports mild cough.\n\n${normal}\n\n${normal}`)).toBe(`Patient reports mild cough.\n\n${normal}`);
   });
 
+  it("preserves repeated clinician-authored ROS paragraphs", () => {
+    const authored = "Symptoms reassessed and unchanged.\n\nSymptoms reassessed and unchanged.";
+    expect(dedupeRepeatedDocumentationBlocks(authored)).toBe(authored);
+  });
+
   it("deduplicates previously saved ROS blocks during hydration", () => {
     const normal = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT;
     const state = hydrateProviderDocumentationWorkspaceState({ encounter: { nursingAssessment: { erProviderMseV1: { focusedImpression: `${normal}\n\n${normal}` } } } });
