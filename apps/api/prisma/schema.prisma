@@ -1360,6 +1360,9 @@ model EncounterProviderAddendum {
   id              String    @id @default(uuid())
   encounterId     String
   facilityId      String
+  signedVersionId String
+  amendmentReason String
+  signedVersion   EncounterProviderDocumentationVersion @relation(fields: [signedVersionId], references: [id], onDelete: Restrict)
   text            String
   createdAt       DateTime  @default(now())
   createdByUserId String
@@ -1368,6 +1371,7 @@ model EncounterProviderAddendum {
   facility        Facility  @relation(fields: [facilityId], references: [id])
 
   @@index([encounterId, createdAt])
+  @@index([signedVersionId])
   @@index([createdByUserId])
   @@index([facilityId])
 }
@@ -1376,6 +1380,7 @@ model EncounterProviderAddendum {
 /// Application rule: append-only clinicalSnapshotJson + snapshotHash + signed metadata.
 /// Unlock lifecycle metadata may be populated once for an already-signed version.
 model EncounterProviderDocumentationVersion {
+  correctionAddenda      EncounterProviderAddendum[]
   id                     String    @id @default(uuid())
   encounterId            String
   facilityId             String
