@@ -962,12 +962,44 @@ export function ProviderDocumentationWorkspace({
       [field]: toggleDocumentationFragment(current, t(fragmentKey)),
     } as Partial<ProviderDocumentationWorkspaceState>);
   };
+  const clinicGuCopy =
+    appUiLanguage === "es"
+      ? {
+          title: "Genitourinario",
+          noSuprapubic: "sin dolor suprapúbico a la palpación",
+          noCva: "sin dolor en los ángulos costovertebrales",
+          suprapubic: "dolor suprapúbico a la palpación",
+          cva: "dolor en el ángulo costovertebral",
+        }
+      : appUiLanguage === "fr"
+        ? {
+            title: "Génito-urinaire",
+            noSuprapubic: "aucune sensibilité sus-pubienne",
+            noCva: "aucune sensibilité aux angles costo-vertébraux",
+            suprapubic: "sensibilité sus-pubienne",
+            cva: "sensibilité à l’angle costo-vertébral",
+          }
+        : {
+            title: "Genitourinary",
+            noSuprapubic: "no suprapubic tenderness",
+            noCva: "no costovertebral-angle tenderness",
+            suprapubic: "suprapubic tenderness",
+            cva: "costovertebral-angle tenderness",
+          };
+  const localizedDocumentationText = (key: string) => {
+    if (key === "providerDocumentationWorkspace.examGenitourinary") return clinicGuCopy.title;
+    if (key === "erMseExamChips.guNoSuprapubicTenderness") return clinicGuCopy.noSuprapubic;
+    if (key === "erMseExamChips.guNoCvaTenderness") return clinicGuCopy.noCva;
+    if (key === "erMseExamChips.guSuprapubicTenderness") return clinicGuCopy.suprapubic;
+    if (key === "erMseExamChips.guCvaTenderness") return clinicGuCopy.cva;
+    return t(key);
+  };
   const toggleExam = (sectionId: ProviderDocumentationExamSectionId, fragmentKey: string) => {
     onChange({
       ...value,
       physicalExam: {
         ...value.physicalExam,
-        [sectionId]: toggleDocumentationFragment(value.physicalExam[sectionId], t(fragmentKey)),
+        [sectionId]: toggleDocumentationFragment(value.physicalExam[sectionId], localizedDocumentationText(fragmentKey)),
       },
     });
   };
@@ -996,7 +1028,10 @@ export function ProviderDocumentationWorkspace({
     onChange(
       applyCompleteNormalPhysicalExamPrefill({
         state: value,
-        resolveFragment: t,
+        resolveFragment: localizedDocumentationText,
+        sectionIds: isClinicSimplified
+          ? PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS
+          : PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.filter((sectionId) => sectionId !== "genitourinary"),
       })
     );
   };
@@ -1447,7 +1482,7 @@ export function ProviderDocumentationWorkspace({
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
         {chips.map((chip) => {
-          const fragment = t(chip.fragmentKey);
+          const fragment = localizedDocumentationText(chip.fragmentKey);
           const selected = isDocumentationChipSelected(resolveFieldText(chip), fragment);
           const toneStyles = resolveDocumentationChipStyles({
             selected,
@@ -1472,7 +1507,7 @@ export function ProviderDocumentationWorkspace({
               }}
             >
               {selected ? "✓ " : ""}
-              {t(chip.labelKey)}
+              {localizedDocumentationText(chip.labelKey)}
             </button>
           );
         })}
@@ -2268,15 +2303,15 @@ export function ProviderDocumentationWorkspace({
               </button>
             </div>
             {templateExamChips(activeTemplate)}
-            {examChipGroups.map((group) => (
+            {examChipGroups.filter((group) => group.sectionId !== "genitourinary" || isClinicSimplified).map((group) => (
               <ProviderDocumentationChipPanel
                 key={group.sectionId}
-                title={t(group.titleKey)}
+                title={localizedDocumentationText(group.titleKey)}
                 selectedCount={value.physicalExam[group.sectionId].trim() ? 1 : 0}
                 tone="green"
               >
                 <Field
-                  label={t(group.titleKey)}
+                  label={localizedDocumentationText(group.titleKey)}
                   voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
                   dictationTargetId={examDictationIdBySection[group.sectionId]}
                   dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
