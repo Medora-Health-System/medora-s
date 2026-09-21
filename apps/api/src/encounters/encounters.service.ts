@@ -1418,6 +1418,22 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       }
     }
 
+    // A shared provider note cannot be rewritten by another signer after an
+    // earlier signed version has been unlocked. This also covers legacy draft
+    // states whose active signature fields have already been cleared.
+    if (data.providerNote !== undefined || data.clinicianImpression !== undefined) {
+      const lastSignedVersion = await this.prisma.encounterProviderDocumentationVersion.findFirst({
+        where: { encounterId: id, facilityId },
+        orderBy: { versionNumber: "desc" },
+        select: { signedByUserId: true },
+      });
+      if (lastSignedVersion && lastSignedVersion.signedByUserId !== userId) {
+        throw new ForbiddenException(
+          "Another clinician's provider note is immutable; create a separately authored note."
+        );
+      }
+    }
+
     if (data.nursingAssessment !== undefined) {
       await this.validateErHandoffReceivingNurseUserId(facilityId, data.nursingAssessment);
       this.assertAdaptiveNursingCompletionIfPresent(
