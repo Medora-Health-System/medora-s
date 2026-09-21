@@ -1360,9 +1360,9 @@ model EncounterProviderAddendum {
   id              String    @id @default(uuid())
   encounterId     String
   facilityId      String
-  signedVersionId String
-  amendmentReason String
-  signedVersion   EncounterProviderDocumentationVersion @relation(fields: [signedVersionId], references: [id], onDelete: Restrict)
+  signedVersionId String?
+  amendmentReason String?
+  signedVersion   EncounterProviderDocumentationVersion? @relation(fields: [signedVersionId], references: [id], onDelete: Restrict)
   text            String
   createdAt       DateTime  @default(now())
   createdByUserId String
