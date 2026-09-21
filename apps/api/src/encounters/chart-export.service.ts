@@ -769,6 +769,7 @@ function providerDocumentationWorkspaceNote(raw: unknown): ChartExportManifest["
         str("examCardiac"),
         str("examRespiratory"),
         str("examAbdomen"),
+        str("examGenitourinary"),
         str("examNeuroMental"),
         str("examMusculoskeletal"),
         str("examSkin"),
