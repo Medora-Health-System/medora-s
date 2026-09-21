@@ -181,6 +181,10 @@ describe("MEDUI.D4C.5B unified ambulatory encounter workspace", () => {
     expect(me).toContain('encounterMode="AMBULATORY"');
     expect(me).toContain('presentationVariant="clinic-simplified"');
     expect(me).toContain("rosSectionTitle={reviewOfSystemsTitle}");
+    const sharedWorkspace = read("../../components/encounters/ProviderDocumentationWorkspace.tsx");
+    expect(sharedWorkspace).toContain('data-testid="clinic-structured-ros-editor"');
+    expect(sharedWorkspace).toContain('sectionId: "genitourinary"');
+    expect(sharedWorkspace).toContain('group.sectionId !== "genitourinary" || isClinicSimplified');
     expect(me).toContain("canAuthorAmbulatoryProviderDocumentation");
     expect(me).not.toContain("ClinicHpi");
     expect(me).not.toMatch(/\besiLevel\b/);
