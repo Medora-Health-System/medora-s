@@ -1205,140 +1205,34 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
   async unlockProviderDocumentation(
     facilityId: string,
     encounterId: string,
-    dto: EncounterProviderDocumentationUnlockDto,
+    _dto: EncounterProviderDocumentationUnlockDto,
     userId: string | undefined,
-    ip?: string,
-    userAgent?: string
+    _ip?: string,
+    _userAgent?: string
   ) {
     if (!userId) {
-      throw new ForbiddenException("Authentification requise pour déverrouiller l'évaluation médicale.");
+      throw new ForbiddenException("Authentication required to amend provider documentation.");
     }
 
     const encounter = await this.prisma.encounter.findFirst({
       select: ENCOUNTER_CORE_SELECT,
       where: { id: encounterId, facilityId },
     });
-
-    if (!encounter) {
-      throw new NotFoundException("Encounter not found");
-    }
-
-    if (encounter.status !== EncounterStatus.OPEN) {
-      throw new BadRequestException("La consultation doit être ouverte pour déverrouiller l'évaluation.");
-    }
-
+    if (!encounter) throw new NotFoundException("Encounter not found");
     if (encounter.providerDocumentationStatus !== "SIGNED") {
-      throw new BadRequestException("L'évaluation médicale n'est pas verrouillée par signature.");
+      throw new BadRequestException("Provider documentation is not signed.");
     }
-
-    // A privileged role is not authority to remove another clinician's signature.
-    // Legacy signed records without a resolvable signer remain locked.
     if (!encounter.providerDocumentationSignedByUserId ||
         encounter.providerDocumentationSignedByUserId !== userId) {
-      throw new ForbiddenException("Only the original signer may unlock their documentation.");
+      throw new ForbiddenException("Only the original signer may request a correction.");
     }
 
-    const reasonTrim = dto.reason?.trim();
-    if (!reasonTrim) {
-      throw new BadRequestException("Un motif non vide est requis pour déverrouiller l'évaluation médicale.");
-    }
-
-    // Fail closed until an append-only, signed amendment endpoint is available.
-    // The legacy unlock flow clears the active signature and permits overwriting
-    // a shared workspace; an immutable snapshot alone does not make that safe.
+    // Never transition a signed shared workspace back to DRAFT. The previous
+    // implementation cleared its active signature and allowed content overwrite.
+    // A separate append-only amendment workflow must replace this endpoint.
     throw new ForbiddenException(
-      "Signed documentation is immutable. Record a separately authored amendment; legacy unlock is disabled."
+      "Signed documentation is immutable. Use a separately authored amendment."
     );
-
-    const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
-    const previousSignedAt = encounter.providerDocumentationSignedAt;
-    const previousStatus = encounter.providerDocumentationStatus;
-
-    const unlockedAt = new Date();
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const activeVersion = await tx.encounterProviderDocumentationVersion.findFirst({
-        where: { encounterId, facilityId },
-        orderBy: { versionNumber: "desc" },
-        select: { id: true, versionNumber: true, snapshotHash: true, unlockedAt: true, signedByUserId: true },
-      });
-      // Never clear a signature unless its immutable signed snapshot exists and
-      // is owned by the requesting signer. Legacy records require migration.
-      if (!activeVersion || activeVersion.signedByUserId !== userId || activeVersion.unlockedAt) {
-        throw new ForbiddenException(
-          "Signed documentation cannot be unlocked without an intact, author-owned signed version."
-        );
-      }
-      const u = await tx.encounter.updateMany({
-        where: { id: encounterId, facilityId, version: encounter.version },
-        data: {
-          providerDocumentationStatus: "DRAFT",
-          providerDocumentationSignedAt: null,
-          providerDocumentationSignedByUserId: null,
-          version: { increment: 1 },
-        },
-      });
-      if (u.count === 0) throwEncounterConcurrentModification();
-      const versionUnlock = await tx.encounterProviderDocumentationVersion.updateMany({
-        where: { id: activeVersion.id, unlockedAt: null, signedByUserId: userId },
-        data: {
-          unlockedAt,
-          unlockedByUserId: userId,
-          unlockReason: reasonTrim,
-        },
-      });
-      // Both writes are in the same transaction. If another request already
-      // unlocked the signed version, roll back the encounter signature change.
-      if (versionUnlock.count !== 1) throwEncounterConcurrentModification();
-      await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
-        userId,
-        facilityId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id,
-        entityId: encounter.id,
-        ip,
-        userAgent,
-        metadata: {
-          providerDocumentationUnlock: true,
-          reason: reasonTrim,
-          providerDocumentationVersionId: activeVersion?.id ?? null,
-          providerDocumentationVersionNumber: activeVersion?.versionNumber ?? null,
-          providerDocumentationSnapshotHash: activeVersion?.snapshotHash ?? null,
-          legacySignedStateWithoutImmutableVersion: !activeVersion,
-        },
-        critical: true,
-        tx,
-      });
-      await tx.encounterClinicalEvent.create({
-        data: {
-          facilityId,
-          encounterId: encounter.id,
-          patientId: encounter.patientId,
-          eventType: EncounterClinicalEventType.PROVIDER_UNLOCKED,
-          payloadJson: providerDocumentationUnlockedPayloadJson({
-            unlockedAt: unlockedAt.toISOString(),
-            previousSignedByUserId,
-            previousSignedAt: previousSignedAt?.toISOString() ?? null,
-            previousStatus,
-            reason: reasonTrim,
-            providerDocumentationVersionId: activeVersion?.id ?? null,
-            providerDocumentationVersionNumber: activeVersion?.versionNumber
-              ? String(activeVersion.versionNumber)
-              : null,
-          }),
-          createdByUserId: userId,
-        },
-      });
-      const row = await tx.encounter.findFirst({
-        where: { id: encounterId, facilityId },
-        select: ENCOUNTER_DETAIL_SELECT,
-      });
-      if (!row) {
-        throw new NotFoundException("Encounter not found");
-      }
-      return row;
-    });
-
-    return toEncounterClinicResponse(updated);
   }
 
   async listProviderDocumentationVersions(
