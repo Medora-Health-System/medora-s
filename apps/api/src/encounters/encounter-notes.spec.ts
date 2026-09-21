@@ -203,17 +203,13 @@ describe("EncounterNotesService (MEDNOTE.1 + MEDNOTE.2)", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it("void marks note with reason", async () => {
-    const { svc, update } = buildService();
-    const voided = await svc.voidNote(
-      "f1",
-      "e1",
-      "note1",
-      { voidReasonCode: "ENTERED_IN_ERROR" },
-      "reviewer"
-    );
-    expect(voided.voidReasonCode).toBe("ENTERED_IN_ERROR");
-    expect(update).toHaveBeenCalledTimes(1);
+  it("rejects privileged reviewer voiding another clinician's note without writing or auditing", async () => {
+    const { svc, update, audit } = buildService();
+    await expect(
+      svc.voidNote("f1", "e1", "note1", { voidReasonCode: "ENTERED_IN_ERROR" }, "reviewer")
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(update).not.toHaveBeenCalled();
+    expect(audit.log).not.toHaveBeenCalled();
   });
 
   it("rejects void without reviewer role when caller is not the author", async () => {
