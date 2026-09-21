@@ -1737,11 +1737,7 @@ export function ProviderDocumentationWorkspace({
           empty={t("common.dash")}
         />
       ) : (
-        {isClinicSimplified ? (
-        <ContextCard title={clinicDocumentationCopy.providerSignature} lines={savedMetadata ? [`${savedMetadata.savedBy} — ${savedMetadata.savedByTitle?.trim() || clinicDocumentationCopy.titleFallback}`, new Date(savedMetadata.savedAt).toLocaleString()] : []} empty={t("common.dash")} />
-      ) : (
         <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
-      )}
       )}
       {signedMetadata ? (
         <div style={sectionShell}>
