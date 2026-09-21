@@ -1029,7 +1029,7 @@ export function dedupeRepeatedDocumentationBlocks(text: string): string {
     const isGeneratedNormalRos =
       /^(?:Review of Systems|Revisión por sistemas|Revue des systèmes):\s*$/imu.test(block) &&
       systemLineCount >= 8;
-    const key = normalizeBlock(block);
+    const key = block.trim().replace(/\s+/gu, " ").toLocaleLowerCase();
     if (isGeneratedNormalRos && seenGeneratedBlocks.has(key)) continue;
     if (isGeneratedNormalRos) seenGeneratedBlocks.add(key);
     if (output.length > 0) output.push(parts[index - 1] ?? "\n\n");
