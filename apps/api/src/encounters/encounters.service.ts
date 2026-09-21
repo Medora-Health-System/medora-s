@@ -1020,6 +1020,25 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       );
     }
 
+    // A correction to the shared signed document belongs to its signer.
+    // Other clinicians must create their own independently authored note.
+    if (!encounter.providerDocumentationSignedByUserId ||
+        encounter.providerDocumentationSignedByUserId !== userId) {
+      throw new ForbiddenException(
+        "Only the original signer may append a correction to this signed documentation."
+      );
+    }
+    const signedVersion = await this.prisma.encounterProviderDocumentationVersion.findFirst({
+      where: { encounterId, facilityId },
+      orderBy: { versionNumber: "desc" },
+      select: { signedByUserId: true },
+    });
+    if (!signedVersion || signedVersion.signedByUserId !== userId) {
+      throw new ForbiddenException(
+        "An intact, author-owned signed version is required before appending a correction."
+      );
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterProviderAddendum.create({
         data: {
