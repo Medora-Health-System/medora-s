@@ -64,6 +64,11 @@ describe("Clinic nursing single-page documentation", () => {
     expect(triage).toContain("savedEntry?.recordedBy?.displayName");
     expect(triage).toContain("savedEntry?.recordedBy?.roleTitle");
     expect(triage).toContain("savedEntry?.recordedAt");
+    expect(triage).toContain('data-testid="clinic-nursing-evaluation-summary"');
+    expect(triage).toContain("savedDocumentAuthor");
+    expect(triage).toContain("savedDocumentRole");
+    expect(triage).toContain("savedDocumentAt.toLocaleDateString");
+    expect(triage).toContain("savedDocumentAt.toLocaleTimeString");
     expect(triage).not.toContain("fetchAuthMeSession");
   });
 });
