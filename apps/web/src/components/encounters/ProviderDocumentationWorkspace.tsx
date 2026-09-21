@@ -1704,7 +1704,15 @@ export function ProviderDocumentationWorkspace({
           ))
         )}
       </div>
-      <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
+      {isClinicSimplified ? (
+        <ContextCard
+          title="Provider signature"
+          lines={signedMetadata ? [`${signedMetadata.signedBy} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy} · ${lastSaved.savedAt}`] : []}
+          empty={t("common.dash")}
+        />
+      ) : (
+        <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
+      )}
       {signedMetadata ? (
         <div style={sectionShell}>
           <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
