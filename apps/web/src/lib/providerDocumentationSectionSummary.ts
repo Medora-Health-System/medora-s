@@ -60,6 +60,7 @@ const EXAM_SECTION_SHORT_LABELS: Record<ProviderDocumentationExamSectionId, stri
   cardiovascular: "Cardiovascular",
   respiratory: "Respiratory",
   abdomen: "Abdomen",
+  genitourinary: "GU",
   neuroPsych: "Neuro",
   musculoskeletal: "MSK",
   skin: "Skin",

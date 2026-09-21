@@ -27,6 +27,7 @@ export type ProviderDocumentationExamSectionId =
   | "cardiovascular"
   | "respiratory"
   | "abdomen"
+  | "genitourinary"
   | "neuroPsych"
   | "musculoskeletal"
   | "skin"
@@ -312,6 +313,7 @@ export const PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS = {
   physicalExamCardiovascular: "provider-documentation-exam-cardiovascular",
   physicalExamRespiratory: "provider-documentation-exam-respiratory",
   physicalExamAbdomen: "provider-documentation-exam-abdomen",
+  physicalExamGenitourinary: "provider-documentation-exam-genitourinary",
   physicalExamNeuroPsych: "provider-documentation-exam-neuro-psych",
   physicalExamMusculoskeletal: "provider-documentation-exam-musculoskeletal",
   physicalExamSkin: "provider-documentation-exam-skin",
@@ -373,6 +375,7 @@ export const PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS: ProviderDocumenta
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamCardiovascular,
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamRespiratory,
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamAbdomen,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGenitourinary,
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamNeuroPsych,
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamMusculoskeletal,
       PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamSkin,
@@ -441,6 +444,7 @@ export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamS
   "cardiovascular",
   "respiratory",
   "abdomen",
+  "genitourinary",
   "neuroPsych",
   "musculoskeletal",
   "skin",
@@ -472,6 +476,7 @@ export const PROVIDER_DOCUMENTATION_EXAM_FIELD_TO_LEGACY_KEY: Record<
   cardiovascular: "examCardiac",
   respiratory: "examRespiratory",
   abdomen: "examAbdomen",
+  genitourinary: "examGenitourinary",
   neuroPsych: "examNeuroMental",
   musculoskeletal: "examMusculoskeletal",
   skin: "examSkin",
@@ -614,6 +619,7 @@ export function emptyProviderDocumentationWorkspaceState(): ProviderDocumentatio
       cardiovascular: "",
       respiratory: "",
       abdomen: "",
+      genitourinary: "",
       neuroPsych: "",
       musculoskeletal: "",
       skin: "",
@@ -711,6 +717,7 @@ export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS: Rec
   ],
   respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
   abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "erMseExamChips.abdNoGuarding"],
+  genitourinary: ["erMseExamChips.guNoSuprapubicTenderness", "erMseExamChips.guNoCvaTenderness"],
   neuroPsych: [
     "erMseExamChips.neuroAlertOriented",
     "erMseExamChips.neuroFollowsCommands",
@@ -724,13 +731,14 @@ export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS: Rec
 export function applyCompleteNormalPhysicalExamPrefill(input: {
   state: ProviderDocumentationWorkspaceState;
   resolveFragment: (key: string) => string;
+  sectionIds?: readonly ProviderDocumentationExamSectionId[];
 }): ProviderDocumentationWorkspaceState {
   const next = {
     ...input.state,
     physicalExam: { ...input.state.physicalExam },
   };
 
-  for (const sectionId of PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS) {
+  for (const sectionId of input.sectionIds ?? PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS) {
     if (next.physicalExam[sectionId].trim()) continue;
     const fragmentKeys = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS[sectionId];
     let current = next.physicalExam[sectionId];
@@ -1167,6 +1175,7 @@ export function buildProviderDocumentationSavePayload(input: {
     examCardiac: s.physicalExam.cardiovascular.trim(),
     examRespiratory: s.physicalExam.respiratory.trim(),
     examAbdomen: s.physicalExam.abdomen.trim(),
+    examGenitourinary: s.physicalExam.genitourinary.trim(),
     examMusculoskeletal: s.physicalExam.musculoskeletal.trim(),
     examSkin: s.physicalExam.skin.trim(),
     examPsychBehavior: "",

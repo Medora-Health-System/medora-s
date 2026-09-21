@@ -359,6 +359,7 @@ const EXAM_CHIPS: ExamChipGroup[] = [
   { sectionId: "cardiovascular", titleKey: "providerDocumentationWorkspace.examCardiovascular", chips: ["cardioRrr", "cardioNoMurmur", "cardioPeripheralPulsesPresent", "cardioTachycardic"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "respiratory", titleKey: "providerDocumentationWorkspace.examRespiratory", chips: ["respNoDistress", "respClearBs", "respWheezing", "respCrackles", "respIncreasedWob"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "abdomen", titleKey: "providerDocumentationWorkspace.examAbdomen", chips: ["abdSoft", "abdNonTender", "abdTendernessPresent", "abdGuarding"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
+  { sectionId: "genitourinary", titleKey: "providerDocumentationWorkspace.examGenitourinary", chips: ["guNoSuprapubicTenderness", "guNoCvaTenderness", "guSuprapubicTenderness", "guCvaTenderness"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "neuroPsych", titleKey: "providerDocumentationWorkspace.examNeuroPsych", chips: ["neuroAlertOriented", "neuroFollowsCommands", "neuroSpeechClear", "neuroFocalDeficitNoted", "psychAppropriateAffect", "psychAnxious"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "musculoskeletal", titleKey: "providerDocumentationWorkspace.examMusculoskeletal", chips: ["mskRomNormal", "mskTendernessPresent", "mskSwellingPresent", "mskDeformityNoted"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
   { sectionId: "skin", titleKey: "providerDocumentationWorkspace.examSkin", chips: ["skinWarmDry", "skinRashPresent", "skinLacerationPresent", "skinDiaphoresis"].map((key) => ({ labelKey: `erMseExamChips.${key}`, fragmentKey: `erMseExamChips.${key}` })) },
@@ -371,6 +372,7 @@ const examTitleKeyBySection: Record<ProviderDocumentationExamSectionId, string> 
   cardiovascular: "providerDocumentationWorkspace.examCardiovascular",
   respiratory: "providerDocumentationWorkspace.examRespiratory",
   abdomen: "providerDocumentationWorkspace.examAbdomen",
+  genitourinary: "providerDocumentationWorkspace.examGenitourinary",
   neuroPsych: "providerDocumentationWorkspace.examNeuroPsych",
   musculoskeletal: "providerDocumentationWorkspace.examMusculoskeletal",
   skin: "providerDocumentationWorkspace.examSkin",
@@ -383,6 +385,7 @@ const examDictationIdBySection: Record<ProviderDocumentationExamSectionId, strin
   cardiovascular: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamCardiovascular,
   respiratory: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamRespiratory,
   abdomen: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamAbdomen,
+  genitourinary: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGenitourinary,
   neuroPsych: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamNeuroPsych,
   musculoskeletal: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamMusculoskeletal,
   skin: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamSkin,
@@ -959,12 +962,44 @@ export function ProviderDocumentationWorkspace({
       [field]: toggleDocumentationFragment(current, t(fragmentKey)),
     } as Partial<ProviderDocumentationWorkspaceState>);
   };
+  const clinicGuCopy =
+    appUiLanguage === "es"
+      ? {
+          title: "Genitourinario",
+          noSuprapubic: "sin dolor suprapúbico a la palpación",
+          noCva: "sin dolor en los ángulos costovertebrales",
+          suprapubic: "dolor suprapúbico a la palpación",
+          cva: "dolor en el ángulo costovertebral",
+        }
+      : appUiLanguage === "fr"
+        ? {
+            title: "Génito-urinaire",
+            noSuprapubic: "aucune sensibilité sus-pubienne",
+            noCva: "aucune sensibilité aux angles costo-vertébraux",
+            suprapubic: "sensibilité sus-pubienne",
+            cva: "sensibilité à l’angle costo-vertébral",
+          }
+        : {
+            title: "Genitourinary",
+            noSuprapubic: "no suprapubic tenderness",
+            noCva: "no costovertebral-angle tenderness",
+            suprapubic: "suprapubic tenderness",
+            cva: "costovertebral-angle tenderness",
+          };
+  const localizedDocumentationText = (key: string) => {
+    if (key === "providerDocumentationWorkspace.examGenitourinary") return clinicGuCopy.title;
+    if (key === "erMseExamChips.guNoSuprapubicTenderness") return clinicGuCopy.noSuprapubic;
+    if (key === "erMseExamChips.guNoCvaTenderness") return clinicGuCopy.noCva;
+    if (key === "erMseExamChips.guSuprapubicTenderness") return clinicGuCopy.suprapubic;
+    if (key === "erMseExamChips.guCvaTenderness") return clinicGuCopy.cva;
+    return t(key);
+  };
   const toggleExam = (sectionId: ProviderDocumentationExamSectionId, fragmentKey: string) => {
     onChange({
       ...value,
       physicalExam: {
         ...value.physicalExam,
-        [sectionId]: toggleDocumentationFragment(value.physicalExam[sectionId], t(fragmentKey)),
+        [sectionId]: toggleDocumentationFragment(value.physicalExam[sectionId], localizedDocumentationText(fragmentKey)),
       },
     });
   };
@@ -993,7 +1028,10 @@ export function ProviderDocumentationWorkspace({
     onChange(
       applyCompleteNormalPhysicalExamPrefill({
         state: value,
-        resolveFragment: t,
+        resolveFragment: localizedDocumentationText,
+        sectionIds: isClinicSimplified
+          ? PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS
+          : PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.filter((sectionId) => sectionId !== "genitourinary"),
       })
     );
   };
@@ -1328,6 +1366,111 @@ export function ProviderDocumentationWorkspace({
       }}
     />
   );
+  const renderClinicStructuredRosEditor = () => {
+    const rawLines = value.rosFocusedImpression.split("\n");
+    const lines = rawLines.length ? rawLines : [""];
+    const updateLine = (index: number, nextLine: string) => {
+      const nextLines = [...lines];
+      nextLines[index] = nextLine;
+      patch({ rosFocusedImpression: nextLines.join("\n") });
+    };
+
+    return (
+      <div
+        data-testid="clinic-structured-ros-editor"
+        style={{ display: "grid", gridTemplateColumns: isStackedLayout ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 10 }}
+      >
+        {lines.map((line, index) => {
+          const match = /^([^:\n]{1,48}):\s*(.*)$/u.exec(line);
+          const label = match?.[1]?.trim() ?? "";
+          const body = match?.[2] ?? line;
+          const isHeading = label.toLocaleLowerCase() === "review of systems" && !body.trim();
+          if (isHeading) {
+            return (
+              <div
+                key={index}
+                style={{
+                  gridColumn: "1 / -1",
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  background: "#ccfbf1",
+                  color: "#115e59",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {label}
+              </div>
+            );
+          }
+          return (
+            <label
+              key={index}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                minWidth: 0,
+                padding: "10px 12px",
+                border: "1px solid #cbd5e1",
+                borderLeft: "4px solid #14b8a6",
+                borderRadius: 12,
+                background: "#fff",
+              }}
+            >
+              {label ? <strong style={{ color: "#0f172a", fontSize: 12 }}>{label}</strong> : null}
+              <textarea
+                value={body}
+                disabled={readOnly}
+                rows={2}
+                aria-label={label || t("providerDocumentationWorkspace.focusedImpression")}
+                onChange={(event) => updateLine(index, label ? `${label}: ${event.target.value}` : event.target.value)}
+                style={{
+                  ...inputBase,
+                  minHeight: 54,
+                  resize: "vertical",
+                  border: "none",
+                  padding: 0,
+                  boxShadow: "none",
+                  background: readOnly ? "#f8fafc" : "#fff",
+                  color: "#334155",
+                  lineHeight: 1.5,
+                }}
+              />
+            </label>
+          );
+        })}
+      </div>
+    );
+  };
+  const renderClinicStructuredSummary = (text: string) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {text.split("\n").filter((line) => line.trim()).map((line, index) => {
+        const match = /^([^:\n]{1,48}):\s*(.*)$/u.exec(line);
+        const label = match?.[1]?.trim();
+        const body = match?.[2] ?? line;
+        if (label?.toLocaleLowerCase() === "review of systems" && !body.trim()) return null;
+        return (
+          <div
+            key={index}
+            style={{
+              padding: "7px 9px",
+              borderRadius: 9,
+              border: "1px solid #ccfbf1",
+              borderLeft: "3px solid #14b8a6",
+              background: index % 2 === 0 ? "#f0fdfa" : "#f8fafc",
+              lineHeight: 1.45,
+            }}
+          >
+            {label ? <strong style={{ color: "#0f766e" }}>{label}: </strong> : null}
+            <span style={{ color: "#334155" }}>{body}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
   const chipRow = <T extends Chip,>(
     chips: T[],
     onClick: (chip: T) => void,
@@ -1339,7 +1482,7 @@ export function ProviderDocumentationWorkspace({
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
         {chips.map((chip) => {
-          const fragment = t(chip.fragmentKey);
+          const fragment = localizedDocumentationText(chip.fragmentKey);
           const selected = isDocumentationChipSelected(resolveFieldText(chip), fragment);
           const toneStyles = resolveDocumentationChipStyles({
             selected,
@@ -1364,7 +1507,7 @@ export function ProviderDocumentationWorkspace({
               }}
             >
               {selected ? "✓ " : ""}
-              {t(chip.labelKey)}
+              {localizedDocumentationText(chip.labelKey)}
             </button>
           );
         })}
@@ -1553,7 +1696,9 @@ export function ProviderDocumentationWorkspace({
                 {t(section.titleKey)}
               </p>
               <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-                {section.lines.join("\n")}
+                {isClinicSimplified && section.id === "ros"
+                  ? renderClinicStructuredSummary(section.lines.join("\n"))
+                  : section.lines.join("\n")}
               </div>
             </div>
           ))
@@ -2093,7 +2238,11 @@ export function ProviderDocumentationWorkspace({
                   : {}),
               }}
             >
-              <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", isClinicSimplified ? 4 : 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
+              {isClinicSimplified ? (
+                renderClinicStructuredRosEditor()
+              ) : (
+                <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
+              )}
               {!isClinicSimplified ? (
                 <>
                   <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantPositives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives)}</Field>
@@ -2154,15 +2303,15 @@ export function ProviderDocumentationWorkspace({
               </button>
             </div>
             {templateExamChips(activeTemplate)}
-            {examChipGroups.map((group) => (
+            {examChipGroups.filter((group) => group.sectionId !== "genitourinary" || isClinicSimplified).map((group) => (
               <ProviderDocumentationChipPanel
                 key={group.sectionId}
-                title={t(group.titleKey)}
+                title={localizedDocumentationText(group.titleKey)}
                 selectedCount={value.physicalExam[group.sectionId].trim() ? 1 : 0}
                 tone="green"
               >
                 <Field
-                  label={t(group.titleKey)}
+                  label={localizedDocumentationText(group.titleKey)}
                   voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
                   dictationTargetId={examDictationIdBySection[group.sectionId]}
                   dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}

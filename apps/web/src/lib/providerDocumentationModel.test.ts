@@ -8,6 +8,7 @@ import {
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
+  PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
   PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   providerDocumentationMajorGroupForTemplateId,
@@ -148,6 +149,17 @@ describe("providerDocumentationModel", () => {
     });
     expect(next.physicalExam.respiratory).toBe("wheezing");
     expect(next.physicalExam.general).toContain("normal fragment");
+    expect(next.physicalExam.genitourinary).toContain("normal fragment");
+  });
+
+  it("can omit genitourinary autofill for non-clinic presentations", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    const next = applyCompleteNormalPhysicalExamPrefill({
+      state,
+      resolveFragment: () => "normal fragment",
+      sectionIds: PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.filter((id) => id !== "genitourinary"),
+    });
+    expect(next.physicalExam.genitourinary).toBe("");
   });
 
   it("complete normal ROS prefill remains editable text and has no billing/order/diagnosis side effects", () => {
@@ -516,6 +528,7 @@ describe("providerDocumentationModel", () => {
       physicalExamCardiovascular: "provider-documentation-exam-cardiovascular",
       physicalExamRespiratory: "provider-documentation-exam-respiratory",
       physicalExamAbdomen: "provider-documentation-exam-abdomen",
+      physicalExamGenitourinary: "provider-documentation-exam-genitourinary",
       physicalExamNeuroPsych: "provider-documentation-exam-neuro-psych",
       physicalExamMusculoskeletal: "provider-documentation-exam-musculoskeletal",
       physicalExamSkin: "provider-documentation-exam-skin",
