@@ -1026,6 +1026,8 @@ export function ProviderDocumentationWorkspace({
       : appUiLanguage === "fr"
         ? { hpi: "Histoire de la maladie actuelle", medicalDocumentation: "Documentation médicale", medicalDocumentationTemplates: "Modèles de documentation médicale", providerSignature: "Signature du professionnel", titleFallback: "Professionnel clinique" }
         : { hpi: "History of Present Illness", medicalDocumentation: "Medical Documentation", medicalDocumentationTemplates: "Medical Documentation Templates", providerSignature: "Provider signature", titleFallback: "Clinical provider" };
+  const clinicMdmLabel = (label: string) =>
+    isClinicSimplified ? label.replace(/\bMDM\b/gu, clinicDocumentationCopy.medicalDocumentation) : label;
   const localizedDocumentationText = (key: string) => {
     if (key === "providerDocumentationWorkspace.examGenitourinary") return clinicGuCopy.title;
     if (key === "erMseExamChips.guNoSuprapubicTenderness") return clinicGuCopy.noSuprapubic;
@@ -1735,9 +1737,11 @@ export function ProviderDocumentationWorkspace({
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
                 {isClinicSimplified && section.id === "hpi"
                   ? clinicDocumentationCopy.hpi
-                  : isClinicSimplified && section.id === "mdm"
-                    ? clinicDocumentationCopy.medicalDocumentation
-                    : t(section.titleKey)}
+                  : isClinicSimplified && section.id === "ros"
+                    ? (rosSectionTitle ?? t(section.titleKey))
+                    : isClinicSimplified && section.id === "mdm"
+                      ? clinicDocumentationCopy.medicalDocumentation
+                      : t(section.titleKey)}
               </p>
               <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
                 {isClinicSimplified && section.id === "ros"
@@ -2434,9 +2438,9 @@ export function ProviderDocumentationWorkspace({
             {templatePromptReminders(activeTemplate)}
             <ProviderDocumentationMdmTemplateDropdown
               title={isClinicSimplified ? clinicDocumentationCopy.medicalDocumentationTemplates : t("providerDocumentationWorkspace.activeTemplateMdmUnified")}
-              placeholder={t("providerDocumentationWorkspace.selectMdmTemplate")}
-              highValueGroupLabel={t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup")}
-              existingGroupLabel={t("providerDocumentationWorkspace.mdmExistingTemplatesGroup")}
+              placeholder={clinicMdmLabel(t("providerDocumentationWorkspace.selectMdmTemplate"))}
+              highValueGroupLabel={clinicMdmLabel(t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup"))}
+              existingGroupLabel={clinicMdmLabel(t("providerDocumentationWorkspace.mdmExistingTemplatesGroup"))}
               applySelectedLabel={t("providerDocumentationWorkspace.mdmApplySelected")}
               cancelLabel={t("providerDocumentationWorkspace.mdmCancelSelection")}
               options={mdmTemplateOptions.map((option) => ({ ...option, field: clinicMdmTargetField(option.field) as ProviderDocumentationTemplateStringField }))}
@@ -2444,7 +2448,7 @@ export function ProviderDocumentationWorkspace({
               readOnly={readOnly}
               resolveFragment={(fragmentKey) => t(fragmentKey)}
               resolveLabel={(option) =>
-                option.highValue ? t(option.labelKey) : t(option.fragmentKey)
+                clinicMdmLabel(option.highValue ? t(option.labelKey) : t(option.fragmentKey))
               }
               onToggleField={toggleField}
               onApplyFieldPatches={applyMdmFieldPatches}
