@@ -170,6 +170,8 @@ export type ProviderDocumentationWorkspaceProps = {
   presentationVariant?: "default" | "clinic-simplified";
   /** Optional localized section title used by a presentation variant. */
   rosSectionTitle?: string;
+  /** Verified provider title from the authenticated provider profile, when available. */
+  providerProfessionalTitle?: string | null;
   t: (key: string) => string;
 };
 
@@ -480,6 +482,7 @@ export function ProviderDocumentationWorkspace({
   quickActions = null,
   presentationVariant = "default",
   rosSectionTitle,
+  providerProfessionalTitle = null,
   t,
 }: ProviderDocumentationWorkspaceProps) {
   const { language: appUiLanguage } = useI18n();
@@ -1690,7 +1693,7 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
           </p>
         ) : (
-          previewSections.map((section) => (
+          previewSections.filter((section) => !(isClinicSimplified && section.id === "ros")).map((section) => (
             <div key={section.id} style={{ marginBottom: 10 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
                 {t(section.titleKey)}
@@ -1704,7 +1707,15 @@ export function ProviderDocumentationWorkspace({
           ))
         )}
       </div>
-      <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
+      {isClinicSimplified ? (
+        <ContextCard
+          title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
+          lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
+          empty={t("common.dash")}
+        />
+      ) : (
+        <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
+      )}
       {signedMetadata ? (
         <div style={sectionShell}>
           <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
@@ -2144,7 +2155,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="hpi"
-            title={t("providerDocumentationWorkspace.sectionHpi")}
+            title={isClinicSimplified ? t("providerDocumentationWorkspace.hpi") : t("providerDocumentationWorkspace.sectionHpi")}
             summary={accordionSummaries.hpi}
             selectedCount={accordionSelectedCounts.hpi}
             status={sectionStatusById.chiefComplaintHpi}
@@ -2360,7 +2371,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="mdm"
-            title={t("providerDocumentationWorkspace.sectionMdm")}
+            title={isClinicSimplified ? t("providerDocumentationWorkspace.clinicMedicalDocumentation") : t("providerDocumentationWorkspace.sectionMdm")}
             summary={accordionSummaries.mdm}
             selectedCount={accordionSelectedCounts.mdm}
             status={sectionStatusById.mdm}
@@ -2600,9 +2611,9 @@ export function ProviderDocumentationWorkspace({
               }}
             >
               <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
-              <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field>
+              {!isClinicSimplified ? <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field> : null}
               <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDataReviewed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed)}</Field>
-              <Field label={t("providerDocumentationWorkspace.riskLevel")}>
+              {!isClinicSimplified ? <Field label={t("providerDocumentationWorkspace.riskLevel")}>
                 <select
                   value={value.mdmRiskLevel}
                   disabled={readOnly}
@@ -2614,7 +2625,7 @@ export function ProviderDocumentationWorkspace({
                   <option value="Moderate">{t("providerDocumentationWorkspace.riskModerate")}</option>
                   <option value="High">{t("providerDocumentationWorkspace.riskHigh")}</option>
                 </select>
-              </Field>
+              </Field> : null}
               {!hideAmbulatoryMdmChrome ? (
               <Field label={t("providerDocumentationWorkspace.clinicalRationale")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmClinicalRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale)}</Field>
               ) : null}
@@ -2622,7 +2633,7 @@ export function ProviderDocumentationWorkspace({
               {!hideAmbulatoryMdmChrome ? (
               <Field label={t("providerDocumentationWorkspace.immediateActions")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmImmediateActionsRationale", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale)}</Field>
               ) : null}
-              <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field>
+              {!isClinicSimplified ? <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field> : null}
               {!hideHaitiRoutineMedEval ? (
               <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmAdmitObserveDischarge", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge)}</Field>
               ) : null}

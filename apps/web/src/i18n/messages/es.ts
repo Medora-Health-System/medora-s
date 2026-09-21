@@ -81,6 +81,11 @@ const { tree: afterProviderDocumentation } = applyGovernedSpanishOverlay(
   afterPublicComplete,
   MEDUI_AI_PHASE_1G_SPANISH_PROVIDER_DOCUMENTATION_OVERLAY
 );
-const { tree: esMessages } = applyEnglishSourceForRemainingSentinels(afterProviderDocumentation, en);
+const { tree: afterClinicDocumentation } = applyGovernedSpanishOverlay(afterProviderDocumentation, {
+  "providerDocumentationWorkspace.clinicMedicalDocumentation": "Documentación médica",
+  "providerDocumentationWorkspace.providerSignature": "Firma del profesional",
+  "providerDocumentationWorkspace.providerSavedBy": "Documentación guardada por",
+});
+const { tree: esMessages } = applyEnglishSourceForRemainingSentinels(afterClinicDocumentation, en);
 
 export default esMessages;
