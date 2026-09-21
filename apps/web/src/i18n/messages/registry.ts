@@ -54,6 +54,16 @@ export function resolveClinicalUiMessage(language: string, key: string): string 
   const registrationPacketOverride = resolveRegistrationPacketSpanishOverride(language, key);
   if (registrationPacketOverride !== undefined) return registrationPacketOverride;
 
+  // French clinic documentation chrome is resolved in the same active-locale registry.
+  // No cross-locale fallback or component-local language branching.
+  if (resolveProductUiLanguageOrDefault(language) === "fr") {
+    const clinicDocumentationFr: Record<string, string> = {
+      "providerDocumentationWorkspace.clinicMedicalDocumentation": "Documentation médicale",
+      "providerDocumentationWorkspace.providerSignature": "Signature du professionnel",
+      "providerDocumentationWorkspace.providerSavedBy": "Documentation enregistrée par",
+    };
+    if (Object.prototype.hasOwnProperty.call(clinicDocumentationFr, key)) return clinicDocumentationFr[key]!;
+  }
   const v = getMessageByPath(getClinicalUiMessages(language), key);
   if (typeof v !== "string") {
     if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
