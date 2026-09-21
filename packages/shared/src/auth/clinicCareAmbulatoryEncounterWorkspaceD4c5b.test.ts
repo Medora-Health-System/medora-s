@@ -35,7 +35,9 @@ describe("clinicCareAmbulatoryEncounterWorkspaceD4c5b", () => {
     expect(isAmbulatoryClinicalDataDocumentAllowed({ typeId: "COWS", careSettings: ["ED"] })).toBe(
       false
     );
-    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"]).length).toBe(12);
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"]).length).toBe(10);
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).not.toContain("intake");
+    expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).not.toContain("nursing");
     expect(getVisibleClinicCareAmbulatoryWorkspaceSections(["PROVIDER"])).toContain("prescriptions");
     expect(
       shouldSuppressGlobalDashboardForClinicCare({
