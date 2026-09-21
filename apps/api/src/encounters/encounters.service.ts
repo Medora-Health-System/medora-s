@@ -1029,8 +1029,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       );
     }
     const signedVersion = await this.prisma.encounterProviderDocumentationVersion.findFirst({
-      where: { encounterId, facilityId },
-      orderBy: { versionNumber: "desc" },
+      where: { id: dto.signedVersionId, encounterId, facilityId },
       select: { signedByUserId: true },
     });
     if (!signedVersion || signedVersion.signedByUserId !== userId) {
@@ -1045,6 +1044,8 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           encounterId,
           facilityId,
           text: dto.text.trim(),
+          amendmentReason: dto.amendmentReason.trim(),
+          signedVersionId: dto.signedVersionId,
           createdByUserId: userId,
         },
         include: {
@@ -1068,6 +1069,9 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
     return {
       id: created.id,
       text: created.text,
+      amendmentReason: created.amendmentReason,
+      signedVersionId: created.signedVersionId,
+      createdByUserId: userId,
       createdAt: created.createdAt,
       createdByDisplayFr: `${created.createdBy.firstName} ${created.createdBy.lastName}`.trim(),
     };
