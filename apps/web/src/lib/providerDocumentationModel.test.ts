@@ -14,6 +14,7 @@ import {
   providerDocumentationMajorGroupForTemplateId,
   providerDocumentationTemplatesByMajorGroup,
   applyCompleteNormalRosPrefill,
+  dedupeRepeatedDocumentationBlocks,
   applyCompleteNormalPhysicalExamPrefill,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
@@ -138,6 +139,25 @@ describe("providerDocumentationModel", () => {
     const first = applyCompleteNormalRosPrefill({ state: emptyProviderDocumentationWorkspaceState() });
     const second = applyCompleteNormalRosPrefill({ state: first });
     expect(second.rosFocusedImpression).toBe(first.rosFocusedImpression);
+  });
+
+  it("repairs exact duplicate ROS blocks without dropping unique authored text", () => {
+    const normal = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT;
+    expect(dedupeRepeatedDocumentationBlocks(`Patient reports mild cough.\n\n${normal}\n\n${normal}`)).toBe(
+      `Patient reports mild cough.\n\n${normal}`
+    );
+  });
+
+  it("deduplicates previously saved ROS blocks during hydration", () => {
+    const normal = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT;
+    const state = hydrateProviderDocumentationWorkspaceState({
+      encounter: {
+        nursingAssessment: {
+          erProviderMseV1: { focusedImpression: `${normal}\n\n${normal}` },
+        },
+      },
+    });
+    expect(state.rosFocusedImpression).toBe(normal);
   });
 
   it("fills only empty physical exam sections for complete normal exam prefill", () => {
@@ -1087,6 +1107,21 @@ describe("providerDocumentationModel", () => {
       "plan",
     ]);
     expect(model?.sections.map((section) => section.text).join("\n")).not.toContain("legacy duplicate");
+  });
+
+  it("persists optional provider title metadata for the Clinic signature summary", () => {
+    const metadata = buildProviderDocumentationMetadata({
+      encounterMode: "AMBULATORY",
+      savedAt: "2026-09-21T21:00:00.000Z",
+      savedBy: "Dr Test",
+      savedByTitle: "Physician",
+    });
+    const payload = buildProviderDocumentationSavePayload({
+      previousNursingAssessment: {},
+      state: { ...emptyProviderDocumentationWorkspaceState(), hpi: "Follow-up" },
+      metadata,
+    });
+    expect(readProviderDocumentationWorkspaceMetadata(payload.nursingAssessment)?.savedByTitle).toBe("Physician");
   });
 
   it("uses observation labels without discharge wording or French leakage in English", () => {
