@@ -16,7 +16,10 @@ import { clinicianProfessionalTitleFromProfession } from "@medora/shared";
 import { canAuthorAmbulatoryProviderDocumentation } from "@medora/shared";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
-import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  ProviderDocumentationWorkspace,
+  type ProviderDocumentationSaveContext,
+} from "@/components/encounters/ProviderDocumentationWorkspace";
 import { productUiBcp47Tag, resolveProductUiLanguageOrDefault, bilingualStorageLocaleOrEn } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
@@ -102,11 +105,25 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     encounter.providerDocumentationSignedAt,
   ]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (context: ProviderDocumentationSaveContext) => {
     if (!canAuthor) return;
-    setMessage(null);
-    setSaving(true);
+    const isManualSave = context.reason === "manual";
+    if (isManualSave) {
+      setMessage(null);
+      setSaving(true);
+    }
     try {
+      let previousNursingAssessment = encounter.nursingAssessment;
+      if (!isManualSave) {
+        try {
+          const latest = await apiFetch(`/encounters/${encounter.id}`, { facilityId: facilityId });
+          if (latest && typeof latest === "object" && !Array.isArray(latest)) {
+            previousNursingAssessment = (latest as { nursingAssessment?: unknown }).nursingAssessment;
+          }
+        } catch {
+          /* Keep the current baseline if the quiet rebase request is unavailable. */
+        }
+      }
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       let savedByTitle = providerProfessionalTitle || (productUiLanguage === "es" ? "Profesional clínico" : productUiLanguage === "fr" ? "Professionnel clinique" : "Clinical provider");
       try {
@@ -121,7 +138,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         /* fallback only */
       }
       const payload = buildProviderDocumentationSavePayload({
-        previousNursingAssessment: encounter.nursingAssessment,
+        previousNursingAssessment,
         state: value,
         metadata: buildProviderDocumentationMetadata({
           encounterMode: "AMBULATORY",
@@ -138,21 +155,25 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setMessage({
-        variant: queued ? "queued" : "success",
-        text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
-      });
-      await onUpdate();
+      if (isManualSave) {
+        setMessage({
+          variant: queued ? "queued" : "success",
+          text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
+        });
+        await onUpdate();
+      }
     } catch (e) {
-      setMessage({
-        variant: "error",
-        text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("encounterClinicTab.errSave"),
-      });
+      if (isManualSave) {
+        setMessage({
+          variant: "error",
+          text:
+            normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+            t("encounterClinicTab.errSave"),
+        });
+      }
       throw e;
     } finally {
-      setSaving(false);
+      if (isManualSave) setSaving(false);
     }
   }, [canAuthor, value, encounter, facilityId, language, onUpdate, productUiLanguage, providerProfessionalTitle, t]);
 
