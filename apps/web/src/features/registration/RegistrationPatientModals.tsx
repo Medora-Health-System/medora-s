@@ -8,6 +8,7 @@ import { encounterBcp47, tEnumKey, tEncounterType } from "@/lib/encounterChromeI
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { getCachedRecord } from "@/lib/offline/offlineCache";
+import { createDirectInpatientAdmission } from "@/features/hospital-care/inpatientOperationsApi";
 import {
   DEFAULT_ENCOUNTER_ROOM_LABEL,
   ENCOUNTER_ROOM_OPTIONS,
@@ -415,11 +416,13 @@ export function CreateConsultationModal({
   facilityId,
   patient,
   canOpenEncounterDetail,
+  canCreateInpatient = false,
   onClose,
 }: {
   facilityId: string;
   patient: RegistrationPatient;
   canOpenEncounterDetail: boolean;
+  canCreateInpatient?: boolean;
   onClose: () => void;
 }) {
   const { t, language } = useI18n();
@@ -447,6 +450,23 @@ export function CreateConsultationModal({
     setSubmitting(true);
     setError(null);
     try {
+      if (type === "INPATIENT") {
+        const admission = await createDirectInpatientAdmission(
+          {
+            patientId: patient.id,
+            admissionSource: "DIRECT",
+            attendingProviderUserId: physicianAssignedUserId.trim() || null,
+            admissionDiagnosis: visitReason.trim() || null,
+            reasonForAdmission: visitReason.trim() || null,
+            idempotencyKey: `registration-direct-admission-${patient.id}-${crypto.randomUUID()}`,
+          },
+          { facilityId },
+        );
+        const inpatientEncounterId = admission.encounter?.id;
+        if (!inpatientEncounterId) throw new Error(t("patientConsultationsTab.create.createFailed"));
+        setCreated({ id: inpatientEncounterId });
+        return;
+      }
       const res = await apiFetch(`/patients/${patient.id}/encounters`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, visitReason: visitReason.trim() || undefined, roomLabel: roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL, physicianAssignedUserId: physicianAssignedUserId.trim() || undefined }), facilityId });
       if (res?.queued) return setCreated({ id: "", queued: true });
       const encId = (res as { id: string }).id;
@@ -464,5 +484,5 @@ export function CreateConsultationModal({
   };
 
   const fieldStyle: React.CSSProperties = { width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, marginBottom: 12 };
-  return <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }} onClick={onClose}><div style={{ width: "92%", maxWidth: 520, backgroundColor: "#fff", borderRadius: 8, padding: 20 }} onClick={(e) => e.stopPropagation()}><h2 style={{ margin: "0 0 8px" }}>{t("patientConsultationsTab.create.title")}</h2><p style={{ margin: "0 0 14px", color: "#555", fontSize: 14 }}>{patient.firstName} {patient.lastName}</p>{!created ? <><label>{t("patientConsultationsTab.create.typeLabel")}</label><select value={type} onChange={(e) => setType(e.target.value as typeof type)} style={fieldStyle}><option value="OUTPATIENT">{tEncounterType(t, "OUTPATIENT")}</option><option value="URGENT_CARE">{tEncounterType(t, "URGENT_CARE")}</option><option value="EMERGENCY">{tEncounterType(t, "EMERGENCY")}</option><option value="INPATIENT">{tEncounterType(t, "INPATIENT")}</option></select><label>{t("patientConsultationsTab.create.roomLabel")}</label><select value={roomLabel} onChange={(e) => setRoomLabel(e.target.value)} style={fieldStyle}>{ENCOUNTER_ROOM_OPTIONS.map((r) => <option key={r} value={r}>{formatEncounterRoomDisplay(r, t)}</option>)}</select><label>{t("patientConsultationsTab.create.physicianOptional")}</label><select value={physicianAssignedUserId} onChange={(e) => setPhysicianAssignedUserId(e.target.value)} style={fieldStyle}><option value="">—</option>{providers.map((p) => <option key={p.id} value={p.id}>{p.lastName} {p.firstName}</option>)}</select><label>{t("patientConsultationsTab.create.visitReason")}</label><textarea value={visitReason} onChange={(e) => setVisitReason(e.target.value)} rows={3} style={{ ...fieldStyle, resize: "vertical" }} /><p style={{ margin: "14px 0 6px", fontSize: 13, fontWeight: 600 }}>{t("patientConsultationsTab.create.intakeSectionTitle")}</p><label>{t("patientConsultationsTab.create.intakeArrival")}</label><input type="datetime-local" value={arrivalAtLocal} onChange={(e) => setArrivalAtLocal(e.target.value)} style={fieldStyle} /><label>{t("patientConsultationsTab.create.intakeMode")}</label><select value={modeOfArrival} onChange={(e) => setModeOfArrival(e.target.value)} style={fieldStyle}><option value="">—</option>{arrivalOptions.map(([value, labels]) => <option key={value} value={value}>{labels[lang]}</option>)}</select><label>{t("patientConsultationsTab.create.intakeAcuity")}</label><select value={initialAcuity} onChange={(e) => setInitialAcuity(e.target.value)} style={fieldStyle}><option value="">—</option>{[1,2,3,4,5].map((n) => <option key={n} value={String(n)}>{n}</option>)}</select>{error && <div style={{ color: "#c62828", fontSize: 13 }}>{error}</div>}<div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 10 }}><button type="button" onClick={onClose}>{t("orderDetail.backToList")}</button><button type="button" onClick={() => void createEncounter()} disabled={submitting}>{submitting ? t("patientConsultationsTab.create.creating") : t("patientConsultationsTab.create.submit")}</button></div></> : <div><div style={{ color: "#1b5e20", marginBottom: 14, fontWeight: 600 }}>{created.queued ? t("patientConsultationsTab.create.successOffline") : t("patientConsultationsTab.create.successCreated")}</div><div style={{ display: "flex", gap: 10 }}>{!created.queued && created.id && (canOpenEncounterDetail ? <Link href={`/app/encounters/${created.id}`}>{t("openEncountersTable.openEncounter")}</Link> : <Link href={`/app/patients/${patient.id}`}>{t("openEncountersTable.openPatientChart")}</Link>)}<button type="button" onClick={onClose}>{t("orderDetail.backToList")}</button></div></div>}</div></div>;
+  return <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200 }} onClick={onClose}><div style={{ width: "92%", maxWidth: 520, backgroundColor: "#fff", borderRadius: 8, padding: 20 }} onClick={(e) => e.stopPropagation()}><h2 style={{ margin: "0 0 8px" }}>{t("patientConsultationsTab.create.title")}</h2><p style={{ margin: "0 0 14px", color: "#555", fontSize: 14 }}>{patient.firstName} {patient.lastName}</p>{!created ? <><label>{t("patientConsultationsTab.create.typeLabel")}</label><select value={type} onChange={(e) => setType(e.target.value as typeof type)} style={fieldStyle}><option value="OUTPATIENT">{tEncounterType(t, "OUTPATIENT")}</option><option value="URGENT_CARE">{tEncounterType(t, "URGENT_CARE")}</option><option value="EMERGENCY">{tEncounterType(t, "EMERGENCY")}</option>{canCreateInpatient ? <option value="INPATIENT">{tEncounterType(t, "INPATIENT")}</option> : null}</select><label>{t("patientConsultationsTab.create.roomLabel")}</label><select value={roomLabel} onChange={(e) => setRoomLabel(e.target.value)} style={fieldStyle}>{ENCOUNTER_ROOM_OPTIONS.map((r) => <option key={r} value={r}>{formatEncounterRoomDisplay(r, t)}</option>)}</select><label>{t("patientConsultationsTab.create.physicianOptional")}</label><select value={physicianAssignedUserId} onChange={(e) => setPhysicianAssignedUserId(e.target.value)} style={fieldStyle}><option value="">—</option>{providers.map((p) => <option key={p.id} value={p.id}>{p.lastName} {p.firstName}</option>)}</select><label>{t("patientConsultationsTab.create.visitReason")}</label><textarea value={visitReason} onChange={(e) => setVisitReason(e.target.value)} rows={3} style={{ ...fieldStyle, resize: "vertical" }} /><p style={{ margin: "14px 0 6px", fontSize: 13, fontWeight: 600 }}>{t("patientConsultationsTab.create.intakeSectionTitle")}</p><label>{t("patientConsultationsTab.create.intakeArrival")}</label><input type="datetime-local" value={arrivalAtLocal} onChange={(e) => setArrivalAtLocal(e.target.value)} style={fieldStyle} /><label>{t("patientConsultationsTab.create.intakeMode")}</label><select value={modeOfArrival} onChange={(e) => setModeOfArrival(e.target.value)} style={fieldStyle}><option value="">—</option>{arrivalOptions.map(([value, labels]) => <option key={value} value={value}>{labels[lang]}</option>)}</select><label>{t("patientConsultationsTab.create.intakeAcuity")}</label><select value={initialAcuity} onChange={(e) => setInitialAcuity(e.target.value)} style={fieldStyle}><option value="">—</option>{[1,2,3,4,5].map((n) => <option key={n} value={String(n)}>{n}</option>)}</select>{error && <div style={{ color: "#c62828", fontSize: 13 }}>{error}</div>}<div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", gap: 10 }}><button type="button" onClick={onClose}>{t("orderDetail.backToList")}</button><button type="button" onClick={() => void createEncounter()} disabled={submitting}>{submitting ? t("patientConsultationsTab.create.creating") : t("patientConsultationsTab.create.submit")}</button></div></> : <div><div style={{ color: "#1b5e20", marginBottom: 14, fontWeight: 600 }}>{created.queued ? t("patientConsultationsTab.create.successOffline") : t("patientConsultationsTab.create.successCreated")}</div><div style={{ display: "flex", gap: 10 }}>{!created.queued && created.id && (canOpenEncounterDetail ? <Link href={`/app/encounters/${created.id}`}>{t("openEncountersTable.openEncounter")}</Link> : <Link href={`/app/patients/${patient.id}`}>{t("openEncountersTable.openPatientChart")}</Link>)}<button type="button" onClick={onClose}>{t("orderDetail.backToList")}</button></div></div>}</div></div>;
 }
