@@ -523,6 +523,12 @@ export function ProviderDocumentationWorkspace({
   const latestSignatureRef = useRef(providerDocumentationStateSignature(value));
   const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const enqueueSave = (context: ProviderDocumentationSaveContext) => {
+    const next = saveQueueRef.current.catch(() => undefined).then(() => onSave(context));
+    saveQueueRef.current = next.catch(() => undefined);
+    return next;
+  };
   const restoredDraftKeyRef = useRef<string | null>(null);
   const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
   const activeTemplate = useMemo(
@@ -887,7 +893,7 @@ export function ProviderDocumentationWorkspace({
       autosaveTimerRef.current = null;
       const signatureToSave = latestSignatureRef.current;
       setAutosaveStatus("saving");
-      Promise.resolve(onSave({ reason: "autosave" }))
+      enqueueSave({ reason: "autosave" })
         .then(() => {
           if (latestSignatureRef.current === signatureToSave) {
             lastSavedSignatureRef.current = signatureToSave;
@@ -927,7 +933,7 @@ export function ProviderDocumentationWorkspace({
     setAutosaveStatus("saving");
     const signatureToSave = latestSignatureRef.current;
     try {
-      await onSave({ reason: "manual" });
+      await enqueueSave({ reason: "manual" });
       if (latestSignatureRef.current === signatureToSave) {
         lastSavedSignatureRef.current = signatureToSave;
         if (typeof window !== "undefined") {
