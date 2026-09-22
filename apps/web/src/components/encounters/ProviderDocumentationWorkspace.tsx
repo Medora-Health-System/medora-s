@@ -522,7 +522,14 @@ export function ProviderDocumentationWorkspace({
   const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredDraftKeyRef = useRef<string | null>(null);
-  const previewSections = useMemo(() => buildProviderDocumentationPreviewSections(value), [value]);
+  const previewSections = useMemo(() => {
+    const sections = buildProviderDocumentationPreviewSections(value);
+    if (isClinicSimplified && value.rosFocusedImpression.trim() && !sections.some((section) => section.id === "ros")) {
+      const hpiIndex = sections.findIndex((section) => section.id === "hpi");
+      sections.splice(hpiIndex >= 0 ? hpiIndex + 1 : 0, 0, { id: "ros", titleKey: "providerDocumentationWorkspace.previewRos", lines: [value.rosFocusedImpression.trim()] });
+    }
+    return sections;
+  }, [isClinicSimplified, value]);
   const activeTemplate = useMemo(
     () => allowedTemplates.find((template) => template.id === value.activeTemplateId) ?? null,
     [value.activeTemplateId]
@@ -958,12 +965,22 @@ export function ProviderDocumentationWorkspace({
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
   };
+  const clinicMdmTargetField = (field: keyof ProviderDocumentationWorkspaceState) =>
+    isClinicSimplified && (field === "mdmDifferentialSynthesis" || field === "mdmConsultsDiscussed") ? ("mdmWorkingAssessment" as const) : field;
   const toggleField = (field: keyof ProviderDocumentationWorkspaceState, fragmentKey: string) => {
-    const current = value[field];
+    const targetField = clinicMdmTargetField(field);
+    const current = value[targetField];
     if (typeof current !== "string") return;
-    patch({
-      [field]: toggleDocumentationFragment(current, t(fragmentKey)),
-    } as Partial<ProviderDocumentationWorkspaceState>);
+    patch({ [targetField]: toggleDocumentationFragment(current, t(fragmentKey)) } as Partial<ProviderDocumentationWorkspaceState>);
+  };
+  const applyMdmFieldPatches = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
+    if (!isClinicSimplified) { patch(patchValue); return; }
+    const next = { ...patchValue };
+    const redirected = [patchValue.mdmDifferentialSynthesis, patchValue.mdmConsultsDiscussed].filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+    delete next.mdmDifferentialSynthesis;
+    delete next.mdmConsultsDiscussed;
+    if (redirected.length) next.mdmWorkingAssessment = [typeof patchValue.mdmWorkingAssessment === "string" ? patchValue.mdmWorkingAssessment : value.mdmWorkingAssessment, ...redirected].map((entry) => entry.trim()).filter(Boolean).filter((entry, index, all) => all.indexOf(entry) === index).join("\n\n");
+    patch(next);
   };
   const clinicGuCopy =
     appUiLanguage === "es"
@@ -989,6 +1006,12 @@ export function ProviderDocumentationWorkspace({
             suprapubic: "suprapubic tenderness",
             cva: "costovertebral-angle tenderness",
           };
+  const clinicDocumentationCopy = appUiLanguage === "es"
+    ? { hpi: "Historia de la enfermedad actual", medicalDocumentation: "Documentación médica", medicalDocumentationTemplates: "Plantillas de documentación médica", providerSignature: "Firma del profesional", titleFallback: "Profesional clínico" }
+    : appUiLanguage === "fr"
+      ? { hpi: "Histoire de la maladie actuelle", medicalDocumentation: "Documentation médicale", medicalDocumentationTemplates: "Modèles de documentation médicale", providerSignature: "Signature du professionnel", titleFallback: "Professionnel clinique" }
+      : { hpi: "History of Present Illness", medicalDocumentation: "Medical Documentation", medicalDocumentationTemplates: "Medical Documentation Templates", providerSignature: "Provider signature", titleFallback: "Clinical provider" };
+  const clinicMdmLabel = (label: string) => isClinicSimplified ? label.replace(/\bMDM\b/gu, clinicDocumentationCopy.medicalDocumentation) : label;
   const localizedDocumentationText = (key: string) => {
     if (key === "providerDocumentationWorkspace.examGenitourinary") return clinicGuCopy.title;
     if (key === "erMseExamChips.guNoSuprapubicTenderness") return clinicGuCopy.noSuprapubic;
@@ -1624,7 +1647,7 @@ export function ProviderDocumentationWorkspace({
           template,
           binding.intelField,
           binding.titleKey,
-          workspaceField
+          clinicMdmTargetField(workspaceField) as ProviderDocumentationTemplateStringField
         );
       })}
     </>
@@ -1693,10 +1716,10 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
           </p>
         ) : (
-          previewSections.filter((section) => !(isClinicSimplified && section.id === "ros")).map((section) => (
+          previewSections.map((section) => (
             <div key={section.id} style={{ marginBottom: 10 }}>
               <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
-                {t(section.titleKey)}
+                {isClinicSimplified && section.id === "hpi" ? clinicDocumentationCopy.hpi : isClinicSimplified && section.id === "ros" ? (rosSectionTitle ?? t(section.titleKey)) : isClinicSimplified && section.id === "mdm" ? clinicDocumentationCopy.medicalDocumentation : t(section.titleKey)}
               </p>
               <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
                 {isClinicSimplified && section.id === "ros"
@@ -1710,7 +1733,7 @@ export function ProviderDocumentationWorkspace({
       {isClinicSimplified ? (
         <ContextCard
           title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
-          lines={signedMetadata ? [`${signedMetadata.signedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
+          lines={signedMetadata ? [`${signedMetadata.signedBy}${savedMetadata?.savedByTitle ? `, ${savedMetadata.savedByTitle}` : providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${savedMetadata.savedByTitle ? `, ${savedMetadata.savedByTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
           empty={t("common.dash")}
         />
       ) : (
@@ -1882,7 +1905,7 @@ export function ProviderDocumentationWorkspace({
               onClick={() => focusDictationSection(target.sectionId)}
               style={touchHeaderButton(compactNavButton)}
             >
-              {t(target.labelKey)}
+              {isClinicSimplified && target.sectionId === "hpi" ? clinicDocumentationCopy.hpi : isClinicSimplified && target.sectionId === "mdm" ? clinicDocumentationCopy.medicalDocumentation : t(target.labelKey)}
             </button>
           ))}
         </div>
@@ -2155,7 +2178,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="hpi"
-            title={isClinicSimplified ? t("providerDocumentationWorkspace.hpi") : t("providerDocumentationWorkspace.sectionHpi")}
+            title={isClinicSimplified ? clinicDocumentationCopy.hpi : t("providerDocumentationWorkspace.sectionHpi")}
             summary={accordionSummaries.hpi}
             selectedCount={accordionSelectedCounts.hpi}
             status={sectionStatusById.chiefComplaintHpi}
@@ -2164,7 +2187,7 @@ export function ProviderDocumentationWorkspace({
             t={t}
           >
             <Field
-              label={t("providerDocumentationWorkspace.hpi")}
+              label={isClinicSimplified ? clinicDocumentationCopy.hpi : t("providerDocumentationWorkspace.hpi")}
               voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
               dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi}
               dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
@@ -2173,8 +2196,8 @@ export function ProviderDocumentationWorkspace({
             >
               {ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}
             </Field>
-            {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
-            {complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi")}
+            {!isClinicSimplified ? templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi") : null}
+            {!isClinicSimplified ? complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi") : null}
             {!isClinicSimplified
               ? hpiChipGroups.map((group) => (
                   <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
@@ -2371,7 +2394,7 @@ export function ProviderDocumentationWorkspace({
 
           <ProviderDocumentationAccordionSection
             sectionId="mdm"
-            title={isClinicSimplified ? t("providerDocumentationWorkspace.clinicMedicalDocumentation") : t("providerDocumentationWorkspace.sectionMdm")}
+            title={isClinicSimplified ? clinicDocumentationCopy.medicalDocumentation : t("providerDocumentationWorkspace.sectionMdm")}
             summary={accordionSummaries.mdm}
             selectedCount={accordionSelectedCounts.mdm}
             status={sectionStatusById.mdm}
@@ -2381,21 +2404,21 @@ export function ProviderDocumentationWorkspace({
           >
             {templatePromptReminders(activeTemplate)}
             <ProviderDocumentationMdmTemplateDropdown
-              title={t("providerDocumentationWorkspace.activeTemplateMdmUnified")}
-              placeholder={t("providerDocumentationWorkspace.selectMdmTemplate")}
-              highValueGroupLabel={t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup")}
-              existingGroupLabel={t("providerDocumentationWorkspace.mdmExistingTemplatesGroup")}
+              title={isClinicSimplified ? clinicDocumentationCopy.medicalDocumentationTemplates : t("providerDocumentationWorkspace.activeTemplateMdmUnified")}
+              placeholder={clinicMdmLabel(t("providerDocumentationWorkspace.selectMdmTemplate"))}
+              highValueGroupLabel={clinicMdmLabel(t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup"))}
+              existingGroupLabel={clinicMdmLabel(t("providerDocumentationWorkspace.mdmExistingTemplatesGroup"))}
               applySelectedLabel={t("providerDocumentationWorkspace.mdmApplySelected")}
               cancelLabel={t("providerDocumentationWorkspace.mdmCancelSelection")}
-              options={mdmTemplateOptions}
+              options={mdmTemplateOptions.map((option) => ({ ...option, field: clinicMdmTargetField(option.field) as ProviderDocumentationTemplateStringField }))}
               value={value}
               readOnly={readOnly}
               resolveFragment={(fragmentKey) => t(fragmentKey)}
               resolveLabel={(option) =>
-                option.highValue ? t(option.labelKey) : t(option.fragmentKey)
+                clinicMdmLabel(option.highValue ? t(option.labelKey) : t(option.fragmentKey))
               }
               onToggleField={toggleField}
-              onApplyFieldPatches={patch}
+              onApplyFieldPatches={applyMdmFieldPatches}
             />
             {hideAmbulatoryMdmChrome &&
             legacyEnglishMdmDetect.needsExplicitFrenchRefresh &&
@@ -2517,7 +2540,7 @@ export function ProviderDocumentationWorkspace({
                                 </div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                   {items.map((suggestion) => {
-                                    const fieldValue = String(value[suggestion.targetField] ?? "");
+                                    const fieldValue = String(value[clinicMdmTargetField(suggestion.targetField)] ?? "");
                                     const fragment = t(suggestion.fragmentKey);
                                     const selected = isDocumentationChipSelected(fieldValue, fragment);
                                     const toneStyles = resolveDocumentationChipStyles({
@@ -2568,7 +2591,7 @@ export function ProviderDocumentationWorkspace({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {items.map((suggestion) => {
-                          const fieldValue = String(value[suggestion.targetField] ?? "");
+                          const fieldValue = String(value[clinicMdmTargetField(suggestion.targetField)] ?? "");
                           const fragment = t(suggestion.fragmentKey);
                           const selected = isDocumentationChipSelected(fieldValue, fragment);
                           const toneStyles = resolveDocumentationChipStyles({
@@ -2610,7 +2633,7 @@ export function ProviderDocumentationWorkspace({
                 gap: 10,
               }}
             >
-              <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
+              <div style={isClinicSimplified ? { gridColumn: "1 / -1" } : undefined}><Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", isClinicSimplified ? 6 : 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field></div>
               {!isClinicSimplified ? <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field> : null}
               <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDataReviewed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed)}</Field>
               {!isClinicSimplified ? <Field label={t("providerDocumentationWorkspace.riskLevel")}>

@@ -17,6 +17,7 @@ export type ProviderDocumentationMetadata = {
   documentType: ProviderDocumentationDocumentType;
   savedAt: string;
   savedBy: string;
+  savedByTitle?: string | null;
   source: typeof PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE;
   activeTemplateId?: ProviderDocumentationTemplateId | null;
 };
@@ -1017,15 +1018,34 @@ export function applyProviderDocumentationTemplate(input: {
   };
 }
 
+/** Removes repeated generated complete-normal ROS blocks without rewriting clinician-authored paragraphs. */
+export function dedupeRepeatedDocumentationBlocks(text: string): string {
+  const parts = text.split(/(\n\s*\n)/u);
+  const seenGeneratedBlocks = new Set<string>();
+  const output: string[] = [];
+  for (let index = 0; index < parts.length; index += 2) {
+    const block = parts[index] ?? "";
+    const systemLineCount = block.split("\n").filter((line) => /^[^:\n]{1,64}:\s*/u.test(line.trim())).length;
+    const isGeneratedNormalRos =
+      /^(?:Review of Systems|Revisión por sistemas|Revue des systèmes):\s*$/imu.test(block) &&
+      systemLineCount >= 8;
+    const key = block.trim().replace(/\s+/gu, " ").toLocaleLowerCase();
+    if (isGeneratedNormalRos && seenGeneratedBlocks.has(key)) continue;
+    if (isGeneratedNormalRos) seenGeneratedBlocks.add(key);
+    if (output.length > 0) output.push(parts[index - 1] ?? "\n\n");
+    output.push(block);
+  }
+  return output.join("");
+}
+
 export function applyCompleteNormalRosPrefill(input: {
   state: ProviderDocumentationWorkspaceState;
   text?: string;
 }): ProviderDocumentationWorkspaceState {
   return {
     ...input.state,
-    rosFocusedImpression: appendDocumentationBlock(
-      input.state.rosFocusedImpression,
-      input.text ?? PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT
+    rosFocusedImpression: dedupeRepeatedDocumentationBlocks(
+      appendDocumentationBlock(input.state.rosFocusedImpression, input.text ?? PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT)
     ),
   };
 }
@@ -1052,7 +1072,7 @@ export function hydrateProviderDocumentationWorkspaceState(input: {
   state.chiefComplaint =
     str(stored?.chiefConcern) || str(encounter?.chiefComplaint) || str(encounter?.visitReason);
   state.hpi = str(stored?.hpiNarrative) || str(legacyPhysicianEval?.hpi);
-  state.rosFocusedImpression = str(stored?.focusedImpression);
+  state.rosFocusedImpression = dedupeRepeatedDocumentationBlocks(str(stored?.focusedImpression));
   state.rosImportantPositives = str(stored?.importantPositives);
   state.rosImportantNegatives = str(stored?.importantNegatives);
   state.rosRedFlags = str(stored?.redFlagsText);
@@ -1138,6 +1158,7 @@ export function buildProviderDocumentationMetadata(input: {
   encounterMode: ProviderDocumentationEncounterMode;
   savedAt: string;
   savedBy: string;
+  savedByTitle?: string | null;
   activeTemplateId?: ProviderDocumentationTemplateId | null;
 }): ProviderDocumentationMetadata {
   return {
@@ -1145,6 +1166,7 @@ export function buildProviderDocumentationMetadata(input: {
     documentType: documentTypeForEncounterMode(input.encounterMode),
     savedAt: input.savedAt,
     savedBy: input.savedBy,
+    ...(input.savedByTitle?.trim() ? { savedByTitle: input.savedByTitle.trim() } : {}),
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
     activeTemplateId: input.activeTemplateId ?? null,
   };
@@ -1164,7 +1186,7 @@ export function buildProviderDocumentationSavePayload(input: {
     onsetTimingContext: "",
     associatedSymptoms: "",
     severityKeyConcern: "",
-    focusedImpression: s.rosFocusedImpression.trim(),
+    focusedImpression: dedupeRepeatedDocumentationBlocks(s.rosFocusedImpression),
     importantPositives: s.rosImportantPositives.trim(),
     importantNegatives: s.rosImportantNegatives.trim(),
     redFlagsText: s.rosRedFlags.trim(),
@@ -1195,6 +1217,7 @@ export function buildProviderDocumentationSavePayload(input: {
     signature: {
       savedAt: input.metadata.savedAt,
       savedByDisplayName: input.metadata.savedBy,
+      ...(input.metadata.savedByTitle?.trim() ? { savedByTitle: input.metadata.savedByTitle.trim() } : {}),
     },
     workspaceMetadata: input.metadata,
   };
@@ -1218,7 +1241,7 @@ export function buildProviderDocumentationSavePayload(input: {
   const physicianEvalV1: Record<string, string> = {};
   if (s.hpi.trim()) physicianEvalV1.hpi = s.hpi.trim();
   const ros = joinNonEmpty([
-    s.rosFocusedImpression,
+    dedupeRepeatedDocumentationBlocks(s.rosFocusedImpression),
     s.rosImportantPositives,
     s.rosImportantNegatives,
     s.rosRedFlags,
@@ -1415,12 +1438,14 @@ export function readProviderDocumentationWorkspaceMetadata(
       : null;
   const savedAt = typeof meta.savedAt === "string" ? meta.savedAt : null;
   const savedBy = typeof meta.savedBy === "string" ? meta.savedBy : null;
+  const savedByTitle = typeof meta.savedByTitle === "string" ? meta.savedByTitle : null;
   if (!encounterMode || !documentType || !savedAt || !savedBy) return null;
   return {
     encounterMode,
     documentType,
     savedAt,
     savedBy,
+    ...(savedByTitle ? { savedByTitle } : {}),
     source: PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE,
     activeTemplateId: templateIdFromUnknown(meta.activeTemplateId),
   };
