@@ -16,7 +16,10 @@ import { clinicianProfessionalTitleFromProfession } from "@medora/shared";
 import { canAuthorAmbulatoryProviderDocumentation } from "@medora/shared";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
-import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  ProviderDocumentationWorkspace,
+  type ProviderDocumentationSaveContext,
+} from "@/components/encounters/ProviderDocumentationWorkspace";
 import { productUiBcp47Tag, resolveProductUiLanguageOrDefault, bilingualStorageLocaleOrEn } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
@@ -102,10 +105,13 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
     encounter.providerDocumentationSignedAt,
   ]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (context: ProviderDocumentationSaveContext) => {
     if (!canAuthor) return;
-    setMessage(null);
-    setSaving(true);
+    const isManualSave = context.reason === "manual";
+    if (isManualSave) {
+      setMessage(null);
+      setSaving(true);
+    }
     try {
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
@@ -135,21 +141,25 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setMessage({
-        variant: queued ? "queued" : "success",
-        text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
-      });
-      await onUpdate();
+      if (isManualSave) {
+        setMessage({
+          variant: queued ? "queued" : "success",
+          text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
+        });
+        await onUpdate();
+      }
     } catch (e) {
-      setMessage({
-        variant: "error",
-        text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("encounterClinicTab.errSave"),
-      });
+      if (isManualSave) {
+        setMessage({
+          variant: "error",
+          text:
+            normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+            t("encounterClinicTab.errSave"),
+        });
+      }
       throw e;
     } finally {
-      setSaving(false);
+      if (isManualSave) setSaving(false);
     }
   }, [canAuthor, value, encounter, facilityId, language, onUpdate, t]);
 
