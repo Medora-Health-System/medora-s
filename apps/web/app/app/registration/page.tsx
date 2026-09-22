@@ -21,6 +21,10 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
+import {
+  CreateConsultationModal,
+  type RegistrationPatient,
+} from "@/features/registration/RegistrationPatientModals";
 
 type RegPatientRow = {
   id: string;
@@ -108,6 +112,7 @@ function RegistrationPageInner() {
     billingClassification?: string | null;
   } | null>(null);
   const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
+  const [showCreateVisit, setShowCreateVisit] = useState(false);
   const bumpInsurancePanels = useCallback(() => {
     setInsuranceSyncVersion((v) => v + 1);
   }, []);
@@ -291,6 +296,17 @@ function RegistrationPageInner() {
       roles.includes("ADMIN") ||
       roles.includes("FRONT_DESK") ||
       roles.includes("BILLING"));
+
+  const canCreateVisit =
+    rolesReady &&
+    Boolean(selectedRegPatient && workspacePatient) &&
+    (roles.includes("FRONT_DESK") ||
+      roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN"));
+
+  const canOpenEncounterDetail =
+    rolesReady && isAppPathAllowedForRoles("/app/encounters/registration-created", roles);
 
   const cardBase: React.CSSProperties = {
     padding: "18px 18px 18px 16px",
@@ -562,6 +578,42 @@ function RegistrationPageInner() {
                 {!workspaceLoading && (
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                      {canCreateVisit && (
+                        <button
+                          type="button"
+                          data-testid="registration-start-new-visit"
+                          onClick={() => setShowCreateVisit(true)}
+                          style={{
+                            padding: "10px 18px",
+                            backgroundColor: "#166534",
+                            color: "#fff",
+                            border: "1px solid #166534",
+                            borderRadius: 8,
+                            fontSize: 14,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t("patientConsultationsTab.create.submit")}
+                        </button>
+                      )}
+                      {workspaceOpenEncounter && canOpenEncounterDetail && (
+                        <Link
+                          href={`/app/encounters/${workspaceOpenEncounter.id}`}
+                          style={{
+                            padding: "10px 16px",
+                            backgroundColor: "#ecfdf5",
+                            color: "#166534",
+                            border: "1px solid #86efac",
+                            borderRadius: 8,
+                            textDecoration: "none",
+                            fontSize: 14,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t("openEncountersTable.openEncounter")}
+                        </Link>
+                      )}
                       {canOpenPatientProfile && (
                         <Link
                           href={`/app/patients/${selectedRegPatient.id}/profile`}
@@ -816,6 +868,24 @@ function RegistrationPageInner() {
           )}
         </section>
       </div>
+      {showCreateVisit && workspacePatient && selectedRegPatient && effectiveFacilityId && (
+        <CreateConsultationModal
+          facilityId={effectiveFacilityId}
+          patient={{
+            id: selectedRegPatient.id,
+            mrn: workspacePatient.mrn ?? selectedRegPatient.mrn ?? null,
+            firstName: workspacePatient.firstName ?? selectedRegPatient.firstName,
+            lastName: workspacePatient.lastName ?? selectedRegPatient.lastName,
+            dob: workspacePatient.dob ?? null,
+            phone: workspacePatient.phone ?? selectedRegPatient.phone ?? null,
+          } satisfies RegistrationPatient}
+          canOpenEncounterDetail={canOpenEncounterDetail}
+          onClose={() => {
+            setShowCreateVisit(false);
+            void loadWorkspaceDetails(selectedRegPatient.id);
+          }}
+        />
+      )}
       {showAddFollowUp && facilityId && (
         <CreateFollowUpModal
           facilityId={facilityId}
