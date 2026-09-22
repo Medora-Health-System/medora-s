@@ -5269,7 +5269,7 @@ function ClinicVisitTab({
         {showLegacyProviderDocumentation && !readOnly && !docSigned && (
           <button
             type="button"
-            onClick={save}
+            onClick={() => void save({ reason: "manual" })}
             disabled={saving}
             style={{
               padding: "10px 24px",
