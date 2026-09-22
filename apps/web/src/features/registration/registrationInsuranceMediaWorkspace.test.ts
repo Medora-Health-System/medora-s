@@ -14,6 +14,7 @@ function readApp(relativePath: string): string {
 
 describe("MEDUI.REGISTRATION.INSURANCE_AND_DOCUMENT_CENTER", () => {
   const registrationPage = readApp("registration/page.tsx");
+  const registrationModals = readSrc("features/registration/RegistrationPatientModals.tsx");
   const patientChartPage = readApp("patients/[id]/page.tsx");
   const enMessages = readSrc("i18n/messages/en.ts");
   const frMessages = readSrc("i18n/messages/fr.ts");
@@ -49,6 +50,49 @@ describe("MEDUI.REGISTRATION.INSURANCE_AND_DOCUMENT_CENTER", () => {
 
     it("tiles focus search when no patient selected", () => {
       expect(registrationPage).toContain('querySelector<HTMLInputElement>(\'input[type="search"]\')');
+    });
+  });
+
+  describe("Existing-patient visit creation", () => {
+    it("offers a direct new-visit action after patient selection", () => {
+      expect(registrationPage).toContain('data-testid="registration-start-new-visit"');
+      expect(registrationPage).toContain("setShowCreateVisit(true)");
+      expect(registrationPage).toContain("<CreateConsultationModal");
+    });
+
+    it("keeps visit creation bound to the selected patient and facility", () => {
+      expect(registrationPage).toContain("facilityId={effectiveFacilityId}");
+      expect(registrationPage).toContain("id: selectedRegPatient.id");
+      expect(registrationPage).toContain("canCreateVisit");
+    });
+
+    it("separates opening an active encounter from starting another visit", () => {
+      expect(registrationPage).toContain('/app/encounters/${workspaceOpenEncounter.id}');
+      expect(registrationPage).toContain('t("openEncountersTable.openEncounter")');
+    });
+
+    it("supports Clinic, Urgent Care, Emergency, and direct Inpatient visits", () => {
+      for (const type of ["OUTPATIENT", "URGENT_CARE", "EMERGENCY", "INPATIENT"]) {
+        expect(registrationModals).toContain(`<option value="${type}"`);
+      }
+    });
+
+    it("routes ambulatory and emergency visits through the canonical facility-scoped endpoint", () => {
+      expect(registrationModals).toContain('/patients/${patient.id}/encounters');
+      expect(registrationModals).toContain("facilityId");
+    });
+
+    it("routes inpatient visits through the direct-admission workflow", () => {
+      expect(registrationModals).toContain("createDirectInpatientAdmission");
+      expect(registrationModals).toContain('admissionSource: "DIRECT"');
+      expect(registrationModals).toContain("admissionCorrelationId");
+      expect(registrationPage).toContain("canCreateInpatient");
+    });
+
+    it("prevents stale patient responses from enabling visit creation", () => {
+      expect(registrationPage).toContain("workspaceRequestSeq");
+      expect(registrationPage).toContain("workspacePatient?.id === selectedRegPatient.id");
+      expect(registrationPage).toContain("workspacePatient.id === selectedRegPatient.id");
     });
   });
 

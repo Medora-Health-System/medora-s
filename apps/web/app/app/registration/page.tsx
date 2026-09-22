@@ -21,6 +21,10 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 import { PatientSearchAndSelect } from "@/components/patients/PatientSearchAndSelect";
+import {
+  CreateConsultationModal,
+  type RegistrationPatient,
+} from "@/features/registration/RegistrationPatientModals";
 
 type RegPatientRow = {
   id: string;
@@ -108,6 +112,8 @@ function RegistrationPageInner() {
     billingClassification?: string | null;
   } | null>(null);
   const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
+  const [showCreateVisit, setShowCreateVisit] = useState(false);
+  const workspaceRequestSeq = React.useRef(0);
   const bumpInsurancePanels = useCallback(() => {
     setInsuranceSyncVersion((v) => v + 1);
   }, []);
@@ -146,6 +152,8 @@ function RegistrationPageInner() {
   const loadWorkspaceDetails = useCallback(
     async (patientId: string) => {
       if (!effectiveFacilityId) return;
+      const requestSeq = ++workspaceRequestSeq.current;
+      setWorkspacePatient(null);
       setWorkspaceLoading(true);
       setWorkspaceError(null);
       setWorkspaceInsurance([]);
@@ -155,6 +163,7 @@ function RegistrationPageInner() {
         if (!p || typeof p !== "object") {
           throw new Error(t("registrationWorkspace.loadError"));
         }
+        if (requestSeq !== workspaceRequestSeq.current) return;
         setWorkspacePatient(p as WorkspacePatient);
         try {
           const encs = await apiFetch(`/patients/${patientId}/encounters?limit=8`, {
@@ -166,14 +175,15 @@ function RegistrationPageInner() {
                 (e) => e.status === "OPEN",
               ) ?? null
             : null;
-          setWorkspaceOpenEncounter(open);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceOpenEncounter(open);
         } catch {
-          setWorkspaceOpenEncounter(null);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceOpenEncounter(null);
         }
         try {
           const ins = await apiFetch(`/patients/${patientId}/insurance`, { facilityId: effectiveFacilityId });
-          setWorkspaceInsurance(Array.isArray(ins) ? (ins as InsuranceRow[]) : []);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceInsurance(Array.isArray(ins) ? (ins as InsuranceRow[]) : []);
         } catch (e2) {
+          if (requestSeq !== workspaceRequestSeq.current) return;
           setWorkspaceInsurance([]);
           setWorkspaceError(
             normalizeUserFacingError(e2 instanceof Error ? e2.message : null, language) ||
@@ -181,6 +191,7 @@ function RegistrationPageInner() {
           );
         }
       } catch (e) {
+        if (requestSeq !== workspaceRequestSeq.current) return;
         setWorkspacePatient(null);
         setWorkspaceInsurance([]);
         setWorkspaceOpenEncounter(null);
@@ -188,7 +199,7 @@ function RegistrationPageInner() {
           normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("registrationWorkspace.loadError")
         );
       } finally {
-        setWorkspaceLoading(false);
+        if (requestSeq === workspaceRequestSeq.current) setWorkspaceLoading(false);
       }
     },
     [effectiveFacilityId, language, t]
@@ -291,6 +302,25 @@ function RegistrationPageInner() {
       roles.includes("ADMIN") ||
       roles.includes("FRONT_DESK") ||
       roles.includes("BILLING"));
+
+  const canCreateVisit =
+    rolesReady &&
+    Boolean(selectedRegPatient && workspacePatient?.id === selectedRegPatient.id) &&
+    (roles.includes("FRONT_DESK") ||
+      roles.includes("RN") ||
+      roles.includes("PROVIDER") ||
+      roles.includes("ADMIN"));
+
+  const directAdmissionFlagOn = ["true", "1"].includes(
+    String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "").trim().toLowerCase(),
+  );
+  const canCreateInpatient =
+    directAdmissionFlagOn &&
+    rolesReady &&
+    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
+
+  const canOpenEncounterDetail =
+    rolesReady && isAppPathAllowedForRoles("/app/encounters/registration-created", roles);
 
   const cardBase: React.CSSProperties = {
     padding: "18px 18px 18px 16px",
@@ -562,6 +592,42 @@ function RegistrationPageInner() {
                 {!workspaceLoading && (
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                      {canCreateVisit && (
+                        <button
+                          type="button"
+                          data-testid="registration-start-new-visit"
+                          onClick={() => setShowCreateVisit(true)}
+                          style={{
+                            padding: "10px 18px",
+                            backgroundColor: "#166534",
+                            color: "#fff",
+                            border: "1px solid #166534",
+                            borderRadius: 8,
+                            fontSize: 14,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t("patientConsultationsTab.create.submit")}
+                        </button>
+                      )}
+                      {workspaceOpenEncounter && canOpenEncounterDetail && (
+                        <Link
+                          href={`/app/encounters/${workspaceOpenEncounter.id}`}
+                          style={{
+                            padding: "10px 16px",
+                            backgroundColor: "#ecfdf5",
+                            color: "#166534",
+                            border: "1px solid #86efac",
+                            borderRadius: 8,
+                            textDecoration: "none",
+                            fontSize: 14,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t("openEncountersTable.openEncounter")}
+                        </Link>
+                      )}
                       {canOpenPatientProfile && (
                         <Link
                           href={`/app/patients/${selectedRegPatient.id}/profile`}
@@ -816,6 +882,25 @@ function RegistrationPageInner() {
           )}
         </section>
       </div>
+      {showCreateVisit && workspacePatient && selectedRegPatient && workspacePatient.id === selectedRegPatient.id && effectiveFacilityId && (
+        <CreateConsultationModal
+          facilityId={effectiveFacilityId}
+          patient={{
+            id: selectedRegPatient.id,
+            mrn: workspacePatient.mrn ?? selectedRegPatient.mrn ?? null,
+            firstName: workspacePatient.firstName ?? selectedRegPatient.firstName,
+            lastName: workspacePatient.lastName ?? selectedRegPatient.lastName,
+            dob: workspacePatient.dob ?? null,
+            phone: workspacePatient.phone ?? selectedRegPatient.phone ?? null,
+          } satisfies RegistrationPatient}
+          canOpenEncounterDetail={canOpenEncounterDetail}
+          canCreateInpatient={canCreateInpatient}
+          onClose={() => {
+            setShowCreateVisit(false);
+            void loadWorkspaceDetails(selectedRegPatient.id);
+          }}
+        />
+      )}
       {showAddFollowUp && facilityId && (
         <CreateFollowUpModal
           facilityId={facilityId}
