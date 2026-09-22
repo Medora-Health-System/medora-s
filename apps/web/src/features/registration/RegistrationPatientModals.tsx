@@ -458,6 +458,7 @@ export function CreateConsultationModal({
             attendingProviderUserId: physicianAssignedUserId.trim() || null,
             admissionDiagnosis: visitReason.trim() || null,
             reasonForAdmission: visitReason.trim() || null,
+            admissionCorrelationId: crypto.randomUUID(),
             idempotencyKey: `registration-direct-admission-${patient.id}-${crypto.randomUUID()}`,
           },
           { facilityId },
