@@ -113,6 +113,17 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
       setSaving(true);
     }
     try {
+      let previousNursingAssessment = encounter.nursingAssessment;
+      if (!isManualSave) {
+        try {
+          const latest = await apiFetch(`/encounters/${encounter.id}`, { facilityId: facilityId });
+          if (latest && typeof latest === "object" && !Array.isArray(latest)) {
+            previousNursingAssessment = (latest as { nursingAssessment?: unknown }).nursingAssessment;
+          }
+        } catch {
+          /* Keep the current baseline if the quiet rebase request is unavailable. */
+        }
+      }
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
@@ -125,7 +136,7 @@ export function ClinicCareAmbulatoryMedicalEvaluationPanel({
         /* fallback only */
       }
       const payload = buildProviderDocumentationSavePayload({
-        previousNursingAssessment: encounter.nursingAssessment,
+        previousNursingAssessment,
         state: value,
         metadata: buildProviderDocumentationMetadata({
           encounterMode: "AMBULATORY",
