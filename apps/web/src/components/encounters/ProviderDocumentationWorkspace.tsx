@@ -134,6 +134,8 @@ type ChipRowOptions = {
 };
 type PreviewSectionId = ReturnType<typeof buildProviderDocumentationPreviewSections>[number]["id"];
 
+export type ProviderDocumentationSaveContext = { reason: "autosave" | "manual" };
+
 export type ProviderDocumentationWorkspaceProps = {
   encounterId: string;
   encounterMode: ProviderDocumentationEncounterMode;
@@ -147,7 +149,7 @@ export type ProviderDocumentationWorkspaceProps = {
   providerUserId?: string | null;
   value: ProviderDocumentationWorkspaceState;
   onChange: (next: ProviderDocumentationWorkspaceState) => void;
-  onSave: () => void | Promise<void>;
+  onSave: (context: ProviderDocumentationSaveContext) => void | Promise<void>;
   onSign?: () => void | Promise<void>;
   onClear?: () => void;
   saving?: boolean;
@@ -885,7 +887,7 @@ export function ProviderDocumentationWorkspace({
       autosaveTimerRef.current = null;
       const signatureToSave = latestSignatureRef.current;
       setAutosaveStatus("saving");
-      Promise.resolve(onSave())
+      Promise.resolve(onSave({ reason: "autosave" }))
         .then(() => {
           if (latestSignatureRef.current === signatureToSave) {
             lastSavedSignatureRef.current = signatureToSave;
@@ -925,7 +927,7 @@ export function ProviderDocumentationWorkspace({
     setAutosaveStatus("saving");
     const signatureToSave = latestSignatureRef.current;
     try {
-      await onSave();
+      await onSave({ reason: "manual" });
       if (latestSignatureRef.current === signatureToSave) {
         lastSavedSignatureRef.current = signatureToSave;
         if (typeof window !== "undefined") {
