@@ -32,7 +32,10 @@ import {
   type ErPhysicalExamTemplateId,
 } from "./erPhysicalExamTemplatePresets";
 import { appendIfNotPresent } from "./medoraErTriageV1";
-import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  ProviderDocumentationWorkspace,
+  type ProviderDocumentationSaveContext,
+} from "@/components/encounters/ProviderDocumentationWorkspace";
 import {
   buildProviderDocumentationMetadata,
   buildProviderDocumentationSavePayload,
@@ -775,10 +778,13 @@ export function EmergencyProviderMsePanel({
     }
   };
 
-  const handleSaveProviderWorkspace = async () => {
+  const handleSaveProviderWorkspace = async (context: ProviderDocumentationSaveContext) => {
     if (formDisabled) return;
-    setSaving(true);
-    setSaveFeedback(null);
+    const isManualSave = context.reason === "manual";
+    if (isManualSave) {
+      setSaving(true);
+      setSaveFeedback(null);
+    }
     try {
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
@@ -810,21 +816,26 @@ export function EmergencyProviderMsePanel({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      await onSaved();
-      setSaveFeedback({
-        variant: "success",
-        message: queued ? t("erMseProviderPanel.saveQueued") : t("erMseProviderPanel.saveSuccess"),
-      });
+      if (isManualSave) {
+        await onSaved();
+        setSaveFeedback({
+          variant: "success",
+          message: queued ? t("erMseProviderPanel.saveQueued") : t("erMseProviderPanel.saveSuccess"),
+        });
+      }
     } catch (e) {
       console.error(e);
-      setSaveFeedback({
-        variant: "error",
-        message:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("erMseProviderPanel.saveErrorFallback"),
-      });
+      if (isManualSave) {
+        setSaveFeedback({
+          variant: "error",
+          message:
+            normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+            t("erMseProviderPanel.saveErrorFallback"),
+        });
+      }
+      throw e;
     } finally {
-      setSaving(false);
+      if (isManualSave) setSaving(false);
     }
   };
 
