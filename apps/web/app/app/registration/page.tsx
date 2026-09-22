@@ -113,6 +113,7 @@ function RegistrationPageInner() {
   } | null>(null);
   const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
   const [showCreateVisit, setShowCreateVisit] = useState(false);
+  const workspaceRequestSeq = React.useRef(0);
   const bumpInsurancePanels = useCallback(() => {
     setInsuranceSyncVersion((v) => v + 1);
   }, []);
@@ -151,6 +152,8 @@ function RegistrationPageInner() {
   const loadWorkspaceDetails = useCallback(
     async (patientId: string) => {
       if (!effectiveFacilityId) return;
+      const requestSeq = ++workspaceRequestSeq.current;
+      setWorkspacePatient(null);
       setWorkspaceLoading(true);
       setWorkspaceError(null);
       setWorkspaceInsurance([]);
@@ -160,6 +163,7 @@ function RegistrationPageInner() {
         if (!p || typeof p !== "object") {
           throw new Error(t("registrationWorkspace.loadError"));
         }
+        if (requestSeq !== workspaceRequestSeq.current) return;
         setWorkspacePatient(p as WorkspacePatient);
         try {
           const encs = await apiFetch(`/patients/${patientId}/encounters?limit=8`, {
@@ -171,14 +175,15 @@ function RegistrationPageInner() {
                 (e) => e.status === "OPEN",
               ) ?? null
             : null;
-          setWorkspaceOpenEncounter(open);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceOpenEncounter(open);
         } catch {
-          setWorkspaceOpenEncounter(null);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceOpenEncounter(null);
         }
         try {
           const ins = await apiFetch(`/patients/${patientId}/insurance`, { facilityId: effectiveFacilityId });
-          setWorkspaceInsurance(Array.isArray(ins) ? (ins as InsuranceRow[]) : []);
+          if (requestSeq === workspaceRequestSeq.current) setWorkspaceInsurance(Array.isArray(ins) ? (ins as InsuranceRow[]) : []);
         } catch (e2) {
+          if (requestSeq !== workspaceRequestSeq.current) return;
           setWorkspaceInsurance([]);
           setWorkspaceError(
             normalizeUserFacingError(e2 instanceof Error ? e2.message : null, language) ||
@@ -186,6 +191,7 @@ function RegistrationPageInner() {
           );
         }
       } catch (e) {
+        if (requestSeq !== workspaceRequestSeq.current) return;
         setWorkspacePatient(null);
         setWorkspaceInsurance([]);
         setWorkspaceOpenEncounter(null);
@@ -193,7 +199,7 @@ function RegistrationPageInner() {
           normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("registrationWorkspace.loadError")
         );
       } finally {
-        setWorkspaceLoading(false);
+        if (requestSeq === workspaceRequestSeq.current) setWorkspaceLoading(false);
       }
     },
     [effectiveFacilityId, language, t]
@@ -299,11 +305,19 @@ function RegistrationPageInner() {
 
   const canCreateVisit =
     rolesReady &&
-    Boolean(selectedRegPatient && workspacePatient) &&
+    Boolean(selectedRegPatient && workspacePatient?.id === selectedRegPatient.id) &&
     (roles.includes("FRONT_DESK") ||
       roles.includes("RN") ||
       roles.includes("PROVIDER") ||
       roles.includes("ADMIN"));
+
+  const directAdmissionFlagOn = ["true", "1"].includes(
+    String(process.env.NEXT_PUBLIC_DIRECT_INPATIENT_ADMISSION_ENABLED ?? "").trim().toLowerCase(),
+  );
+  const canCreateInpatient =
+    directAdmissionFlagOn &&
+    rolesReady &&
+    (roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN"));
 
   const canOpenEncounterDetail =
     rolesReady && isAppPathAllowedForRoles("/app/encounters/registration-created", roles);
@@ -868,7 +882,7 @@ function RegistrationPageInner() {
           )}
         </section>
       </div>
-      {showCreateVisit && workspacePatient && selectedRegPatient && effectiveFacilityId && (
+      {showCreateVisit && workspacePatient && selectedRegPatient && workspacePatient.id === selectedRegPatient.id && effectiveFacilityId && (
         <CreateConsultationModal
           facilityId={effectiveFacilityId}
           patient={{
@@ -880,6 +894,7 @@ function RegistrationPageInner() {
             phone: workspacePatient.phone ?? selectedRegPatient.phone ?? null,
           } satisfies RegistrationPatient}
           canOpenEncounterDetail={canOpenEncounterDetail}
+          canCreateInpatient={canCreateInpatient}
           onClose={() => {
             setShowCreateVisit(false);
             void loadWorkspaceDetails(selectedRegPatient.id);
