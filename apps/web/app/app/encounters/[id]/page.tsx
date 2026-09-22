@@ -219,7 +219,10 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
-import { ProviderDocumentationWorkspace } from "@/components/encounters/ProviderDocumentationWorkspace";
+import {
+  ProviderDocumentationWorkspace,
+  type ProviderDocumentationSaveContext,
+} from "@/components/encounters/ProviderDocumentationWorkspace";
 import { productUiBcp47Tag, resolveProductUiLanguageOrDefault, bilingualStorageLocaleOrEn } from "@/i18n/config";
 import {
   buildProviderDocumentationMetadata,
@@ -4626,10 +4629,13 @@ function ClinicVisitTab({
     }
   };
 
-  const save = async () => {
+  const save = async (context: ProviderDocumentationSaveContext) => {
     if (!canAuthorProviderDocumentation) return;
-    setMessage(null);
-    setSaving(true);
+    const isManualSave = context.reason === "manual";
+    if (isManualSave) {
+      setMessage(null);
+      setSaving(true);
+    }
     try {
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
@@ -4664,19 +4670,23 @@ function ClinicVisitTab({
       });
       const queued =
         res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setMessage({
-        type: queued ? "queued" : "ok",
-        text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
-      });
-      onUpdate();
+      if (isManualSave) {
+        setMessage({
+          type: queued ? "queued" : "ok",
+          text: queued ? t("encounterClinicTab.toastSavedQueued") : t("encounterClinicTab.toastSaved"),
+        });
+        onUpdate();
+      }
     } catch (e: any) {
-      setMessage({
-        type: "err",
-        text: normalizeUserFacingError(e?.message, language) || t("encounterClinicTab.errSave"),
-      });
+      if (isManualSave) {
+        setMessage({
+          type: "err",
+          text: normalizeUserFacingError(e?.message, language) || t("encounterClinicTab.errSave"),
+        });
+      }
       throw e;
     } finally {
-      setSaving(false);
+      if (isManualSave) setSaving(false);
     }
   };
 
