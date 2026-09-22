@@ -29,6 +29,16 @@ const ENCOUNTER_PAGE_SOURCE = readFileSync(
   "utf8"
 );
 
+const EMERGENCY_PROVIDER_SOURCE = readFileSync(
+  new URL("../features/emergency/EmergencyProviderMsePanel.tsx", import.meta.url),
+  "utf8"
+);
+
+const CLINIC_PROVIDER_SOURCE = readFileSync(
+  new URL("../features/clinic-care/ClinicCareAmbulatoryMedicalEvaluationPanel.tsx", import.meta.url),
+  "utf8"
+);
+
 function createMemoryStorage(): Storage {
   const map = new Map<string, string>();
   return {
@@ -194,6 +204,27 @@ describe("navigation stability — provider documentation (19V)", () => {
     expect(ENCOUNTER_PAGE_SOURCE).toContain("clinicEncounterSyncRef");
     expect(ENCOUNTER_PAGE_SOURCE).not.toMatch(
       /syncClinicFieldsFromEncounter[\s\S]*encounter\.updatedAt/
+    );
+  });
+
+  it("distinguishes quiet autosave from explicit manual save", () => {
+    expect(WORKSPACE_SOURCE).toContain('onSave({ reason: "autosave" })');
+    expect(WORKSPACE_SOURCE).toContain('onSave({ reason: "manual" })');
+  });
+
+  it("keeps background autosave from refreshing ED and Clinic encounter state", () => {
+    for (const source of [EMERGENCY_PROVIDER_SOURCE, CLINIC_PROVIDER_SOURCE, ENCOUNTER_PAGE_SOURCE]) {
+      expect(source).toContain('context.reason === "manual"');
+    }
+
+    expect(EMERGENCY_PROVIDER_SOURCE).toMatch(
+      /if \(isManualSave\) \{\s*await onSaved\(\);/
+    );
+    expect(CLINIC_PROVIDER_SOURCE).toMatch(
+      /if \(isManualSave\) \{[\s\S]*?await onUpdate\(\);\s*\}/
+    );
+    expect(ENCOUNTER_PAGE_SOURCE).toMatch(
+      /if \(isManualSave\) \{[\s\S]*?onUpdate\(\);\s*\}/
     );
   });
 });
