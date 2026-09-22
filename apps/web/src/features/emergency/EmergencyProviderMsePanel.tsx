@@ -738,7 +738,7 @@ export function EmergencyProviderMsePanel({
       let previousNursingAssessment = encounter.nursingAssessment;
       if (!isManualSave) {
         try {
-          const latest = await apiFetch(`/encounters/${encounterId}`, { facilityId: facilityId });
+          const latest = await apiFetch(`/encounters/${encounterId}`, { facilityId });
           if (latest && typeof latest === "object" && !Array.isArray(latest)) {
             previousNursingAssessment = (latest as { nursingAssessment?: unknown }).nursingAssessment;
           }
