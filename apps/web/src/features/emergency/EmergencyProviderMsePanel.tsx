@@ -735,6 +735,17 @@ export function EmergencyProviderMsePanel({
     setSaving(true);
     setSaveFeedback(null);
     try {
+      let previousNursingAssessment = encounter.nursingAssessment;
+      if (!isManualSave) {
+        try {
+          const latest = await apiFetch(`/encounters/${encounterId}`, { facilityId: facilityId });
+          if (latest && typeof latest === "object" && !Array.isArray(latest)) {
+            previousNursingAssessment = (latest as { nursingAssessment?: unknown }).nursingAssessment;
+          }
+        } catch {
+          /* Keep the current baseline if the quiet rebase request is unavailable. */
+        }
+      }
       let savedByDisplayName = t("erMseProviderPanel.defaultSignerFallback");
       try {
         const meRes = await fetch("/api/auth/me");
@@ -804,7 +815,7 @@ export function EmergencyProviderMsePanel({
         activeTemplateId: providerWorkspaceValue.activeTemplateId,
       });
       const payload = buildProviderDocumentationSavePayload({
-        previousNursingAssessment: encounter.nursingAssessment,
+        previousNursingAssessment,
         state: providerWorkspaceValue,
         metadata,
       });
