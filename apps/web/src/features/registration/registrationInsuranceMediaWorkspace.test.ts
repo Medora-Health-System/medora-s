@@ -77,9 +77,22 @@ describe("MEDUI.REGISTRATION.INSURANCE_AND_DOCUMENT_CENTER", () => {
       }
     });
 
-    it("uses the canonical facility-scoped encounter creation endpoint", () => {
+    it("routes ambulatory and emergency visits through the canonical facility-scoped endpoint", () => {
       expect(registrationModals).toContain('/patients/${patient.id}/encounters');
       expect(registrationModals).toContain("facilityId");
+    });
+
+    it("routes inpatient visits through the direct-admission workflow", () => {
+      expect(registrationModals).toContain("createDirectInpatientAdmission");
+      expect(registrationModals).toContain('admissionSource: "DIRECT"');
+      expect(registrationModals).toContain("admissionCorrelationId");
+      expect(registrationPage).toContain("canCreateInpatient");
+    });
+
+    it("prevents stale patient responses from enabling visit creation", () => {
+      expect(registrationPage).toContain("workspaceRequestSeq");
+      expect(registrationPage).toContain("workspacePatient?.id === selectedRegPatient.id");
+      expect(registrationPage).toContain("workspacePatient.id === selectedRegPatient.id");
     });
   });
 
