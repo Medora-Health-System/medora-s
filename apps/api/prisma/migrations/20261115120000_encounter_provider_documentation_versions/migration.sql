@@ -37,3 +37,11 @@ ALTER TABLE "EncounterProviderDocumentationVersion" ADD CONSTRAINT "EncounterPro
 ALTER TABLE "EncounterProviderDocumentationVersion" ADD CONSTRAINT "EncounterProviderDocumentationVersion_signedByUserId_fkey" FOREIGN KEY ("signedByUserId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "EncounterProviderDocumentationVersion" ADD CONSTRAINT "EncounterProviderDocumentationVersion_unlockedByUserId_fkey" FOREIGN KEY ("unlockedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "EncounterProviderDocumentationVersion" ADD CONSTRAINT "EncounterProviderDocumentationVersion_previousVersionId_fkey" FOREIGN KEY ("previousVersionId") REFERENCES "EncounterProviderDocumentationVersion"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+
+-- The addendum link column predates this table in the migration history.
+-- Add its constraint only after the signed-version table exists.
+ALTER TABLE "EncounterProviderAddendum"
+  ADD CONSTRAINT "EncounterProviderAddendum_signedVersionId_fkey"
+  FOREIGN KEY ("signedVersionId") REFERENCES "EncounterProviderDocumentationVersion"("id")
+  ON DELETE RESTRICT ON UPDATE CASCADE;

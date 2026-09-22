@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { AuditAction, EncounterClinicalEventType, EncounterStatus, EncounterType, RoleCode } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
 import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
@@ -203,80 +203,55 @@ describe("EncountersService provider documentation immutable versions (MEDORA.RD
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("IMM-03 rejects unlock without reason", async () => {
-    const { service } = buildService({ encounterOverrides: { providerDocumentationStatus: "SIGNED" } });
-    await expect(
-      service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "   " } as any, "user-1")
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it("IMM-04 unlocks with reason, preserves immutable snapshot and records unlock metadata", async () => {
+  it("IMM-03 denies legacy unlock even to the original signer and preserves the signed record", async () => {
     const { service, state, prisma } = buildService();
     await service.signProviderDocumentation("fac-1", "enc-1", "user-1");
-    const before = structuredClone(state.versions[0]);
+    const signed = structuredClone(state.encounter);
+    const version = structuredClone(state.versions[0]);
+    prisma.encounter.updateMany.mockClear();
 
-    await service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Corrected medication history" } as any, "user-2");
+    await expect(
+      service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-1")
+    ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(state.encounter.providerDocumentationStatus).toBe("DRAFT");
-    expect(state.versions[0]?.clinicalSnapshotJson).toEqual(before.clinicalSnapshotJson);
-    expect(state.versions[0]?.snapshotHash).toBe(before.snapshotHash);
-    expect(state.versions[0]?.unlockedByUserId).toBe("user-2");
-    expect(state.versions[0]?.unlockReason).toBe("Corrected medication history");
-    expect(prisma.encounterClinicalEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ eventType: EncounterClinicalEventType.PROVIDER_UNLOCKED }) })
-    );
+    expect(state.encounter.providerDocumentationStatus).toBe("SIGNED");
+    expect(state.encounter.providerDocumentationSignedByUserId).toBe(signed.providerDocumentationSignedByUserId);
+    expect(state.encounter.providerDocumentationSignedAt).toEqual(signed.providerDocumentationSignedAt);
+    expect(state.versions[0]).toEqual(version);
+    expect(prisma.encounter.updateMany).not.toHaveBeenCalled();
   });
 
-  it("IMM-05 edits after unlock mutate working draft only", async () => {
+  it("IMM-04 denies cross-author unlock without changing the original signed record", async () => {
     const { service, state } = buildService();
     await service.signProviderDocumentation("fac-1", "enc-1", "user-1");
-    const firstHash = state.versions[0]?.snapshotHash;
-    await service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-2");
+    const version = structuredClone(state.versions[0]);
 
-    await service.update("fac-1", "enc-1", { treatmentPlan: "Updated after unlock" } as any, "user-2");
+    await expect(
+      service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-2")
+    ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(state.encounter.treatmentPlan).toBe("Updated after unlock");
-    expect(state.versions[0]?.snapshotHash).toBe(firstHash);
+    expect(state.encounter.providerDocumentationStatus).toBe("SIGNED");
+    expect(state.versions[0]).toEqual(version);
   });
 
-  it("IMM-06 re-sign creates incremented immutable version; prior version remains unchanged", async () => {
+  it("IMM-05 rejects another provider's edit of the signed shared workspace", async () => {
     const { service, state } = buildService();
     await service.signProviderDocumentation("fac-1", "enc-1", "user-1");
-    const v1Hash = state.versions[0]?.snapshotHash;
-
-    await service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-2");
-    await service.update("fac-1", "enc-1", { treatmentPlan: "Revised plan" } as any, "user-2");
-    await service.signProviderDocumentation("fac-1", "enc-1", "user-2");
-
-    expect(state.versions).toHaveLength(2);
-    expect(state.versions[0]?.versionNumber).toBe(1);
-    expect(state.versions[1]?.versionNumber).toBe(2);
-    expect(state.versions[0]?.snapshotHash).toBe(v1Hash);
-    expect(state.versions[1]?.snapshotHash).not.toBe(v1Hash);
+    await expect(
+      service.update("fac-1", "enc-1", { providerNote: "Provider B note" } as any, "user-2")
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(state.encounter.providerNote).toBe("Initial impression");
   });
 
-  it("IMM-07 lists ordered version history", async () => {
-    const { service } = buildService();
+  it("IMM-06 preserves signed history without unlock or re-sign", async () => {
+    const { service, state } = buildService();
     await service.signProviderDocumentation("fac-1", "enc-1", "user-1");
-    await service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-2");
-    await service.update("fac-1", "enc-1", { treatmentPlan: "Plan B" } as any, "user-2");
-    await service.signProviderDocumentation("fac-1", "enc-1", "user-2");
-
+    const original = structuredClone(state.versions[0]);
     const versions = (await service.listProviderDocumentationVersions("fac-1", "enc-1", "user-2")) as any[];
-    expect(versions.map((v) => v.versionNumber)).toEqual([1, 2]);
-  });
-
-  it("IMM-08 retrieves historical Version 1 after Version 2 exists", async () => {
-    const { service, state } = buildService();
-    await service.signProviderDocumentation("fac-1", "enc-1", "user-1");
-    const v1 = structuredClone(state.versions[0]);
-    await service.unlockProviderDocumentation("fac-1", "enc-1", { reason: "Correction" } as any, "user-2");
-    await service.update("fac-1", "enc-1", { treatmentPlan: "Plan B" } as any, "user-2");
-    await service.signProviderDocumentation("fac-1", "enc-1", "user-2");
-
-    const detail = await service.getProviderDocumentationVersion("fac-1", "enc-1", v1.id, "user-2");
-    expect((detail as any).snapshotHash).toBe(v1.snapshotHash);
-    expect((detail as any).clinicalSnapshotJson).toEqual(v1.clinicalSnapshotJson);
+    const detail = await service.getProviderDocumentationVersion("fac-1", "enc-1", original.id, "user-2");
+    expect(versions.map((v) => v.versionNumber)).toEqual([1]);
+    expect((detail as any).snapshotHash).toBe(original.snapshotHash);
+    expect((detail as any).clinicalSnapshotJson).toEqual(original.clinicalSnapshotJson);
   });
 
   it("IMM-09 blocks cross-facility version history access", async () => {
