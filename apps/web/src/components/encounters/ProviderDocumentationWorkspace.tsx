@@ -159,6 +159,14 @@ export type ProviderDocumentationWorkspaceProps = {
   saveMessage?: { variant: "success" | "error" | "queued"; text: string } | null;
   lastSaved?: { savedAt: string; savedBy: string } | null;
   signedMetadata?: { signedAt: string; signedBy: string } | null;
+  /** Immutable signed versions, newest first. Historical rows remain visible in the summary. */
+  signatureHistory?: Array<{
+    id: string;
+    signedAt: string;
+    signedBy: string;
+    signedByTitle?: string | null;
+    versionNumber?: number | null;
+  }>;
   savedMetadata?: ProviderDocumentationMetadata | null;
   signedOrFinalized?: boolean;
   latestVitalSigns?: string[];
@@ -476,9 +484,9 @@ export function ProviderDocumentationWorkspace({
   saveMessage = null,
   lastSaved = null,
   signedMetadata = null,
+  signatureHistory = [],
   savedMetadata = null,
   signedOrFinalized = false,
-  latestVitalSigns = [],
   keyInformation = [],
   encounterSummary = [],
   quickActions = null,
@@ -1716,6 +1724,24 @@ export function ProviderDocumentationWorkspace({
     return t(labelKey);
   };
 
+  const providerSignatureLines =
+    signatureHistory.length > 0
+      ? signatureHistory.map((signature) => {
+          const title = signature.signedByTitle?.trim();
+          return `${signature.signedBy}${title ? `, ${title}` : ""} · ${signature.signedAt}`;
+        })
+      : signedMetadata
+        ? [
+            `${signedMetadata.signedBy}${
+              savedMetadata?.savedByTitle
+                ? `, ${savedMetadata.savedByTitle}`
+                : providerProfessionalTitle
+                  ? `, ${providerProfessionalTitle}`
+                  : ""
+            } · ${signedMetadata.signedAt}`,
+          ]
+        : [];
+
   const renderSummaryColumnContent = () => (
     <>
       <div style={sectionShell} data-testid="provider-documentation-live-preview">
@@ -1738,22 +1764,25 @@ export function ProviderDocumentationWorkspace({
           ))
         )}
       </div>
-      {isClinicSimplified ? (
-        <ContextCard
-          title={signedMetadata ? t("providerDocumentationWorkspace.providerSignature") : t("providerDocumentationWorkspace.providerSavedBy")}
-          lines={signedMetadata ? [`${signedMetadata.signedBy}${savedMetadata?.savedByTitle ? `, ${savedMetadata.savedByTitle}` : providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${signedMetadata.signedAt}`] : lastSaved ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`] : savedMetadata ? [`${savedMetadata.savedBy}${savedMetadata.savedByTitle ? `, ${savedMetadata.savedByTitle}` : ""} · ${savedMetadata.savedAt}`] : []}
-          empty={t("common.dash")}
-        />
-      ) : (
-        <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
-      )}
-      {signedMetadata ? (
-        <div style={sectionShell}>
-          <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
-            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
-          </p>
-        </div>
-      ) : null}
+      <ContextCard
+        title={
+          providerSignatureLines.length > 0
+            ? t("providerDocumentationWorkspace.providerSignature")
+            : t("providerDocumentationWorkspace.providerSavedBy")
+        }
+        lines={
+          providerSignatureLines.length > 0
+            ? providerSignatureLines
+            : isClinicSimplified
+              ? lastSaved
+                ? [`${lastSaved.savedBy}${providerProfessionalTitle ? `, ${providerProfessionalTitle}` : ""} · ${lastSaved.savedAt}`]
+                : savedMetadata
+                  ? [`${savedMetadata.savedBy}${savedMetadata.savedByTitle ? `, ${savedMetadata.savedByTitle}` : ""} · ${savedMetadata.savedAt}`]
+                  : []
+              : []
+        }
+        empty={t("common.dash")}
+      />
       {showPreview ? (
         <div style={sectionShell}>
           {previewSections.length === 0 ? (

@@ -231,6 +231,7 @@ export type ChartExportManifest = {
         signedAt: string;
         signedByUserId: string;
         signedByDisplayFr: string | null;
+        signedByProfessionSnapshot: string | null;
         snapshotHash: string;
         unlockedAt: string | null;
         unlockedByUserId: string | null;
@@ -913,6 +914,7 @@ export class EncounterChartExportService {
             versionNumber: true,
             signedAt: true,
             signedByUserId: true,
+            signedByProfessionSnapshot: true,
             snapshotHash: true,
             unlockedAt: true,
             unlockedByUserId: true,
@@ -1623,6 +1625,7 @@ export class EncounterChartExportService {
             signedAt: row.signedAt.toISOString(),
             signedByUserId: row.signedByUserId,
             signedByDisplayFr: userDisplayFr(row.signedBy),
+            signedByProfessionSnapshot: row.signedByProfessionSnapshot ?? null,
             snapshotHash: row.snapshotHash,
             unlockedAt: row.unlockedAt ? row.unlockedAt.toISOString() : null,
             unlockedByUserId: row.unlockedByUserId ?? null,

@@ -1130,6 +1130,24 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       );
     }
 
+    const signerMemberships = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        facilityId,
+        isActive: true,
+        role: { code: { in: [RoleCode.PROVIDER, RoleCode.ADMIN] } },
+      },
+      select: { professionCode: true, role: { select: { code: true } } },
+    });
+    const signerMembership =
+      signerMemberships.find((membership) => membership.role.code === RoleCode.PROVIDER) ??
+      signerMemberships.find((membership) => membership.role.code === RoleCode.ADMIN);
+    if (!signerMembership) {
+      throw new ForbiddenException("An active provider or administrator membership is required to sign.");
+    }
+    const signerProfessionSnapshot =
+      signerMembership.professionCode?.trim() || signerMembership.role.code;
+
     const previousSignedByUserId = encounter.providerDocumentationSignedByUserId;
     const previousSignedAt = encounter.providerDocumentationSignedAt;
     const signedDocumentationMetadata = providerDocumentationWorkspaceMetadataFromNursingAssessment(
@@ -1164,6 +1182,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
           versionNumber,
           signedAt,
           signedByUserId: userId,
+          signedByProfessionSnapshot: signerProfessionSnapshot,
           clinicalSnapshotJson: clinicalSnapshot as Prisma.InputJsonValue,
           snapshotHash,
           schemaVersion: 1,
@@ -1286,6 +1305,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         versionNumber: true,
         signedAt: true,
         signedByUserId: true,
+        signedByProfessionSnapshot: true,
         snapshotHash: true,
         documentType: true,
         encounterMode: true,
@@ -1316,6 +1336,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       signedAt: version.signedAt.toISOString(),
       signedByUserId: version.signedByUserId,
       signedByDisplay: `${version.signedBy.firstName ?? ""} ${version.signedBy.lastName ?? ""}`.trim() || null,
+      signedByProfessionSnapshot: version.signedByProfessionSnapshot ?? null,
       snapshotHash: version.snapshotHash,
       documentType: version.documentType,
       encounterMode: version.encounterMode,
@@ -1346,6 +1367,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
         versionNumber: true,
         signedAt: true,
         signedByUserId: true,
+        signedByProfessionSnapshot: true,
         clinicalSnapshotJson: true,
         snapshotHash: true,
         schemaVersion: true,
@@ -1385,6 +1407,7 @@ const clinicalTime = normalizeInpatientClinicalDocumentedAt(clinical.clinicalDoc
       signedAt: version.signedAt.toISOString(),
       signedByUserId: version.signedByUserId,
       signedByDisplay: `${version.signedBy.firstName ?? ""} ${version.signedBy.lastName ?? ""}`.trim() || null,
+      signedByProfessionSnapshot: version.signedByProfessionSnapshot ?? null,
       clinicalSnapshotJson: version.clinicalSnapshotJson,
       snapshotHash: version.snapshotHash,
       schemaVersion: version.schemaVersion,
