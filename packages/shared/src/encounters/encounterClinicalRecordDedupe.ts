@@ -274,7 +274,9 @@ export function dedupeOrderRows(
 ): EncounterClinicalRecordOrderRow[] {
   const byItem = new Map<string, EncounterClinicalRecordOrderRow>();
   for (const row of candidates) {
-    const key = row.orderItemId;
+    // A source item ID is scoped to its order. Do not merge two distinct
+    // orders merely because their item IDs (or medication labels) coincide.
+    const key = JSON.stringify([row.orderId, row.orderItemId]);
     const existing = byItem.get(key);
     if (!existing || orderLifecycleRank(row.status) >= orderLifecycleRank(existing.status)) {
       byItem.set(key, row);
