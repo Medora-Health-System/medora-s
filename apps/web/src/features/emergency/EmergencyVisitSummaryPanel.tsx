@@ -813,6 +813,16 @@ export function EmergencyVisitSummaryPanel({
             />
           }
         />
+        {/* The structured clinical-record projection currently contains disposition
+            fields but not the complete provider/nursing discharge text blocks.
+            Preserve both original documentation domains in the V2 summary;
+            do not replace nursing execution with provider disposition. */}
+        {model.providerDischargeDocumentation ? (
+          <SummaryBlockCard accent="#4f46e5" block={model.providerDischargeDocumentation} />
+        ) : null}
+        {model.nursingDischargeDocumentation ? (
+          <SummaryBlockCard accent="#0891b2" block={model.nursingDischargeDocumentation} />
+        ) : null}
         <ErIvAccessSummaryCard
           encounterId={encounterId}
           facilityId={facilityId}
