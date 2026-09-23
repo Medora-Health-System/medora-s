@@ -1388,6 +1388,8 @@ model EncounterProviderDocumentationVersion {
   versionNumber          Int
   signedAt               DateTime
   signedByUserId         String
+  /// Immutable signer profession/title snapshot captured at signature time.
+  signedByProfessionSnapshot String? @db.VarChar(80)
   clinicalSnapshotJson   Json
   snapshotHash           String    @db.VarChar(128)
   schemaVersion          Int       @default(1)
