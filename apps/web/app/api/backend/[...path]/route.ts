@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { proxyNestRequest } from "@/lib/server/nestApiProxy";
 
-/** Résultats avec PJ volumineuses : évite les timeouts sur téléversement. */
-export const maxDuration = 120;
+/**
+ * BFF requests can include clinical writes that complete successfully on the Nest API
+ * after 120s during transient downstream/database stalls. Keep the proxy alive long
+ * enough to receive the authoritative API response instead of surfacing a false 504.
+ */
+export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
