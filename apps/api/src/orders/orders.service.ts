@@ -1141,6 +1141,25 @@ export class OrdersService {
     userAgent?: string,
     pilotScope?: PilotScopeInput
   ) {
+    const createStartedAt = Date.now();
+    let stageStartedAt = createStartedAt;
+    const recordStage = (stage: string) => {
+      const now = Date.now();
+      const durationMs = now - stageStartedAt;
+      if (durationMs >= 2_000) {
+        logInfo("order_create_slow_stage", {
+          facilityId,
+          encounterId,
+          orderType: data.type,
+          itemCount: data.items.length,
+          stage,
+          durationMs,
+          totalDurationMs: now - createStartedAt,
+        });
+      }
+      stageStartedAt = now;
+    };
+
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -1149,6 +1168,8 @@ export class OrdersService {
         triage: { select: { vitalsJson: true } },
       },
     });
+
+    recordStage("encounter_load");
 
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -1166,6 +1187,7 @@ export class OrdersService {
       ...(pilotScope ?? {}),
     });
     await this.assertProviderMedicationOrdersAllowed(facilityId, data, userId);
+    recordStage("medication_order_gates");
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,
@@ -1175,6 +1197,7 @@ export class OrdersService {
       encounterNursingAssessment: encounter.nursingAssessment,
       triageVitalsJson: encounter.triage?.vitalsJson ?? null,
     });
+    recordStage("clinical_safety");
 
     assertEnterpriseOrderSetProvenanceForCreate({
       data,
@@ -1341,10 +1364,22 @@ export class OrdersService {
       }
       throw err;
     }
+    recordStage("order_transaction");
 
     const [enrichedCreated] = await this.enrichOrderItemsForDisplaySafe([order as unknown as OrderWithItems]);
     const [withAuthority] = await this.attachAuthorityToOrders([enrichedCreated]);
     const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
+    recordStage("response_enrichment");
+    const totalDurationMs = Date.now() - createStartedAt;
+    if (totalDurationMs >= 5_000) {
+      logInfo("order_create_slow_request", {
+        facilityId,
+        encounterId,
+        orderType: data.type,
+        itemCount: data.items.length,
+        totalDurationMs,
+      });
+    }
     return withAttribution;
   }
 
