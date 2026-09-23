@@ -85,6 +85,9 @@ function buildService(options?: {
     },
     userRole: {
       findFirst: jest.fn(async () => ({ role: { code: RoleCode.PROVIDER }, isActive: true })),
+      findMany: jest.fn(async () => [
+        { professionCode: "PHYSICIAN", role: { code: RoleCode.PROVIDER } },
+      ]),
     },
     encounterProviderDocumentationVersion: {
       findFirst: jest.fn(async (args: any) => {
@@ -185,6 +188,7 @@ describe("EncountersService provider documentation immutable versions (MEDORA.RD
     expect(state.encounter.providerDocumentationSignedByUserId).toBe("user-1");
     expect(state.versions).toHaveLength(1);
     expect(state.versions[0]?.versionNumber).toBe(1);
+    expect(state.versions[0]?.signedByProfessionSnapshot).toBe("PHYSICIAN");
     expect(state.versions[0]?.snapshotHash).toMatch(/^[a-f0-9]{64}$/);
     expect(auditLog).toHaveBeenCalledWith(
       AuditAction.PROVIDER_DOCUMENTATION_SIGN,
