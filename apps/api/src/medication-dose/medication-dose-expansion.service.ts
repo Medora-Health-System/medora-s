@@ -235,41 +235,28 @@ async function expandLoadedMedicationOrderSchedule(
         ? MEDICATION_DOSE_KIND_IVPB_SESSION
         : MEDICATION_DOSE_KIND_FIXED_ADMINISTRATION;
 
-    let createdCount = 0;
-    for (const slot of slotsToCreate) {
-      try {
-        await tx.medicationDoseInstance.create({
-          data: {
-            facilityId: schedule.facilityId,
-            encounterId: schedule.encounterId,
-            orderId: schedule.orderId,
-            orderItemId: schedule.orderItemId,
-            medicationOrderScheduleId: schedule.id,
-            doseSequenceNumber: slot.doseSequenceNumber,
-            doseKind,
-            scheduledAt: slot.scheduledAt,
-            dueWindowStartAt: slot.dueWindowStartAt,
-            dueWindowEndAt: slot.dueWindowEndAt,
-            overdueAt: slot.overdueAt,
-            doseStatus: MEDICATION_DOSE_INSTANCE_STATUS_PLANNED,
-            scheduleClassificationSnapshot: schedule.scheduleClassification,
-            frequencySnapshotJson: immutableFrequencySnapshot,
-            medicationCatalogSnapshotJson: immutableCatalogSnapshot,
-            orderedDoseSnapshotJson,
-          },
-        });
-        createdCount += 1;
-      } catch (err: unknown) {
-        const code =
-          err && typeof err === "object" && "code" in err
-            ? (err as { code?: unknown }).code
-            : undefined;
-        if (code === "P2002") {
-          continue;
-        }
-        throw err;
-      }
-    }
+    const inserted = await tx.medicationDoseInstance.createMany({
+      data: slotsToCreate.map((slot) => ({
+        facilityId: schedule.facilityId,
+        encounterId: schedule.encounterId,
+        orderId: schedule.orderId,
+        orderItemId: schedule.orderItemId,
+        medicationOrderScheduleId: schedule.id,
+        doseSequenceNumber: slot.doseSequenceNumber,
+        doseKind,
+        scheduledAt: slot.scheduledAt,
+        dueWindowStartAt: slot.dueWindowStartAt,
+        dueWindowEndAt: slot.dueWindowEndAt,
+        overdueAt: slot.overdueAt,
+        doseStatus: MEDICATION_DOSE_INSTANCE_STATUS_PLANNED,
+        scheduleClassificationSnapshot: schedule.scheduleClassification,
+        frequencySnapshotJson: immutableFrequencySnapshot,
+        medicationCatalogSnapshotJson: immutableCatalogSnapshot,
+        orderedDoseSnapshotJson,
+      })),
+      skipDuplicates: true,
+    });
+    const createdCount = inserted.count;
 
     return {
       expanded: true,
