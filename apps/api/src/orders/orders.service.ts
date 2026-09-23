@@ -1445,6 +1445,7 @@ export class OrdersService {
       const dtoItem = input.dtoItems[i];
       if (!item || !dtoItem || item.catalogItemType !== "MEDICATION") continue;
 
+      const scheduleStartedAt = Date.now();
       const scheduleResult = await maybeCreateMedicationOrderScheduleForOrderItem(tx, {
         facilityId: input.facilityId,
         encounterId: input.encounterId,
@@ -1465,6 +1466,17 @@ export class OrdersService {
         medicationFulfillmentIntent: item.medicationFulfillmentIntent ?? null,
       });
 
+      const scheduleDurationMs = Date.now() - scheduleStartedAt;
+      if (scheduleDurationMs >= 500) {
+        logInfo("order_create_medication_schedule_slow", {
+          facilityId: input.facilityId,
+          encounterId: input.encounterId,
+          orderId: input.orderId,
+          orderItemId: item.id,
+          durationMs: scheduleDurationMs,
+        });
+      }
+
       if (
         scheduleResult.created &&
         scheduleResult.scheduleId &&
@@ -1475,10 +1487,21 @@ export class OrdersService {
           select: { scheduleClassification: true },
         });
         if (schedule && isRecurringDoseExpandableScheduleClassification(schedule.scheduleClassification)) {
+          const expansionStartedAt = Date.now();
           await expandMedicationDosesForScheduleInTransaction(tx, {
             medicationOrderScheduleId: scheduleResult.scheduleId,
             featureFlags,
           });
+          const expansionDurationMs = Date.now() - expansionStartedAt;
+          if (expansionDurationMs >= 500) {
+            logInfo("order_create_medication_dose_expansion_slow", {
+              facilityId: input.facilityId,
+              encounterId: input.encounterId,
+              orderId: input.orderId,
+              orderItemId: item.id,
+              durationMs: expansionDurationMs,
+            });
+          }
         }
       }
     }
