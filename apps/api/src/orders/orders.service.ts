@@ -1392,7 +1392,7 @@ export class OrdersService {
     const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
     recordStage("response_enrichment");
     const totalDurationMs = Date.now() - createStartedAt;
-    if (totalDurationMs >= 5_000) {
+    if (totalDurationMs >= 2_000) {
       logInfo("order_create_slow_request", {
         facilityId,
         encounterId,
