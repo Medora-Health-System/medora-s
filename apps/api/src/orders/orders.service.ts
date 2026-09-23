@@ -1141,6 +1141,25 @@ export class OrdersService {
     userAgent?: string,
     pilotScope?: PilotScopeInput
   ) {
+    const createStartedAt = Date.now();
+    let stageStartedAt = createStartedAt;
+    const recordStage = (stage: string) => {
+      const now = Date.now();
+      const durationMs = now - stageStartedAt;
+      if (durationMs >= 2_000) {
+        logInfo("order_create_slow_stage", {
+          facilityId,
+          encounterId,
+          orderType: data.type,
+          itemCount: data.items.length,
+          stage,
+          durationMs,
+          totalDurationMs: now - createStartedAt,
+        });
+      }
+      stageStartedAt = now;
+    };
+
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       select: {
@@ -1149,6 +1168,8 @@ export class OrdersService {
         triage: { select: { vitalsJson: true } },
       },
     });
+
+    recordStage("encounter_load");
 
     if (!encounter) {
       throw new NotFoundException("Encounter not found");
@@ -1166,6 +1187,7 @@ export class OrdersService {
       ...(pilotScope ?? {}),
     });
     await this.assertProviderMedicationOrdersAllowed(facilityId, data, userId);
+    recordStage("medication_order_gates");
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,
@@ -1175,6 +1197,7 @@ export class OrdersService {
       encounterNursingAssessment: encounter.nursingAssessment,
       triageVitalsJson: encounter.triage?.vitalsJson ?? null,
     });
+    recordStage("clinical_safety");
 
     assertEnterpriseOrderSetProvenanceForCreate({
       data,
@@ -1249,6 +1272,24 @@ export class OrdersService {
     let order;
     try {
       order = await this.prisma.$transaction(async (tx) => {
+        const transactionStartedAt = Date.now();
+        let transactionStageStartedAt = transactionStartedAt;
+        const recordTransactionStage = (stage: string) => {
+          const now = Date.now();
+          const durationMs = now - transactionStageStartedAt;
+          if (durationMs >= 500) {
+            logInfo("order_create_transaction_slow_stage", {
+              facilityId,
+              encounterId,
+              orderType: data.type,
+              itemCount: data.items.length,
+              stage,
+              durationMs,
+              transactionDurationMs: now - transactionStartedAt,
+            });
+          }
+          transactionStageStartedAt = now;
+        };
         const created = await tx.order.create({
           data: orderCreateData,
           include: {
@@ -1256,6 +1297,7 @@ export class OrdersService {
             patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
           },
         });
+        recordTransactionStage("order_and_items_insert");
         await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
           userId,
           facilityId,
@@ -1269,6 +1311,7 @@ export class OrdersService {
           critical: true,
           tx,
         });
+        recordTransactionStage("audit_insert");
         if (userId) {
           await this.writeOrderEvent({
             facilityId,
@@ -1281,6 +1324,7 @@ export class OrdersService {
             tx,
           });
         }
+        recordTransactionStage("order_event_insert");
         if (data.type === "MEDICATION" && created.items.length > 0) {
           await this.persistMedicationOrderSchedulesForCreatedOrder(tx, {
             facilityId,
@@ -1341,10 +1385,22 @@ export class OrdersService {
       }
       throw err;
     }
+    recordStage("order_transaction");
 
     const [enrichedCreated] = await this.enrichOrderItemsForDisplaySafe([order as unknown as OrderWithItems]);
     const [withAuthority] = await this.attachAuthorityToOrders([enrichedCreated]);
     const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
+    recordStage("response_enrichment");
+    const totalDurationMs = Date.now() - createStartedAt;
+    if (totalDurationMs >= 2_000) {
+      logInfo("order_create_slow_request", {
+        facilityId,
+        encounterId,
+        orderType: data.type,
+        itemCount: data.items.length,
+        totalDurationMs,
+      });
+    }
     return withAttribution;
   }
 
@@ -1389,6 +1445,7 @@ export class OrdersService {
       const dtoItem = input.dtoItems[i];
       if (!item || !dtoItem || item.catalogItemType !== "MEDICATION") continue;
 
+      const scheduleStartedAt = Date.now();
       const scheduleResult = await maybeCreateMedicationOrderScheduleForOrderItem(tx, {
         facilityId: input.facilityId,
         encounterId: input.encounterId,
@@ -1409,6 +1466,17 @@ export class OrdersService {
         medicationFulfillmentIntent: item.medicationFulfillmentIntent ?? null,
       });
 
+      const scheduleDurationMs = Date.now() - scheduleStartedAt;
+      if (scheduleDurationMs >= 500) {
+        logInfo("order_create_medication_schedule_slow", {
+          facilityId: input.facilityId,
+          encounterId: input.encounterId,
+          orderId: input.orderId,
+          orderItemId: item.id,
+          durationMs: scheduleDurationMs,
+        });
+      }
+
       if (
         scheduleResult.created &&
         scheduleResult.scheduleId &&
@@ -1419,10 +1487,21 @@ export class OrdersService {
           select: { scheduleClassification: true },
         });
         if (schedule && isRecurringDoseExpandableScheduleClassification(schedule.scheduleClassification)) {
+          const expansionStartedAt = Date.now();
           await expandMedicationDosesForScheduleInTransaction(tx, {
             medicationOrderScheduleId: scheduleResult.scheduleId,
             featureFlags,
           });
+          const expansionDurationMs = Date.now() - expansionStartedAt;
+          if (expansionDurationMs >= 500) {
+            logInfo("order_create_medication_dose_expansion_slow", {
+              facilityId: input.facilityId,
+              encounterId: input.encounterId,
+              orderId: input.orderId,
+              orderItemId: item.id,
+              durationMs: expansionDurationMs,
+            });
+          }
         }
       }
     }
