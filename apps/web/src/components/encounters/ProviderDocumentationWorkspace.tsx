@@ -487,7 +487,6 @@ export function ProviderDocumentationWorkspace({
   signatureHistory = [],
   savedMetadata = null,
   signedOrFinalized = false,
-  latestVitalSigns = [],
   keyInformation = [],
   encounterSummary = [],
   quickActions = null,
