@@ -4833,6 +4833,23 @@ function ClinicVisitTab({
               }
             : null
         }
+        signatureHistory={documentationVersions
+          .slice()
+          .sort((a, b) => Number(b.versionNumber ?? 0) - Number(a.versionNumber ?? 0))
+          .map((version) => ({
+            id: String(version.id),
+            versionNumber: typeof version.versionNumber === "number" ? version.versionNumber : null,
+            signedBy: typeof version.signedByDisplay === "string" && version.signedByDisplay.trim()
+              ? version.signedByDisplay.trim()
+              : t("erMseProviderPanel.defaultSignerFallback"),
+            signedByTitle:
+              typeof version.signedByProfessionSnapshot === "string" && version.signedByProfessionSnapshot.trim()
+                ? version.signedByProfessionSnapshot.trim()
+                : null,
+            signedAt: version.signedAt
+              ? new Date(version.signedAt).toLocaleString(dateLocale)
+              : t("common.dash"),
+          }))}
         signedOrFinalized={docSigned}
         t={t}
       />
@@ -4935,7 +4952,12 @@ function ClinicVisitTab({
                   {t("encounterClinicTab.historyVersionLabel").replace("{version}", String(version.versionNumber ?? "—"))}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
-                  {t("encounterClinicTab.historySignedBy").replace("{name}", version.signedByDisplay ?? "—")}
+                  {t("encounterClinicTab.historySignedBy").replace(
+                    "{name}",
+                    `${version.signedByDisplay ?? "—"}${
+                      version.signedByProfessionSnapshot ? `, ${version.signedByProfessionSnapshot}` : ""
+                    }`
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
                   {t("encounterClinicTab.historySignedAt").replace(
