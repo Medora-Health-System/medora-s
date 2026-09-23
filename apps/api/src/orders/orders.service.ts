@@ -1272,6 +1272,24 @@ export class OrdersService {
     let order;
     try {
       order = await this.prisma.$transaction(async (tx) => {
+        const transactionStartedAt = Date.now();
+        let transactionStageStartedAt = transactionStartedAt;
+        const recordTransactionStage = (stage: string) => {
+          const now = Date.now();
+          const durationMs = now - transactionStageStartedAt;
+          if (durationMs >= 500) {
+            logInfo("order_create_transaction_slow_stage", {
+              facilityId,
+              encounterId,
+              orderType: data.type,
+              itemCount: data.items.length,
+              stage,
+              durationMs,
+              transactionDurationMs: now - transactionStartedAt,
+            });
+          }
+          transactionStageStartedAt = now;
+        };
         const created = await tx.order.create({
           data: orderCreateData,
           include: {
@@ -1279,6 +1297,7 @@ export class OrdersService {
             patient: { select: { id: true, firstName: true, lastName: true, mrn: true } },
           },
         });
+        recordTransactionStage("order_and_items_insert");
         await this.audit.log(AuditAction.ORDER_CREATE, "ORDER", {
           userId,
           facilityId,
@@ -1292,6 +1311,7 @@ export class OrdersService {
           critical: true,
           tx,
         });
+        recordTransactionStage("audit_insert");
         if (userId) {
           await this.writeOrderEvent({
             facilityId,
@@ -1304,6 +1324,7 @@ export class OrdersService {
             tx,
           });
         }
+        recordTransactionStage("order_event_insert");
         if (data.type === "MEDICATION" && created.items.length > 0) {
           await this.persistMedicationOrderSchedulesForCreatedOrder(tx, {
             facilityId,
