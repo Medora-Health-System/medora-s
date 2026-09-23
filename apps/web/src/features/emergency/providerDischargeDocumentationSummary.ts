@@ -198,10 +198,20 @@ export function buildProviderDischargeDocumentationSummaryBlock(
   const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);
   const selectedDocs = getSelectedDiagnosisDocs(form);
 
+  // Discharge planning is independently clinically significant: an encounter
+  // can contain return precautions, work restrictions or follow-up instructions
+  // even when no diagnosis card or departure time has been entered yet.
   const hasContent =
     Boolean(form.patientLeftEdAt.trim()) ||
     selectedDocs.length > 0 ||
-    form.diagnosisRefs.length > 0;
+    form.diagnosisRefs.length > 0 ||
+    form.diagnosisDocs.length > 0 ||
+    Boolean(form.returnPrecautions.trim()) ||
+    Boolean(form.returnWorkSchool.trim()) ||
+    form.followUps.some((row) =>
+      [row.specialty, row.providerOrFacility, row.timing, row.phone, row.address, row.comments]
+        .some((value) => typeof value === "string" && value.trim().length > 0)
+    );
 
   if (!hasContent && !meta.documentedAt) return null;
 
