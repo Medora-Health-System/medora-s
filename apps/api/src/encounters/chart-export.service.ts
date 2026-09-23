@@ -231,6 +231,7 @@ export type ChartExportManifest = {
         signedAt: string;
         signedByUserId: string;
         signedByDisplayFr: string | null;
+        signedByProfessionSnapshot: string | null;
         snapshotHash: string;
         unlockedAt: string | null;
         unlockedByUserId: string | null;
