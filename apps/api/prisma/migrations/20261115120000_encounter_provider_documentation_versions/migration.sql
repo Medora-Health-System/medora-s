@@ -7,6 +7,7 @@ CREATE TABLE "EncounterProviderDocumentationVersion" (
     "versionNumber" INTEGER NOT NULL,
     "signedAt" TIMESTAMP(3) NOT NULL,
     "signedByUserId" TEXT NOT NULL,
+    "signedByProfessionSnapshot" VARCHAR(80),
     "clinicalSnapshotJson" JSONB NOT NULL,
     "snapshotHash" VARCHAR(128) NOT NULL,
     "schemaVersion" INTEGER NOT NULL DEFAULT 1,
