@@ -129,6 +129,46 @@ describe("encounterClinicalRecord", () => {
     expect(history[0]?.status).toBe("DRAFT");
   });
 
+  it("collapses repeated provider autosaves in the summary without hiding distinct versions or authors", () => {
+    const primary = resolveProviderAssessmentPrimary({
+      documentationStatus: "SIGNED",
+      signedAt: "2026-06-23T10:00:00.000Z",
+      signedByDisplayName: "Dr Example",
+      sections: [{ label: "Assessment", text: "Final signed assessment." }],
+    });
+    const history = buildProviderAssessmentHistory(
+      [
+        {
+          id: "save-1",
+          savedAt: "2026-06-23T09:00:00.000Z",
+          performerDisplayName: "Dr Example",
+          sections: [{ label: "Assessment", text: "Unchanged assessment." }],
+        },
+        {
+          id: "save-2",
+          savedAt: "2026-06-23T09:10:00.000Z",
+          performerDisplayName: "Dr Example",
+          sections: [{ label: "Assessment", text: "Unchanged assessment." }],
+        },
+        {
+          id: "save-3",
+          savedAt: "2026-06-23T09:20:00.000Z",
+          performerDisplayName: "Dr Example",
+          sections: [{ label: "Assessment", text: "Clinically revised assessment." }],
+        },
+        {
+          id: "save-4",
+          savedAt: "2026-06-23T09:30:00.000Z",
+          performerDisplayName: "Dr Another",
+          sections: [{ label: "Assessment", text: "Unchanged assessment." }],
+        },
+      ],
+      primary
+    );
+    expect(history.map((entry) => entry.id)).toEqual(["save-4", "save-3", "save-2"]);
+    expect(history[2]?.savedAt).toBe("2026-06-23T09:10:00.000Z");
+  });
+
   it("uses latest nursing reassessment as primary and retains history", () => {
     const record = buildEncounterClinicalRecord({
       ...baseInput(),

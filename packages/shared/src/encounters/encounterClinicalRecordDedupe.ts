@@ -153,8 +153,15 @@ export function buildProviderAssessmentHistory(
     ? `${primary.documentedAt}:${primary.performerDisplayName ?? ""}`
     : null;
 
+  // Collapse repeated autosaves of identical content in the summary projection.
+  // Never mutate or delete source versions; distinct content remains available
+  // in history, including author/time attribution from the retained version.
+  const seenIds = new Set<string>();
+  const seenContent = new Set<string>();
   const out: EncounterClinicalRecordProviderAssessmentHistoryEntry[] = [];
   for (const entry of sorted) {
+    if (seenIds.has(entry.id)) continue;
+    seenIds.add(entry.id);
     const sections = (entry.sections ?? [])
       .map((s) => ({
         label: (s.label ?? "").trim(),
@@ -166,6 +173,19 @@ export function buildProviderAssessmentHistory(
 
     const key = `${entry.documentedAt ?? entry.savedAt}:${entry.performerDisplayName ?? ""}`;
     if (primaryKey && key === primaryKey && primary?.status !== "DRAFT") continue;
+
+    // Compare normalized section content and narrative, not timestamps: a
+    // fresh autosave timestamp does not make an unchanged assessment new.
+    // Keep different authors and draft/saved states separate for provenance.
+    const contentKey = JSON.stringify({
+      author: entry.performerDisplayName?.trim() || null,
+      role: entry.performerRoleTitle?.trim() || null,
+      status: entry.isDraft ? "DRAFT" : "SAVED",
+      sections,
+      narrative,
+    });
+    if (seenContent.has(contentKey)) continue;
+    seenContent.add(contentKey);
 
     out.push({
       id: entry.id,
