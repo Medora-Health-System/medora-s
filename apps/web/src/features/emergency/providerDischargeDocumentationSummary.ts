@@ -231,7 +231,28 @@ export function buildProviderDischargeDocumentationSummaryBlock(
     for (const doc of selectedDocs) {
       appendDiagnosisCardLines(lines, doc, locale);
     }
+    // Some older encounters retain selected diagnosis references without a
+    // corresponding documentation card. Show their stored code/label rather
+    // than silently omitting the diagnosis from the discharge summary.
+    const renderedSourceIds = new Set(
+      selectedDocs.flatMap((doc) => [doc.sourceEncounterDiagnosisId, doc.encounterDiagnosisId].filter(Boolean))
+    );
+    const renderedCodes = new Set(selectedDocs.map((doc) => doc.code.trim().toLowerCase()));
+    for (const ref of form.diagnosisRefs) {
+      if ((ref.encounterDiagnosisId && renderedSourceIds.has(ref.encounterDiagnosisId)) ||
+          (!ref.encounterDiagnosisId && renderedCodes.has(ref.code.trim().toLowerCase()))) continue;
+      lines.push("");
+      lines.push(storedDiagnosisSnapshotLine(ref.code, ref.label, ref.isPrimary ? ` (${p(locale, "primary")})` : ""));
+    }
     appendPatientSpecificInstructionLines(lines, selectedDocs, locale, options);
+    appendSharedPlanningLines(lines, form, locale);
+  } else if (form.diagnosisRefs.length > 0) {
+    lines.push("");
+    lines.push(p(locale, "diagnosisDocumentationSection"));
+    for (const ref of form.diagnosisRefs) {
+      lines.push("");
+      lines.push(storedDiagnosisSnapshotLine(ref.code, ref.label, ref.isPrimary ? ` (${p(locale, "primary")})` : ""));
+    }
     appendSharedPlanningLines(lines, form, locale);
   } else if (form.diagnosisDocs.length === 1) {
     lines.push("");
