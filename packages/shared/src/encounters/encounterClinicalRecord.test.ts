@@ -231,6 +231,54 @@ describe("encounterClinicalRecord", () => {
     expect(record.orders[0]?.status).toBe("COMPLETED");
   });
 
+  it("keeps distinct medication orders and administrations while collapsing duplicate source rows", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      orders: [
+        {
+          id: "med-order-1",
+          type: "MEDICATION",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          items: [
+            { id: "med-item-1", displayLabel: "Famotidine 20 mg", status: "ACTIVE" },
+            { id: "med-item-1", displayLabel: "Famotidine 20 mg", status: "COMPLETED" },
+          ],
+        },
+        {
+          id: "med-order-2",
+          type: "MEDICATION",
+          createdAt: "2026-06-23T09:30:00.000Z",
+          items: [{ id: "med-item-2", displayLabel: "Famotidine 20 mg", status: "COMPLETED" }],
+        },
+      ],
+      medicationAdministrations: [
+        {
+          id: "mar-1",
+          orderItemId: "med-item-1",
+          medicationName: "Famotidine",
+          administeredAt: "2026-06-23T09:05:00.000Z",
+        },
+        {
+          id: "mar-1",
+          orderItemId: "med-item-1",
+          medicationName: "Famotidine",
+          administeredAt: "2026-06-23T09:05:00.000Z",
+        },
+        {
+          id: "mar-2",
+          orderItemId: "med-item-2",
+          medicationName: "Famotidine",
+          administeredAt: "2026-06-23T09:35:00.000Z",
+        },
+      ],
+    });
+    expect(record.orders.map((row) => [row.orderId, row.orderItemId, row.status])).toEqual([
+      ["med-order-1", "med-item-1", "COMPLETED"],
+      ["med-order-2", "med-item-2", "COMPLETED"],
+    ]);
+    expect(record.medicationAdministrations.map((row) => row.id)).toEqual(["mar-1", "mar-2"]);
+  });
+
   it("dedupes laboratory workflow to one final result", () => {
     const candidates = dedupeLaboratoryResults([
       {
