@@ -173,7 +173,7 @@ function appendSharedPlanningLines(
   const hasPlanning =
     Boolean(form.returnPrecautions.trim()) ||
     Boolean(form.returnWorkSchool.trim()) ||
-    form.followUps.some((r) => r.providerOrFacility.trim() || r.timing.trim());
+    form.followUps.some((r) => [r.specialty, r.providerOrFacility, r.timing, r.phone, r.address, r.comments].some((value) => typeof value === "string" && value.trim().length > 0));
 
   if (!hasPlanning) return;
 
