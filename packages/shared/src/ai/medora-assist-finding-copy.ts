@@ -314,6 +314,18 @@ const FINDING_COPY = {
       fr: "{medication} a une ordonnance active sans administration correspondante pendant la préparation de la sortie. Effectuez la conciliation du dossier médicamenteux avant la sortie lorsque cela s’applique.",
     },
   },
+  preDischargeUnresolvedItems: {
+    title: {
+      en: "Items remain for review before discharge",
+      es: "Quedan elementos por revisar antes del alta",
+      fr: "Des éléments restent à revoir avant la sortie",
+    },
+    summary: {
+      en: "Medora Assist identified {count} unresolved item(s) across results, medications, reassessment, follow-up, or discharge documentation. Review the individual findings before finalizing discharge.",
+      es: "Medora Assist identificó {count} elemento(s) sin resolver entre resultados, medicamentos, reevaluación, seguimiento o documentación del alta. Revise los hallazgos individuales antes de finalizar el alta.",
+      fr: "Medora Assist a identifié {count} élément(s) non résolu(s) concernant les résultats, les médicaments, la réévaluation, le suivi ou la documentation de sortie. Revoyez les constatations individuelles avant de finaliser la sortie.",
+    },
+  },
   transitionReassessmentMissing: {
     title: {
       en: "No reassessment entry found after treatment before transition",

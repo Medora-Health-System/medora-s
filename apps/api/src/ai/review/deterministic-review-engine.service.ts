@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { AiClinicalReviewOutput, AiSuggestion, EncounterAiSnapshot } from "@medora/shared";
 import type { DeterministicRule } from "./review.types.js";
+import { isDischargeInProgress } from "./clinical-facts.js";
+import { buildCopiedSuggestion } from "./review.utils.js";
 import { rule1UnacknowledgedCriticalResult } from "./rules/rule-1-unacknowledged-critical-result.rule.js";
 import { rule2PendingDiagnosticAtDischarge } from "./rules/rule-2-pending-diagnostic-at-discharge.rule.js";
 import { rule3MissingDisposition } from "./rules/rule-3-missing-disposition.rule.js";
@@ -86,7 +88,35 @@ export class DeterministicReviewEngine {
       }
     }
 
-    return { suggestions: this.finalize(suggestions) };
+    const finalized = this.finalize(suggestions);
+    return { suggestions: this.finalize([...finalized, ...this.preDischargeSummary(snapshot, ctx, finalized)]) };
+  }
+
+  private preDischargeSummary(
+    snapshot: EncounterAiSnapshot,
+    ctx: { generatedAt: string; snapshotVersion: string },
+    suggestions: AiSuggestion[]
+  ): AiSuggestion[] {
+    if (!isDischargeInProgress(snapshot)) return [];
+    const categories = new Set([
+      "DISCHARGE_SAFETY",
+      "MEDICATION_CONSIDERATION",
+      "REASSESSMENT_GAP",
+      "FOLLOW_UP_GAP",
+      "DOCUMENTATION_GAP",
+      "RESULT_FOLLOWUP",
+    ]);
+    const unresolved = suggestions.filter((item) => categories.has(item.category));
+    if (unresolved.length < 2) return [];
+
+    return [buildCopiedSuggestion(ctx, {
+      category: "DISCHARGE_SAFETY",
+      priority: unresolved.some((item) => item.priority === "CRITICAL" || item.priority === "HIGH") ? "HIGH" : "MEDIUM",
+      copyKey: "preDischargeUnresolvedItems",
+      vars: { count: String(unresolved.length) },
+      evidence: [],
+      recommendedActions: [{ actionType: "REVIEW", label: "Review pre-discharge findings" }],
+    })];
   }
 
   private finalize(suggestions: AiSuggestion[]): AiSuggestion[] {
