@@ -14,7 +14,6 @@ import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import { AiSuggestionFeedbackRequest } from "@medora/shared";
 import {
-  AllowPlatformPrincipalWithFacilityContext,
   RolesGuard,
   RequireRoles,
 } from "../common/guards/roles.guard.js";
@@ -43,7 +42,6 @@ export class AiChartReviewController {
 
   @Get(":encounterId")
   @RequireRoles(...AI_CHART_REVIEW_ROLES)
-  @AllowPlatformPrincipalWithFacilityContext()
   async getChartReview(
     @Param("encounterId") encounterId: string,
     @Query("locale") localeValue: string | undefined,
@@ -78,7 +76,6 @@ export class AiChartReviewController {
 
   @Post(":encounterId/feedback")
   @RequireRoles(...AI_CHART_REVIEW_ROLES)
-  @AllowPlatformPrincipalWithFacilityContext()
   async submitSuggestionFeedback(
     @Param("encounterId") encounterId: string,
     @Body() body: unknown,
@@ -109,7 +106,9 @@ export class AiChartReviewController {
   }
 
   private resolveActor(req: any): { facilityId: string; actorUserId: string } {
-    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    // RolesGuard resolves and writes the authoritative facility context onto
+    // req.user.facilityId. Never re-authorize from a raw client header here.
+    const facilityId = req.user?.facilityId;
     const actorUserId = req.user?.userId;
     if (!facilityId || typeof facilityId !== "string") throw new BadRequestException("Facility ID required");
     if (!actorUserId || typeof actorUserId !== "string") throw new BadRequestException("Authenticated user required");
