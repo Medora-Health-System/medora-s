@@ -31,9 +31,9 @@ export function rule12DischargedSummaryCompleteness(
       priority: "MEDIUM",
       title: "Discharge summary documentation not found",
       summary:
-        "The structured encounter status indicates discharge, but no discharge-summary text is present in the AI review snapshot. Review the discharge documentation for completeness.",
+        "The patient is documented as discharged, but a discharge summary is not available in the chart. Review the discharge documentation for completeness.",
       reasoningSummary:
-        "This finding uses only the structured discharge status and discharge-summary presence. It does not determine whether discharge was clinically appropriate.",
+        "This finding checks whether discharge documentation is present. It does not determine whether discharge was clinically appropriate.",
       evidence: [
         {
           sourceType: "DISPOSITION",
