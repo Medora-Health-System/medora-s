@@ -250,6 +250,18 @@ export const aiAppointmentSchema = z.object({
 
 export type AiAppointment = z.infer<typeof aiAppointmentSchema>;
 
+export const aiNursingDischargeExecutionSchema = z.object({
+  present: z.boolean(),
+  executionStatus: z.string().nullable().optional(),
+  revision: z.number().int().nullable().optional(),
+  completedAt: z.string().datetime().nullable().optional(),
+  departureAt: z.string().datetime().nullable().optional(),
+  dispositionMismatchDetected: z.boolean().nullable().optional(),
+  documentation: aiBoundedTextSchema.nullable().optional(),
+});
+
+export type AiNursingDischargeExecution = z.infer<typeof aiNursingDischargeExecutionSchema>;
+
 export const aiDispositionSchema = z.object({
   disposition: z.string().nullable().optional(),
   dischargeStatus: z.string().nullable().optional(),
@@ -261,6 +273,7 @@ export const aiDispositionSchema = z.object({
   dischargeFollowUpDocumented: z.boolean().nullable().optional(),
   followUps: z.array(aiFollowUpSchema).max(50).optional(),
   appointments: z.array(aiAppointmentSchema).max(50).optional(),
+  nursingDischargeExecution: aiNursingDischargeExecutionSchema.optional(),
 });
 
 export type AiDisposition = z.infer<typeof aiDispositionSchema>;
@@ -280,7 +293,8 @@ export const aiSnapshotCompletenessSchema = z.object({
     "MEDICATION_ADMINISTRATIONS",
     "FOLLOW_UPS",
     "APPOINTMENTS",
-  ])).max(12),
+    "NURSING_DISCHARGE_EXECUTION",
+  ])).max(13),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",
