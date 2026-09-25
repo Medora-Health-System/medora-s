@@ -309,7 +309,7 @@ const FINDING_COPY = {
       fr: "L’heure de réévaluation n’est pas disponible avant la transition",
     },
     summary: {
-      en: "A reassessment is documented, but its clinical time is not available to determine whether it occurred after the latest treatment."
+      en: "A reassessment is documented, but its clinical time is not available to determine whether it occurred after the latest treatment.",
       es: "Hay una reevaluación documentada, pero no está disponible la hora clínica necesaria para determinar si ocurrió después del último tratamiento.",
       fr: "Une réévaluation est documentée, mais son heure clinique n’est pas disponible pour déterminer si elle a eu lieu après le dernier traitement.",
     },
