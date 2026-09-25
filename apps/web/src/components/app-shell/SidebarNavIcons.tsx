@@ -57,17 +57,23 @@ function MsppBrandMark(){
   return <img src="/branding/mspp-logo.png" alt="" width={20} height={20} decoding="async" draggable={false} className="pointer-events-none h-5 w-auto max-w-[30px] shrink-0 select-none object-contain object-center opacity-95" aria-hidden/>;
 }
 
+const MEDORA_ICON_BLUE = "#60a5fa";
+
 function TablerNavIcon({name}:{name:string}){
-  return <img
-    src={`${TABLER_CDN}/${name}.svg`}
-    alt=""
-    width={20}
-    height={20}
-    decoding="async"
-    draggable={false}
-    referrerPolicy="no-referrer"
-    className="pointer-events-none block h-5 w-5 shrink-0 select-none object-contain object-center"
+  return <span
     aria-hidden
+    className="pointer-events-none block h-5 w-5 shrink-0"
+    style={{
+      backgroundColor: MEDORA_ICON_BLUE,
+      WebkitMaskImage: `url("${TABLER_CDN}/${name}.svg")`,
+      maskImage: `url("${TABLER_CDN}/${name}.svg")`,
+      WebkitMaskRepeat: "no-repeat",
+      maskRepeat: "no-repeat",
+      WebkitMaskPosition: "center",
+      maskPosition: "center",
+      WebkitMaskSize: "contain",
+      maskSize: "contain",
+    }}
   />;
 }
 
