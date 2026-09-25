@@ -29,6 +29,8 @@ const MAX_MEDICATION_ADMINISTRATIONS = 500;
 const MAX_PROCEDURES = 100;
 const MAX_PROCEDURE_EVENTS = 100;
 const MAX_PROCEDURE_EVENT_CHARS = 20_000;
+const MAX_IV_ACCESS_EVENTS = 100;
+const MAX_IV_ACCESS_NOTES_CHARS = 4_000;
 const MAX_DIAGNOSES = 50;
 const MAX_FOLLOWUPS = 50;
 const MAX_APPOINTMENTS = 50;
@@ -119,6 +121,7 @@ export class EncounterAiSnapshotBuilder {
       providerAddenda,
       clinicalDocumentationEntries,
       procedureEvents,
+      ivAccessEvents,
     ] = await Promise.all([
       this.findTriage(encounterId, facilityId),
       this.findVitalsReadings(encounterId, facilityId),
@@ -133,6 +136,7 @@ export class EncounterAiSnapshotBuilder {
       this.findProviderAddenda(encounterId, facilityId),
       this.findClinicalDocumentationEntries(encounterId, facilityId),
       this.findProcedureEvents(encounterId, facilityId),
+      this.findIvAccessEvents(encounterId, facilityId),
     ]);
 
     const generatedAt = new Date().toISOString();
@@ -173,7 +177,7 @@ export class EncounterAiSnapshotBuilder {
       presentation: this.buildPresentation(encounter, triage, triageVitalsReadings),
       clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes, providerDocumentationVersions, providerAddenda, clinicalDocumentationEntries),
       diagnostics: this.buildDiagnostics(orders, results),
-      treatments: this.buildTreatments(orders, medicationAdministrations, procedureEvents),
+      treatments: this.buildTreatments(orders, medicationAdministrations, procedureEvents, ivAccessEvents),
       diagnoses: this.buildDiagnoses(diagnoses),
       disposition: this.buildDisposition(encounter, followUps, appointments),
     };
@@ -192,6 +196,7 @@ export class EncounterAiSnapshotBuilder {
       providerAddenda,
       clinicalDocumentationEntries,
       procedureEvents,
+      ivAccessEvents,
     });
     const snapshotVersion = this.computeSnapshotVersion({ ...snapshotWithoutVersion, completeness });
 
@@ -384,6 +389,15 @@ export class EncounterAiSnapshotBuilder {
         marAction: true,
         route: true,
       },
+    });
+  }
+
+  private async findIvAccessEvents(encounterId: string, facilityId: string) {
+    return this.prisma.encounterClinicalEvent.findMany({
+      where: { encounterId, facilityId, eventType: { in: ["IV_INSERTED", "IV_REMOVED"] } },
+      take: MAX_IV_ACCESS_EVENTS,
+      orderBy: { createdAt: "asc" },
+      select: { id: true, eventType: true, payloadJson: true, createdAt: true },
     });
   }
 
@@ -667,7 +681,8 @@ export class EncounterAiSnapshotBuilder {
   private buildTreatments(
     orders: Awaited<ReturnType<typeof this.findOrders>>,
     administrations: Awaited<ReturnType<typeof this.findMedicationAdministrations>>,
-    procedureEvents: Awaited<ReturnType<typeof this.findProcedureEvents>>
+    procedureEvents: Awaited<ReturnType<typeof this.findProcedureEvents>>,
+    ivAccessEvents: Awaited<ReturnType<typeof this.findIvAccessEvents>>
   ): EncounterAiSnapshot["treatments"] {
     const medicationOrders = orders
       .flatMap((order) => order.items)
@@ -734,6 +749,23 @@ export class EncounterAiSnapshotBuilder {
       medicationAdministrations: mappedAdministrations,
       procedures,
       procedureEvents: mappedProcedureEvents,
+      ivAccessEvents: ivAccessEvents.map((event) => {
+        const payload = event.payloadJson && typeof event.payloadJson === "object" && !Array.isArray(event.payloadJson)
+          ? event.payloadJson as Record<string, unknown>
+          : {};
+        return {
+          id: event.id,
+          eventType: event.eventType as "IV_INSERTED" | "IV_REMOVED",
+          documentedAt: event.createdAt.toISOString(),
+          insertionEventId: typeof payload.insertionEventId === "string" ? payload.insertionEventId : null,
+          insertedAt: typeof payload.insertedAt === "string" ? toIsoString(payload.insertedAt) : null,
+          removedAt: typeof payload.removedAt === "string" ? toIsoString(payload.removedAt) : null,
+          site: typeof payload.site === "string" ? payload.site : null,
+          gauge: typeof payload.gauge === "string" ? payload.gauge : null,
+          reason: typeof payload.reason === "string" ? payload.reason : null,
+          notes: typeof payload.notes === "string" ? toAiBoundedText(payload.notes, MAX_IV_ACCESS_NOTES_CHARS) : null,
+        };
+      }),
     };
   }
 
@@ -816,6 +848,7 @@ export class EncounterAiSnapshotBuilder {
     providerAddenda: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderAddenda"]>>;
     clinicalDocumentationEntries: Awaited<ReturnType<EncounterAiSnapshotBuilder["findClinicalDocumentationEntries"]>>;
     procedureEvents: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProcedureEvents"]>>;
+    ivAccessEvents: Awaited<ReturnType<EncounterAiSnapshotBuilder["findIvAccessEvents"]>>;
   }): NonNullable<EncounterAiSnapshot["completeness"]> {
     const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
     if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
@@ -833,6 +866,7 @@ export class EncounterAiSnapshotBuilder {
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
     if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
     if (input.procedureEvents.length >= MAX_PROCEDURE_EVENTS || input.procedureEvents.some((event) => JSON.stringify(event.payloadJson ?? {}).length > MAX_PROCEDURE_EVENT_CHARS)) truncatedDomains.push("PROCEDURE_EVENTS");
+    if (input.ivAccessEvents.length >= MAX_IV_ACCESS_EVENTS || input.ivAccessEvents.some((event) => { const p = event.payloadJson && typeof event.payloadJson === "object" && !Array.isArray(event.payloadJson) ? event.payloadJson as Record<string, unknown> : {}; return typeof p.notes === "string" && p.notes.length > MAX_IV_ACCESS_NOTES_CHARS; })) truncatedDomains.push("IV_ACCESS_EVENTS");
     const dischargeRoot = input.encounter.dischargeSummaryJson && typeof input.encounter.dischargeSummaryJson === "object" && !Array.isArray(input.encounter.dischargeSummaryJson) ? input.encounter.dischargeSummaryJson as Record<string, unknown> : null;
     const nursingDischarge = dischargeRoot?.inpatientNursingDischarge && typeof dischargeRoot.inpatientNursingDischarge === "object" && !Array.isArray(dischargeRoot.inpatientNursingDischarge) ? dischargeRoot.inpatientNursingDischarge as Record<string, unknown> : null;
     if (nursingDischarge && JSON.stringify(nursingDischarge).length > MAX_NURSING_DISCHARGE_CHARS) truncatedDomains.push("NURSING_DISCHARGE_EXECUTION");
@@ -844,7 +878,6 @@ export class EncounterAiSnapshotBuilder {
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
     const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "IV_ACCESS_EVENTS",
       "STRUCTURED_RESULT_DATA",
     ];
     return {

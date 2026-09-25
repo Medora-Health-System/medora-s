@@ -347,6 +347,34 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
+  it("projects append-only facility-scoped IV insertion and removal events", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterClinicalEvent: {
+          findMany: jest.fn(async (args: any) => {
+            if (args.where.eventType === "PROCEDURE_DOCUMENTED") return [];
+            expect(args.where).toEqual({
+              encounterId: ENCOUNTER_ID,
+              facilityId: FACILITY_ID,
+              eventType: { in: ["IV_INSERTED", "IV_REMOVED"] },
+            });
+            return [
+              { id: "iv-1", eventType: "IV_INSERTED", createdAt: new Date("2026-09-25T10:00:00.000Z"), payloadJson: { site: "left AC", gauge: "20", insertedAt: "2026-09-25T09:59:00.000Z", notes: "Patent." } },
+              { id: "iv-2", eventType: "IV_REMOVED", createdAt: new Date("2026-09-25T12:00:00.000Z"), payloadJson: { insertionEventId: "iv-1", site: "left AC", gauge: "20", removedAt: "2026-09-25T11:59:00.000Z", reason: "Discharge" } },
+            ];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.treatments.ivAccessEvents).toHaveLength(2);
+    expect(snapshot.treatments.ivAccessEvents?.[0]).toMatchObject({ id: "iv-1", eventType: "IV_INSERTED", site: "left AC", gauge: "20" });
+    expect(snapshot.treatments.ivAccessEvents?.[1]).toMatchObject({ id: "iv-2", eventType: "IV_REMOVED", insertionEventId: "iv-1", reason: "Discharge" });
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("IV_ACCESS_EVENTS");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
   it("rejects an actor without active facility access", async () => {
     const prismaMock = buildPrismaMock();
     const builder = await createBuilder(prismaMock);
