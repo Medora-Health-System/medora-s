@@ -316,6 +316,33 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
+  it("does not coerce string mismatch values and strips staff identity from nursing discharge projection", async () => {
+    const prismaMock = buildPrismaMock({
+      encounter: {
+        dischargeSummaryJson: {
+          inpatientNursingDischarge: {
+            executionStatus: "COMPLETED",
+            dispositionMismatch: { detected: "false" },
+            instructionsReviewed: true,
+            nurseId: "nurse-secret-id",
+            completedBy: "staff-secret-id",
+            nested: { userId: "nested-secret-id", note: "reviewed" },
+          },
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.disposition.nursingDischargeExecution?.dispositionMismatchDetected).toBeNull();
+    const documentation = snapshot.disposition.nursingDischargeExecution?.documentation?.text ?? "";
+    expect(documentation).toContain("instructionsReviewed");
+    expect(documentation).toContain("reviewed");
+    expect(documentation).not.toContain("nurse-secret-id");
+    expect(documentation).not.toContain("staff-secret-id");
+    expect(documentation).not.toContain("nested-secret-id");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
   it("projects append-only facility-scoped procedure documentation events", async () => {
     const prismaMock = buildPrismaMock({
       prisma: {
