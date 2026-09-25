@@ -17,6 +17,8 @@ const MAX_TREATMENT_PLAN_CHARS = 50_000;
 const MAX_DISCHARGE_SUMMARY_CHARS = 50_000;
 const MAX_NURSING_DISCHARGE_CHARS = 50_000;
 const MAX_RESULT_TEXT_CHARS = 50_000;
+const MAX_STRUCTURED_RESULT_CHARS = 50_000;
+const MAX_STRUCTURED_RESULT_KEYS = 100;
 const MAX_FOLLOWUP_INSTRUCTIONS_CHARS = 10_000;
 const MAX_APPOINTMENT_NOTES_CHARS = 10_000;
 const MAX_STRUCTURED_ENTRIES = 100;
@@ -353,6 +355,7 @@ export class EncounterAiSnapshotBuilder {
         id: true,
         orderItemId: true,
         resultText: true,
+        resultData: true,
         criticalValue: true,
         acknowledgedByProviderAt: true,
         createdAt: true,
@@ -642,6 +645,17 @@ export class EncounterAiSnapshotBuilder {
 
     const mappedResults = results.map((result) => {
       const resultText = toAiBoundedText(result.resultText, MAX_RESULT_TEXT_CHARS);
+      const resultDataObject = result.resultData && typeof result.resultData === "object" && !Array.isArray(result.resultData)
+        ? result.resultData as Record<string, unknown>
+        : null;
+      const structuredDataKeys = resultDataObject
+        ? Object.keys(resultDataObject).filter((key) => !/attachment|base64|dataUrl|content/i.test(key)).slice(0, MAX_STRUCTURED_RESULT_KEYS)
+        : [];
+      const safeStructuredData = resultDataObject
+        ? Object.fromEntries(structuredDataKeys.map((key) => [key, resultDataObject[key]]))
+        : null;
+      const attachmentValue = resultDataObject?.attachments;
+      const attachmentCount = Array.isArray(attachmentValue) ? attachmentValue.length : 0;
       return {
         id: result.id,
         orderItemId: result.orderItemId,
@@ -650,6 +664,9 @@ export class EncounterAiSnapshotBuilder {
         acknowledgedByProviderAt: toIsoString(result.acknowledgedByProviderAt),
         resultedAt: toIsoString(result.createdAt),
         verifiedAt: toIsoString(result.verifiedAt),
+        structuredData: safeStructuredData ? toAiBoundedText(JSON.stringify(safeStructuredData), MAX_STRUCTURED_RESULT_CHARS) : null,
+        structuredDataKeys,
+        attachmentCount,
       };
     });
 
@@ -861,6 +878,13 @@ export class EncounterAiSnapshotBuilder {
     if (input.orders.length >= MAX_ORDERS) truncatedDomains.push("ORDERS");
     if (input.orders.some((order) => order.items.length >= MAX_ORDER_ITEMS)) truncatedDomains.push("ORDER_ITEMS");
     if (input.results.length >= MAX_RESULTS) truncatedDomains.push("RESULTS");
+    if (input.results.some((result) => {
+      const data = result.resultData && typeof result.resultData === "object" && !Array.isArray(result.resultData) ? result.resultData as Record<string, unknown> : null;
+      if (!data) return false;
+      const safeKeys = Object.keys(data).filter((key) => !/attachment|base64|dataUrl|content/i.test(key));
+      const safe = Object.fromEntries(safeKeys.slice(0, MAX_STRUCTURED_RESULT_KEYS).map((key) => [key, data[key]]));
+      return safeKeys.length > MAX_STRUCTURED_RESULT_KEYS || JSON.stringify(safe).length > MAX_STRUCTURED_RESULT_CHARS;
+    })) truncatedDomains.push("STRUCTURED_RESULT_DATA");
     if (input.diagnoses.length >= MAX_DIAGNOSES) truncatedDomains.push("DIAGNOSES");
     if (input.medicationAdministrations.length >= MAX_MEDICATION_ADMINISTRATIONS) truncatedDomains.push("MEDICATION_ADMINISTRATIONS");
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
@@ -877,9 +901,7 @@ export class EncounterAiSnapshotBuilder {
     // These sources are persisted and clinically relevant but are not yet loaded
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
-    const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "STRUCTURED_RESULT_DATA",
-    ];
+    const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [];
     return {
       complete: truncatedDomains.length === 0 && missingSourceDomains.length === 0,
       truncatedDomains,

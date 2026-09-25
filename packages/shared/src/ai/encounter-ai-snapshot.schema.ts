@@ -160,6 +160,9 @@ export const aiResultSchema = z.object({
   acknowledgedByProviderAt: z.string().datetime().nullable().optional(),
   resultedAt: z.string().datetime().nullable().optional(),
   verifiedAt: z.string().datetime().nullable().optional(),
+  structuredData: aiBoundedTextSchema.nullable().optional(),
+  structuredDataKeys: z.array(z.string()).max(100).optional(),
+  attachmentCount: z.number().int().nonnegative().optional(),
 });
 
 export type AiResult = z.infer<typeof aiResultSchema>;
@@ -327,7 +330,8 @@ export const aiSnapshotCompletenessSchema = z.object({
     "NURSING_DISCHARGE_EXECUTION",
     "PROCEDURE_EVENTS",
     "IV_ACCESS_EVENTS",
-  ])).max(15),
+    "STRUCTURED_RESULT_DATA",
+  ])).max(16),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",
