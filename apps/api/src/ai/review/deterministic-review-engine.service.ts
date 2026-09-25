@@ -25,6 +25,7 @@ import { rule15ResultsNotReconciledInMdm } from "./rules/rule-15-results-not-rec
 import { rule16DuplicateDiagnosticOrders } from "./rules/rule-16-duplicate-diagnostic-orders.rule.js";
 import { rule17CompletedDiagnosticMissingResult } from "./rules/rule-17-completed-diagnostic-missing-result.rule.js";
 import { rule18CompletedDiagnosticMissingResultAtDischarge } from "./rules/rule-18-completed-diagnostic-missing-result-at-discharge.rule.js";
+import { rule19DispositionConsistency } from "./rules/rule-19-disposition-consistency.rule.js";
 
 const PRIORITY_RANK: Record<AiSuggestion["priority"], number> = {
   CRITICAL: 0,
@@ -89,7 +90,9 @@ export class DeterministicReviewEngine {
     }
 
     const finalized = this.finalize(suggestions);
-    return { suggestions: this.finalize([...finalized, ...this.preDischargeSummary(snapshot, ctx, finalized)]) };
+    const dispositionReview = rule19DispositionConsistency(snapshot, ctx, finalized);
+    const withDispositionReview = this.finalize([...finalized, ...dispositionReview]);
+    return { suggestions: this.finalize([...withDispositionReview, ...this.preDischargeSummary(snapshot, ctx, finalized)]) };
   }
 
   private preDischargeSummary(
