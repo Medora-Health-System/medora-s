@@ -113,6 +113,28 @@ function sanitizeNursingDischargeValue(value: unknown, depth = 0): unknown {
   return result;
 }
 
+const CLINICAL_EVENT_IDENTITY_KEYS = new Set([
+  "userId", "user_id", "staffId", "staff_id", "providerId", "provider_id",
+  "employeeId", "employee_id", "nurseId", "nurse_id", "email", "phone",
+  "signature", "signedBy", "signed_by", "performedBy", "performed_by",
+  "createdBy", "created_by", "updatedBy", "updated_by", "authorId", "author_id",
+]);
+
+function sanitizeClinicalEventValue(value: unknown, depth = 0): unknown {
+  if (depth > 6) return "[truncated]";
+  if (value == null || typeof value === "boolean" || typeof value === "number") return value;
+  if (typeof value === "string") return value.length > 4_000 ? value.slice(0, 4_000) : value;
+  if (Array.isArray(value)) return value.slice(0, 50).map((item) => sanitizeClinicalEventValue(item, depth + 1));
+  if (typeof value !== "object") return null;
+  const source = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(source).sort().slice(0, 100)) {
+    if (CLINICAL_EVENT_IDENTITY_KEYS.has(key)) continue;
+    result[key] = sanitizeClinicalEventValue(source[key], depth + 1);
+  }
+  return result;
+}
+
 function stableStructuredEntryId(namespace: string, payload: unknown): string {
   const digest = createHash("sha256")
     .update(`${namespace}\n${canonicalJsonStringify(payload)}`)
@@ -785,7 +807,7 @@ export class EncounterAiSnapshotBuilder {
         site: typeof payload.site === "string" ? payload.site : null,
         status: typeof payload.status === "string" ? payload.status : "COMPLETED",
         documentationRole: typeof payload.documentationRole === "string" ? payload.documentationRole : null,
-        payload: toAiBoundedText(JSON.stringify(payload), MAX_PROCEDURE_EVENT_CHARS)!,
+        payload: toAiBoundedText(canonicalJsonStringify(sanitizeClinicalEventValue(payload)), MAX_PROCEDURE_EVENT_CHARS)!,
       };
     });
 
