@@ -40,4 +40,3 @@ export class AiFeatureFlagsService {
     return (ai as Record<string, unknown>).externalClinicalReviewEnabled === true;
   }
 }
-}
