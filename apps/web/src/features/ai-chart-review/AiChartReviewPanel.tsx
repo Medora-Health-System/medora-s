@@ -106,12 +106,8 @@ function localeKey(language: string): Locale {
   return "en";
 }
 
-function priorityTone(priority: AiSuggestion["priority"]) {
-  if (priority === "CRITICAL") return { bg: "#fff1f2", border: "#fecdd3", color: "#be123c", icon: "🚨" };
-  if (priority === "HIGH") return { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c", icon: "⚠️" };
-  if (priority === "MEDIUM") return { bg: "#fffbeb", border: "#fde68a", color: "#a16207", icon: "💡" };
-  return { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8", icon: "ℹ️" };
-}
+const MEDORA_BLUE = "#60a5fa";
+const MEDORA_BLUE_DARK = "#2563eb";
 
 export function AiChartReviewPanel({
   encounterId,
@@ -132,6 +128,7 @@ export function AiChartReviewPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [feedback, setFeedback] = useState<Record<string, FeedbackRating>>({});
+  const [panelFeedback, setPanelFeedback] = useState<FeedbackRating | null>(null);
   const [feedbackPending, setFeedbackPending] = useState<Record<string, boolean>>({});
   const [feedbackError, setFeedbackError] = useState<Record<string, boolean>>({});
   const requestSequence = useRef(0);
@@ -143,6 +140,7 @@ export function AiChartReviewPanel({
     setSuggestions([]);
     setError(false);
     setFeedback({});
+    setPanelFeedback(null);
     setFeedbackPending({});
     setFeedbackError({});
     setLoading(true);
@@ -280,41 +278,12 @@ export function AiChartReviewPanel({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span
-            aria-hidden="true"
-            style={{
-              display: "grid",
-              placeItems: "center",
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: "#e2e8f0",
-              fontSize: 17,
-              color: "#334155",
-            }}
-          >
-            +
+          <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 8, background: "#eff6ff", border: "1px solid #dbeafe", overflow: "hidden" }}>
+            <img src="/branding/medora-logo.png" alt="" width={28} height={28} style={{ objectFit: "contain" }} />
           </span>
           <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a", letterSpacing: "-.01em" }}>{copy.title}</h2>
         </div>
-        <button
-          type="button"
-          aria-label={copy.refresh}
-          title={copy.refresh}
-          onClick={() => void load(false)}
-          disabled={loading}
-          style={{
-            width: 32,
-            height: 32,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-            borderRadius: 7,
-            cursor: "pointer",
-            fontSize: 15,
-          }}
-        >
-          ↻
-        </button>
+        <button type="button" aria-label={copy.refresh} title={copy.refresh} onClick={() => void load(false)} disabled={loading} style={{ width: 32, height: 32, border: "1px solid #bfdbfe", color: MEDORA_BLUE_DARK, background: "#fff", borderRadius: 7, cursor: "pointer", fontSize: 15 }}>↻</button>
       </div>
 
       {loading ? (
@@ -345,18 +314,13 @@ export function AiChartReviewPanel({
               const pending = feedbackPending[suggestion.id] === true;
               const title = pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title);
               const summary = pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary);
-              const priorityColor = suggestion.priority === "CRITICAL" ? "#991b1b" : suggestion.priority === "HIGH" ? "#9a3412" : "#475569";
+              const priorityColor = MEDORA_BLUE_DARK;
               return (
                 <article key={suggestion.id} style={{ borderLeft: `3px solid ${priorityColor}`, padding: "8px 8px 8px 10px", marginBottom: 7, background: "#fff" }}>
                   <span style={{ color: priorityColor, fontSize: 9.5, fontWeight: 800, textTransform: "uppercase" }}>{copy.priorities[suggestion.priority]}</span>
                   <h4 style={{ margin: "2px 0 3px", fontSize: 13, color: "#0f172a" }}>{title}</h4>
                   <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45, color: "#475569" }}>{summary}</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7, alignItems: "center" }}>
-                    <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>{copy.helpful}</button>
-                    <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>{copy.notHelpful}</button>
-                    {selectedFeedback ? <span role="status" style={{ fontSize: 10, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
-                    {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10, color: "#b91c1c" }}>{copy.feedbackFailed}</span> : null}
-                  </div>
+
                 </article>
               );
             })}
@@ -369,6 +333,35 @@ export function AiChartReviewPanel({
           <h3 style={{ margin: "0 0 5px", fontSize: 12, fontWeight: 750, color: "#475569" }}>{copy.tabs.coding}</h3>
           <div style={{ color: "#64748b", fontSize: 11 }}>{copy.codingInactive}</div>
         </section>
+      ) : null}
+
+      {!loading && !error && suggestions.length > 0 ? (
+        <div style={{ borderTop: "1px solid #dbeafe", marginTop: 14, paddingTop: 12, display: "flex", gap: 8 }}>
+          {(["HELPFUL", "NOT_HELPFUL"] as const).map((rating) => {
+            const label = rating === "HELPFUL" ? copy.helpful : copy.notHelpful;
+            const selected = panelFeedback === rating;
+            return (
+              <button
+                key={rating}
+                type="button"
+                onClick={() => setPanelFeedback(rating)}
+                aria-pressed={selected}
+                style={{
+                  flex: 1,
+                  minHeight: 36,
+                  border: `1px solid ${selected ? MEDORA_BLUE : "#bfdbfe"}`,
+                  borderRadius: 8,
+                  background: selected ? "#eff6ff" : "#fff",
+                  color: MEDORA_BLUE_DARK,
+                  fontWeight: 650,
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       ) : null}
     </aside>
   );
