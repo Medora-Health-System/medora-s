@@ -33,7 +33,7 @@ export function rule14EdMissingVitals(snapshot: EncounterAiSnapshot, ctx: Sugges
       summary:
         "Provider documentation has started, but the chart does not contain a recorded vital-sign set. Confirm whether vitals were obtained and document the current values if available.",
       reasoningSummary:
-        "This finding identifies missing structured vital-sign documentation after provider work has begun. It does not assume that vitals were not measured at the bedside.",
+        "Vital signs are not documented in the chart after provider evaluation has begun. This does not mean vital signs were not measured at the bedside.",
       evidence: [],
       recommendedActions: [],
     }),
