@@ -32,7 +32,7 @@ export function rule16DuplicateDiagnosticOrders(snapshot: EncounterAiSnapshot, c
       priority: "MEDIUM",
       title: "Possible duplicate diagnostic orders",
       summary: `${items.length} active diagnostic orders have the same display name (${label}). Confirm whether each order is intentional before additional testing proceeds.`,
-      reasoningSummary: "This finding compares only active structured diagnostic-order labels and does not determine whether repeat testing is clinically inappropriate.",
+      reasoningSummary: "Medora Assist identified active diagnostic orders with the same name. This does not determine whether repeat testing is clinically inappropriate.",
       evidence: [],
       recommendedActions: [{ actionType: "NAVIGATE", targetSection: "orders", label: "Review diagnostic orders" }],
     });
