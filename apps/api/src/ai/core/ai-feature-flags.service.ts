@@ -2,28 +2,32 @@ import { Injectable } from "@nestjs/common";
 import { AiConfigService } from "./ai-config.service";
 
 /**
- * Phase 1A feature-gating foundation.
- *
- * AI is disabled by default. In future phases this service can be extended to
- * evaluate facility/organization/category-level configuration once an
- * authoritative feature-flag source exists.
+ * AI-1 external-provider deployment kill switch. This deliberately does not
+ * gate local deterministic chart review, which never calls an external model.
+ * The allowlist is an interim operator control, NOT clinical/PHI approval.
+ * A durable facility/role/category capability and provider compliance review
+ * are still required before production activation.
  */
 @Injectable()
 export class AiFeatureFlagsService {
   constructor(private readonly config: AiConfigService) {}
 
   isAiEnabled(): boolean {
-    // Phase 1A: AI is enabled only when the provider is explicitly configured.
-    // The NO_OP default keeps AI off until deliberate opt-in.
-    const provider = this.config.getProvider();
-    return provider !== "NO_OP";
+    return this.config.getProvider() !== "NO_OP";
   }
 
   isCategoryEnabled(_category: string): boolean {
-    return this.isAiEnabled();
+    // Do not advertise category-specific permission before it exists.
+    return false;
   }
 
-  isFacilityEnabled(_facilityId: string): boolean {
-    return this.isAiEnabled();
+  isFacilityEnabled(facilityId: string): boolean {
+    if (!this.isAiEnabled() || !facilityId || typeof facilityId !== "string") return false;
+    const raw = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+    if (!raw || raw.trim().length === 0) return false;
+    const entries = raw.split(",").map((value) => value.trim()).filter(Boolean);
+    // No wildcard, partial matches, or malformed list can grant permission.
+    if (entries.some((value) => value === "*" || !/^[a-zA-Z0-9_-]{8,128}$/.test(value))) return false;
+    return entries.includes(facilityId);
   }
 }

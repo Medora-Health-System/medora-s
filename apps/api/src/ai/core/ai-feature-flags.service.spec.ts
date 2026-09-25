@@ -27,6 +27,35 @@ describe("AiFeatureFlagsService", () => {
     expect(service.isFacilityEnabled("fac-1")).toBe(false);
   });
 
+  it("keeps external AI off when provider is configured but facility is not explicitly allowlisted", async () => {
+    const service = await createService({ [AI_PROVIDER]: "OPENAI" });
+    const prior = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+    try {
+      delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+      expect(service.isFacilityEnabled("11111111-1111-4111-8111-111111111111")).toBe(false);
+      expect(service.isCategoryEnabled("CLINICAL_SAFETY")).toBe(false);
+    } finally {
+      if (prior === undefined) delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+      else process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = prior;
+    }
+  });
+
+  it("requires exact facility match and rejects wildcards", async () => {
+    const service = await createService({ [AI_PROVIDER]: "OPENAI" });
+    const prior = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+    const facility = "11111111-1111-4111-8111-111111111111";
+    try {
+      process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = facility;
+      expect(service.isFacilityEnabled(facility)).toBe(true);
+      expect(service.isFacilityEnabled("22222222-2222-4222-8222-222222222222")).toBe(false);
+      process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = facility + ",*";
+      expect(service.isFacilityEnabled(facility)).toBe(false);
+    } finally {
+      if (prior === undefined) delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
+      else process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = prior;
+    }
+  });
+
   it("disables AI when provider is NO_OP", async () => {
     const service = await createService({ [AI_PROVIDER]: "NO_OP" });
     expect(service.isAiEnabled()).toBe(false);
