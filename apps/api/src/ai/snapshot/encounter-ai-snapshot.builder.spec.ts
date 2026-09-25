@@ -354,7 +354,7 @@ describe("EncounterAiSnapshotBuilder", () => {
               id: "proc-event-1",
               eventType: "PROCEDURE_DOCUMENTED",
               createdAt: new Date("2026-09-25T14:00:00.000Z"),
-              payloadJson: { procedureType: "LACERATION_REPAIR", site: "left forearm", performedAt: "2026-09-25T13:55:00.000Z", documentationRole: "PROVIDER" },
+              payloadJson: { procedureType: "LACERATION_REPAIR", site: "left forearm", performedAt: "2026-09-25T13:55:00.000Z", documentationRole: "PROVIDER", performedBy: "provider-secret-id", nested: { userId: "staff-secret-id", technique: "simple interrupted" } },
             }];
           }),
         },
@@ -370,6 +370,10 @@ describe("EncounterAiSnapshotBuilder", () => {
       performedAt: "2026-09-25T13:55:00.000Z",
       documentationRole: "PROVIDER",
     });
+    const procedurePayload = snapshot.treatments.procedureEvents?.[0]?.payload?.text ?? "";
+    expect(procedurePayload).toContain("simple interrupted");
+    expect(procedurePayload).not.toContain("provider-secret-id");
+    expect(procedurePayload).not.toContain("staff-secret-id");
     expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROCEDURE_EVENTS");
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
