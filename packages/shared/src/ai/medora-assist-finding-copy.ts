@@ -314,6 +314,18 @@ const FINDING_COPY = {
       fr: "{medication} a une ordonnance active sans administration correspondante pendant la préparation de la sortie. Effectuez la conciliation du dossier médicamenteux avant la sortie lorsque cela s’applique.",
     },
   },
+  dispositionNeedsReconciliation: {
+    title: {
+      en: "Disposition needs review with unresolved chart findings",
+      es: "La disposición requiere revisión por hallazgos pendientes en la historia",
+      fr: "L’orientation nécessite une revue en raison d’éléments non résolus dans le dossier",
+    },
+    summary: {
+      en: "A disposition is documented while {count} finding(s) remain in results, medications, reassessment, follow-up, or discharge documentation. Review the disposition together with the individual findings before finalizing the transition of care.",
+      es: "Hay una disposición documentada mientras permanecen {count} hallazgo(s) en resultados, medicamentos, reevaluación, seguimiento o documentación del alta. Revise la disposición junto con los hallazgos individuales antes de finalizar la transición de atención.",
+      fr: "Une orientation est documentée alors que {count} élément(s) restent à revoir concernant les résultats, les médicaments, la réévaluation, le suivi ou la documentation de sortie. Revoyez l’orientation avec les constatations individuelles avant de finaliser la transition des soins.",
+    },
+  },
   preDischargeUnresolvedItems: {
     title: {
       en: "Items remain for review before discharge",
