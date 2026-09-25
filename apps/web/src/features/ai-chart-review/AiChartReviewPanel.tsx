@@ -80,22 +80,7 @@ const COPY: Record<Locale, Copy> = {
 };
 
 const TAB_ORDER: TabId[] = ["safety", "diagnostics", "treatment", "documentation", "discharge", "coding"];
-const TAB_ICON: Record<TabId, string> = {
-  safety: "🛡️",
-  diagnostics: "🩺",
-  treatment: "💊",
-  documentation: "📋",
-  discharge: "🏠",
-  coding: "🧾",
-};
-const TAB_TONE: Record<TabId, { bg: string; border: string; color: string }> = {
-  safety: { bg: "#fff1f2", border: "#fecdd3", color: "#be123c" },
-  diagnostics: { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
-  treatment: { bg: "#ecfdf5", border: "#a7f3d0", color: "#047857" },
-  documentation: { bg: "#faf5ff", border: "#e9d5ff", color: "#7e22ce" },
-  discharge: { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
-  coding: { bg: "#f8fafc", border: "#cbd5e1", color: "#475569" },
-};
+const SECTION_ORDER: TabId[] = ["safety", "diagnostics", "treatment", "documentation", "discharge"];
 const AUTO_REFRESH_MS = 30_000;
 const TAB_BY_CATEGORY: Record<AiSuggestionCategory, TabId> = {
   CLINICAL_SAFETY: "safety",
@@ -143,7 +128,6 @@ export function AiChartReviewPanel({
   const locale = localeKey(language);
   const copy = COPY[locale];
   const identity = medoraAssistRequestIdentity({ facilityId, encounterId });
-  const [activeTab, setActiveTab] = useState<TabId>("safety");
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -272,7 +256,6 @@ export function AiChartReviewPanel({
     return result;
   }, [suggestions]);
 
-  const current = grouped[activeTab];
 
   return (
     <aside
@@ -289,10 +272,10 @@ export function AiChartReviewPanel({
         padding: 14,
         boxSizing: "border-box",
         alignSelf: "flex-start",
-        border: "1px solid #c7d2fe",
-        borderRadius: 16,
-        background: "linear-gradient(155deg,#ffffff 0%,#f5f7ff 52%,#fdf4ff 100%)",
-        boxShadow: "0 10px 28px rgba(79,70,229,.10)",
+        border: "1px solid #cbd5e1",
+        borderRadius: 10,
+        background: "#f8fafc",
+        boxShadow: "0 4px 14px rgba(15,23,42,.06)",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -304,14 +287,15 @@ export function AiChartReviewPanel({
               placeItems: "center",
               width: 36,
               height: 36,
-              borderRadius: 12,
-              background: "linear-gradient(135deg,#dbeafe,#ede9fe,#fae8ff)",
-              fontSize: 21,
+              borderRadius: 8,
+              background: "#e2e8f0",
+              fontSize: 17,
+              color: "#334155",
             }}
           >
-            ✨
+            +
           </span>
-          <h2 style={{ margin: 0, fontSize: 17, color: "#172554", letterSpacing: "-.01em" }}>{copy.title}</h2>
+          <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a", letterSpacing: "-.01em" }}>{copy.title}</h2>
         </div>
         <button
           type="button"
@@ -322,9 +306,9 @@ export function AiChartReviewPanel({
           style={{
             width: 32,
             height: 32,
-            border: "1px solid #dbeafe",
-            background: "rgba(255,255,255,.85)",
-            borderRadius: 10,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            borderRadius: 7,
             cursor: "pointer",
             fontSize: 15,
           }}
@@ -333,105 +317,59 @@ export function AiChartReviewPanel({
         </button>
       </div>
 
-      <div role="tablist" aria-label={copy.title} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 14 }}>
-        {TAB_ORDER.map((tab) => {
-          const tone = TAB_TONE[tab];
-          const active = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                minHeight: 54,
-                border: `1px solid ${tone.border}`,
-                background: active ? tone.bg : "rgba(255,255,255,.72)",
-                color: tone.color,
-                borderRadius: 11,
-                padding: "6px 4px",
-                fontSize: 9.5,
-                fontWeight: active ? 750 : 600,
-                cursor: "pointer",
-              }}
-            >
-              <span aria-hidden="true" style={{ display: "block", fontSize: 17, marginBottom: 2 }}>{TAB_ICON[tab]}</span>
-              {copy.tabs[tab]}
-              {tab !== "coding" && grouped[tab].length ? ` · ${grouped[tab].length}` : ""}
-            </button>
-          );
-        })}
-      </div>
-
       {loading ? (
         <div role="status" style={{ padding: 14, textAlign: "center", color: "#64748b", fontSize: 12 }}>
-          ✨ {copy.loading}
+          {copy.loading}
         </div>
       ) : null}
 
       {!loading && error ? (
-        <div role="alert" style={{ padding: 12, border: "1px solid #fecdd3", borderRadius: 12, background: "#fff1f2" }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#9f1239" }}>{copy.unavailable}</p>
+        <div role="alert" style={{ padding: 12, border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#334155" }}>{copy.unavailable}</p>
           <button type="button" onClick={() => void load(false)}>{copy.retry}</button>
         </div>
       ) : null}
 
-      {!loading && !error && activeTab === "coding" ? (
-        <div style={{ padding: 12, border: "1px solid #e2e8f0", borderRadius: 12, background: "rgba(255,255,255,.75)", color: "#475569", fontSize: 12 }}>
-          🧾 {copy.codingInactive}
-        </div>
-      ) : null}
-
-      {!loading && !error && activeTab !== "coding" && current.length === 0 ? (
-        <div style={{ padding: "18px 10px", textAlign: "center", color: "#64748b", fontSize: 12 }}>
-          <div style={{ fontSize: 22, marginBottom: 5 }}>✓</div>
-          {copy.empty}
-        </div>
-      ) : null}
-
-      {!loading && !error && activeTab !== "coding"
-        ? current.map((suggestion) => {
-            const tone = priorityTone(suggestion.priority);
-            const selectedFeedback = feedback[suggestion.id];
-            const pending = feedbackPending[suggestion.id] === true;
-            const title = pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title);
-            const summary = pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary);
-            return (
-              <article
-                key={suggestion.id}
-                style={{
-                  border: `1px solid ${tone.border}`,
-                  borderRadius: 13,
-                  padding: 11,
-                  marginBottom: 9,
-                  background: tone.bg,
-                }}
-              >
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <span aria-hidden="true" style={{ fontSize: 19 }}>{tone.icon}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ color: tone.color, fontSize: 9.5, fontWeight: 800, textTransform: "uppercase" }}>
-                      {copy.priorities[suggestion.priority]}
-                    </span>
-                    <h3 style={{ margin: "2px 0 3px", fontSize: 13.5, color: "#0f172a" }}>{title}</h3>
-                    <p style={{ margin: 0, fontSize: 11.8, lineHeight: 1.45, color: "#334155" }}>{summary}</p>
+      {!loading && !error ? SECTION_ORDER.map((section) => {
+        const findings = grouped[section];
+        return (
+          <section key={section} aria-labelledby={`medora-assist-${section}`} style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10, marginTop: 10 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 7 }}>
+              <h3 id={`medora-assist-${section}`} style={{ margin: 0, fontSize: 12, fontWeight: 750, color: "#1e293b" }}>{copy.tabs[section]}</h3>
+              {findings.length ? <span style={{ fontSize: 10.5, color: "#64748b" }}>{findings.length}</span> : null}
+            </div>
+            {findings.length === 0 ? (
+              <div style={{ padding: "3px 0 7px", color: "#94a3b8", fontSize: 11 }}>{copy.empty}</div>
+            ) : findings.map((suggestion) => {
+              const selectedFeedback = feedback[suggestion.id];
+              const pending = feedbackPending[suggestion.id] === true;
+              const title = pickAiLocalizedCopy(suggestion.titleLocalized, locale, suggestion.title);
+              const summary = pickAiLocalizedCopy(suggestion.summaryLocalized, locale, suggestion.summary);
+              const priorityColor = suggestion.priority === "CRITICAL" ? "#991b1b" : suggestion.priority === "HIGH" ? "#9a3412" : "#475569";
+              return (
+                <article key={suggestion.id} style={{ borderLeft: `3px solid ${priorityColor}`, padding: "8px 8px 8px 10px", marginBottom: 7, background: "#fff" }}>
+                  <span style={{ color: priorityColor, fontSize: 9.5, fontWeight: 800, textTransform: "uppercase" }}>{copy.priorities[suggestion.priority]}</span>
+                  <h4 style={{ margin: "2px 0 3px", fontSize: 13, color: "#0f172a" }}>{title}</h4>
+                  <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45, color: "#475569" }}>{summary}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7, alignItems: "center" }}>
+                    <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>{copy.helpful}</button>
+                    <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>{copy.notHelpful}</button>
+                    {selectedFeedback ? <span role="status" style={{ fontSize: 10, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
+                    {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10, color: "#b91c1c" }}>{copy.feedbackFailed}</span> : null}
                   </div>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9, alignItems: "center" }}>
-                  <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "HELPFUL")}>
-                    {copy.helpful}
-                  </button>
-                  <button type="button" disabled={pending || Boolean(selectedFeedback)} onClick={() => void submitFeedback(suggestion, "NOT_HELPFUL")}>
-                    {copy.notHelpful}
-                  </button>
-                  {selectedFeedback ? <span role="status" style={{ fontSize: 10, color: "#64748b" }}>{copy.feedbackThanks}</span> : null}
-                  {feedbackError[suggestion.id] ? <span role="alert" style={{ fontSize: 10, color: "#b91c1c" }}>{copy.feedbackFailed}</span> : null}
-                </div>
-              </article>
-            );
-          })
-        : null}
+                </article>
+              );
+            })}
+          </section>
+        );
+      }) : null}
+
+      {!loading && !error ? (
+        <section style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10, marginTop: 10 }}>
+          <h3 style={{ margin: "0 0 5px", fontSize: 12, fontWeight: 750, color: "#475569" }}>{copy.tabs.coding}</h3>
+          <div style={{ color: "#64748b", fontSize: 11 }}>{copy.codingInactive}</div>
+        </section>
+      ) : null}
     </aside>
   );
 }
