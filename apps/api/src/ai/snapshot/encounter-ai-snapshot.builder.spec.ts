@@ -104,6 +104,9 @@ function buildPrismaMock(overrides: any = {}) {
     appointment: {
       findMany: jest.fn(async () => []),
     },
+    encounterNote: {
+      findMany: jest.fn(async () => []),
+    },
     ...overrides.prisma,
   };
 }
@@ -156,6 +159,48 @@ describe("EncounterAiSnapshotBuilder", () => {
       console.error(parsed.error.format());
     }
     expect(parsed.success).toBe(true);
+  });
+
+  it("projects facility-scoped encounter notes with lifecycle and truncation metadata", async () => {
+    const longBody = "n".repeat(25_000);
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterNote: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ encounterId: ENCOUNTER_ID, facilityId: FACILITY_ID });
+            expect(args.take).toBe(100);
+            return [{
+              id: "note-1",
+              noteType: "NURSING",
+              body: longBody,
+              createdAt: new Date("2026-09-24T20:00:00.000Z"),
+              voidedAt: null,
+              isAmendment: false,
+              amendedFromNoteId: null,
+              requiresCosign: true,
+              cosignedAt: null,
+            }];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({
+      facilityId: FACILITY_ID,
+      encounterId: ENCOUNTER_ID,
+      actorUserId: ACTOR_USER_ID,
+    });
+
+    expect(snapshot.clinicalDocumentation.encounterNotes?.[0]).toMatchObject({
+      id: "note-1",
+      noteType: "NURSING",
+      body: { text: longBody.slice(0, 20_000), truncated: true, originalLength: 25_000 },
+      isAmendment: false,
+      requiresCosign: true,
+    });
+    expect(snapshot.completeness?.truncatedDomains).toContain("ENCOUNTER_NOTES");
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("ENCOUNTER_NOTES");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
   it("rejects an actor without active facility access", async () => {
