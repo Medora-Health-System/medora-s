@@ -1,4 +1,4 @@
-import type { EncounterAiSnapshot } from "@medora/shared";
+import type { AiSuggestion, EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
 import {
   administeredAtMs,
@@ -22,7 +22,7 @@ export function rule10TreatmentWithoutReassessment(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
-  const suggestions = [];
+  const suggestions: AiSuggestion[] = [];
   const careSetting = snapshot.encounterContext.careSetting;
   if (careSetting === "OFFICE_OUTPATIENT_CLINIC") return suggestions;
   const ordersById = new Map(
