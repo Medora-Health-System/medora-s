@@ -290,6 +290,30 @@ const FINDING_COPY = {
       fr: "Le transfert vers le service d’urgences est sélectionné, mais le mode de transport est incomplet.",
     },
   },
+  completedDiagnosticMissingResultAtDischarge: {
+    title: {
+      en: "Completed diagnostic study has no result available before discharge",
+      es: "Estudio diagnóstico completado sin resultado disponible antes del alta",
+      fr: "Examen diagnostique terminé sans résultat disponible avant la sortie",
+    },
+    summary: {
+      en: "{study} is documented as completed, but a result is not available in the chart while discharge is being prepared. Confirm the result status and document review or follow-up before discharge when appropriate.",
+      es: "{study} está documentado como completado, pero el resultado no está disponible en la historia mientras se prepara el alta. Confirme el estado del resultado y documente su revisión o seguimiento antes del alta cuando corresponda.",
+      fr: "{study} est documenté comme terminé, mais le résultat n’est pas disponible dans le dossier pendant la préparation de la sortie. Confirmez le statut du résultat et documentez sa revue ou son suivi avant la sortie lorsque cela s’applique.",
+    },
+  },
+  medicationReconciliationAtDischarge: {
+    title: {
+      en: "Medication order and administration need review before discharge",
+      es: "La orden y la administración del medicamento requieren revisión antes del alta",
+      fr: "L’ordonnance et l’administration du médicament nécessitent une revue avant la sortie",
+    },
+    summary: {
+      en: "{medication} has an active medication order without a matching administration record while discharge is being prepared. Reconcile the medication record before discharge when appropriate.",
+      es: "{medication} tiene una orden activa sin un registro de administración coincidente mientras se prepara el alta. Concilie el registro de medicamentos antes del alta cuando corresponda.",
+      fr: "{medication} a une ordonnance active sans administration correspondante pendant la préparation de la sortie. Effectuez la conciliation du dossier médicamenteux avant la sortie lorsque cela s’applique.",
+    },
+  },
   transitionReassessmentMissing: {
     title: {
       en: "No reassessment entry found after treatment before transition",
