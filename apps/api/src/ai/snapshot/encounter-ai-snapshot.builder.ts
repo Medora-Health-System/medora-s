@@ -15,6 +15,7 @@ import { extractDispositionFacts } from "./extract-disposition-facts.js";
 const MAX_PROVIDER_NOTE_CHARS = 50_000;
 const MAX_TREATMENT_PLAN_CHARS = 50_000;
 const MAX_DISCHARGE_SUMMARY_CHARS = 50_000;
+const MAX_NURSING_DISCHARGE_CHARS = 50_000;
 const MAX_RESULT_TEXT_CHARS = 50_000;
 const MAX_FOLLOWUP_INSTRUCTIONS_CHARS = 10_000;
 const MAX_APPOINTMENT_NOTES_CHARS = 10_000;
@@ -722,6 +723,12 @@ export class EncounterAiSnapshotBuilder {
     followUps: Awaited<ReturnType<typeof this.findFollowUps>>,
     appointments: Awaited<ReturnType<typeof this.findAppointments>>
   ): EncounterAiSnapshot["disposition"] {
+    const summaryRoot = encounter?.dischargeSummaryJson && typeof encounter.dischargeSummaryJson === "object" && !Array.isArray(encounter.dischargeSummaryJson)
+      ? encounter.dischargeSummaryJson as Record<string, unknown>
+      : null;
+    const nursingRaw = summaryRoot?.inpatientNursingDischarge && typeof summaryRoot.inpatientNursingDischarge === "object" && !Array.isArray(summaryRoot.inpatientNursingDischarge)
+      ? summaryRoot.inpatientNursingDischarge as Record<string, unknown>
+      : null;
     const dischargeSummary = encounter?.dischargeSummaryJson
       ? toAiBoundedText(JSON.stringify(encounter.dischargeSummaryJson), MAX_DISCHARGE_SUMMARY_CHARS)
       : null;
@@ -743,6 +750,15 @@ export class EncounterAiSnapshotBuilder {
         dueDate: toIsoString(followUp.dueDate),
         instructions: toAiBoundedText(followUp.notes, MAX_FOLLOWUP_INSTRUCTIONS_CHARS),
       })),
+      nursingDischargeExecution: {
+        present: nursingRaw !== null,
+        executionStatus: typeof nursingRaw?.executionStatus === "string" ? nursingRaw.executionStatus : null,
+        revision: typeof nursingRaw?.revision === "number" ? nursingRaw.revision : null,
+        completedAt: typeof nursingRaw?.completedAt === "string" ? toIsoString(nursingRaw.completedAt) : null,
+        departureAt: typeof nursingRaw?.departureAt === "string" ? toIsoString(nursingRaw.departureAt) : null,
+        dispositionMismatchDetected: nursingRaw?.dispositionMismatch && typeof nursingRaw.dispositionMismatch === "object" && !Array.isArray(nursingRaw.dispositionMismatch) ? Boolean((nursingRaw.dispositionMismatch as Record<string, unknown>).detected) : null,
+        documentation: nursingRaw ? toAiBoundedText(JSON.stringify(nursingRaw), MAX_NURSING_DISCHARGE_CHARS) : null,
+      },
       appointments: appointments.map((appointment) => ({
         id: appointment.id,
         status: appointment.status,
@@ -782,6 +798,9 @@ export class EncounterAiSnapshotBuilder {
     if (input.medicationAdministrations.length >= MAX_MEDICATION_ADMINISTRATIONS) truncatedDomains.push("MEDICATION_ADMINISTRATIONS");
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
     if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
+    const dischargeRoot = input.encounter.dischargeSummaryJson && typeof input.encounter.dischargeSummaryJson === "object" && !Array.isArray(input.encounter.dischargeSummaryJson) ? input.encounter.dischargeSummaryJson as Record<string, unknown> : null;
+    const nursingDischarge = dischargeRoot?.inpatientNursingDischarge && typeof dischargeRoot.inpatientNursingDischarge === "object" && !Array.isArray(dischargeRoot.inpatientNursingDischarge) ? dischargeRoot.inpatientNursingDischarge as Record<string, unknown> : null;
+    if (nursingDischarge && JSON.stringify(nursingDischarge).length > MAX_NURSING_DISCHARGE_CHARS) truncatedDomains.push("NURSING_DISCHARGE_EXECUTION");
     if (input.encounterNotes.length >= MAX_ENCOUNTER_NOTES || input.encounterNotes.some((note) => note.body.length > MAX_ENCOUNTER_NOTE_CHARS)) truncatedDomains.push("ENCOUNTER_NOTES");
     if (input.providerDocumentationVersions.length >= MAX_PROVIDER_DOCUMENTATION_VERSIONS || input.providerDocumentationVersions.some((version) => (version.unlockReason?.length ?? 0) > MAX_PROVIDER_UNLOCK_REASON_CHARS)) truncatedDomains.push("PROVIDER_DOCUMENTATION_HISTORY");
     if (input.providerAddenda.length >= MAX_PROVIDER_ADDENDA || input.providerAddenda.some((addendum) => addendum.text.length > MAX_PROVIDER_ADDENDUM_CHARS || (addendum.amendmentReason?.length ?? 0) > MAX_PROVIDER_ADDENDUM_CHARS)) truncatedDomains.push("PROVIDER_ADDENDA");
@@ -790,7 +809,6 @@ export class EncounterAiSnapshotBuilder {
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
     const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "NURSING_DISCHARGE_EXECUTION",
       "PROCEDURE_EVENTS",
       "IV_ACCESS_EVENTS",
       "STRUCTURED_RESULT_DATA",
