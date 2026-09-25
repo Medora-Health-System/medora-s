@@ -143,7 +143,7 @@ export class EncounterAiSnapshotBuilder {
       }),
     };
 
-    const snapshotWithoutVersion: Omit<EncounterAiSnapshot, "snapshotVersion" | "generatedAt"> = {
+    const snapshotWithoutVersion: Omit<EncounterAiSnapshot, "snapshotVersion" | "generatedAt" | "completeness"> = {
       encounterContext,
       patientContext: {
         age: ageYearsFromDob(patient.dob),
@@ -159,11 +159,22 @@ export class EncounterAiSnapshotBuilder {
       disposition: this.buildDisposition(encounter, followUps, appointments),
     };
 
-    const snapshotVersion = this.computeSnapshotVersion(snapshotWithoutVersion);
+    const completeness = this.buildCompleteness({
+      encounter,
+      triageVitalsReadings,
+      orders,
+      results,
+      diagnoses,
+      medicationAdministrations,
+      followUps,
+      appointments,
+    });
+    const snapshotVersion = this.computeSnapshotVersion({ ...snapshotWithoutVersion, completeness });
 
     return {
       snapshotVersion,
       generatedAt,
+      completeness,
       ...snapshotWithoutVersion,
     };
   }
@@ -616,6 +627,34 @@ export class EncounterAiSnapshotBuilder {
         notes: toAiBoundedText(appointment.reason, MAX_APPOINTMENT_NOTES_CHARS),
       })),
     };
+  }
+
+  private buildCompleteness(input: {
+    encounter: NonNullable<Awaited<ReturnType<EncounterAiSnapshotBuilder["findAuthorizedEncounter"]>>>;
+    triageVitalsReadings: Awaited<ReturnType<EncounterAiSnapshotBuilder["findVitalsReadings"]>>;
+    orders: Awaited<ReturnType<EncounterAiSnapshotBuilder["findOrders"]>>;
+    results: Awaited<ReturnType<EncounterAiSnapshotBuilder["findResults"]>>;
+    diagnoses: Awaited<ReturnType<EncounterAiSnapshotBuilder["findDiagnoses"]>>;
+    medicationAdministrations: Awaited<ReturnType<EncounterAiSnapshotBuilder["findMedicationAdministrations"]>>;
+    followUps: Awaited<ReturnType<EncounterAiSnapshotBuilder["findFollowUps"]>>;
+    appointments: Awaited<ReturnType<EncounterAiSnapshotBuilder["findAppointments"]>>;
+  }): NonNullable<EncounterAiSnapshot["completeness"]> {
+    const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
+    if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
+    if (
+      input.encounter.nursingAssessment &&
+      typeof input.encounter.nursingAssessment === "object" &&
+      !Array.isArray(input.encounter.nursingAssessment) &&
+      Object.keys(input.encounter.nursingAssessment as Record<string, unknown>).length >= MAX_STRUCTURED_ENTRIES
+    ) truncatedDomains.push("STRUCTURED_DOCUMENTATION");
+    if (input.orders.length >= MAX_ORDERS) truncatedDomains.push("ORDERS");
+    if (input.orders.some((order) => order.items.length >= MAX_ORDER_ITEMS)) truncatedDomains.push("ORDER_ITEMS");
+    if (input.results.length >= MAX_RESULTS) truncatedDomains.push("RESULTS");
+    if (input.diagnoses.length >= MAX_DIAGNOSES) truncatedDomains.push("DIAGNOSES");
+    if (input.medicationAdministrations.length >= MAX_MEDICATION_ADMINISTRATIONS) truncatedDomains.push("MEDICATION_ADMINISTRATIONS");
+    if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
+    if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
+    return { complete: truncatedDomains.length === 0, truncatedDomains };
   }
 
   private computeSnapshotVersion(
