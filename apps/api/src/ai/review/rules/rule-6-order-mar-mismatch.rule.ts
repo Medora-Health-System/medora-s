@@ -61,15 +61,18 @@ export function rule6OrderMarMismatch(
       buildCopiedSuggestion(ctx, {
         category: "MEDICATION_CONSIDERATION",
         priority: "MEDIUM",
-        copyKey: medication ? "marUnresolvedNamed" : "marUnresolvedOrder",
+        copyKey: medication ? "medicationReconciliationAtDischarge" : "marUnresolvedOrder",
         vars: medication ? { medication } : undefined,
         evidence: [
           {
             sourceType: "MEDICATION",
             sourceId: order.id,
-            label: "Active medication order",
-            value: medication ?? order.id,
+            label: "Active medication order without matching administration record",
+            value: medication ?? "Medication order",
           },
+        ],
+        recommendedActions: [
+          { actionType: "REVIEW", label: "Reconcile medication before discharge" },
         ],
       })
     );
