@@ -14,7 +14,7 @@ export function rule10PrimaryDiagnosisConsistency(snapshot: EncounterAiSnapshot,
     priority: "MEDIUM",
     title: "Multiple diagnoses are marked primary",
     summary: "More than one active documented diagnosis is marked as primary. Review the diagnosis list and reconcile the primary designation if needed.",
-    reasoningSummary: "This finding compares only structured primary-designation fields and does not determine which diagnosis is correct.",
+    reasoningSummary: "More than one diagnosis is designated as primary in the chart. Medora Assist does not determine which diagnosis is clinically correct.",
     evidence: entries.map((item) => ({
       sourceType: "DIAGNOSIS" as const,
       sourceId: item.id,
