@@ -77,12 +77,27 @@ export const aiStructuredDocumentationEntrySchema = z.object({
 
 export type AiStructuredDocumentationEntry = z.infer<typeof aiStructuredDocumentationEntrySchema>;
 
+export const aiEncounterNarrativeNoteSchema = z.object({
+  id: z.string(),
+  noteType: z.string(),
+  body: aiBoundedTextSchema,
+  createdAt: z.string().datetime(),
+  voidedAt: z.string().datetime().nullable().optional(),
+  isAmendment: z.boolean(),
+  amendedFromNoteId: z.string().nullable().optional(),
+  requiresCosign: z.boolean(),
+  cosignedAt: z.string().datetime().nullable().optional(),
+});
+
+export type AiEncounterNarrativeNote = z.infer<typeof aiEncounterNarrativeNoteSchema>;
+
 export const aiClinicalDocumentationSchema = z.object({
   providerDocumentationStatus: z.string().nullable().optional(),
   providerNote: aiBoundedTextSchema.nullable().optional(),
   treatmentPlan: aiBoundedTextSchema.nullable().optional(),
   structuredEntries: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
   reassessments: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
+  encounterNotes: z.array(aiEncounterNarrativeNoteSchema).max(100).optional(),
 });
 
 export type AiClinicalDocumentation = z.infer<typeof aiClinicalDocumentationSchema>;
