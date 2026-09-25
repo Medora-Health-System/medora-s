@@ -73,6 +73,11 @@ export const aiStructuredDocumentationEntrySchema = z.object({
   documentedAt: z.string().datetime(),
   version: z.number().int().optional(),
   payloadSummary: z.record(z.unknown()).optional(),
+  category: z.string().nullable().optional(),
+  cardId: z.string().nullable().optional(),
+  voidedAt: z.string().datetime().nullable().optional(),
+  requiresWitnessSignature: z.boolean().optional(),
+  witnessedAt: z.string().datetime().nullable().optional(),
 });
 
 export type AiStructuredDocumentationEntry = z.infer<typeof aiStructuredDocumentationEntrySchema>;
