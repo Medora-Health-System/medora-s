@@ -48,9 +48,9 @@ export function rule15ResultsNotReconciledInMdm(
     buildAiSuggestion(ctx, {
       category: "RESULT_FOLLOWUP",
       priority: "MEDIUM",
-      title: "Available diagnostic results are not reconciled in the MDM",
+      title: "Available diagnostic results are not documented as reviewed",
       summary:
-        `The chart contains ${results.length} diagnostic result${results.length === 1 ? "" : "s"}, but the structured MDM does not document the data reviewed. Document how the available results were reviewed and incorporated into the assessment and plan when applicable.`,
+        `The chart contains ${results.length} diagnostic result${results.length === 1 ? "" : "s"}, but the medical decision-making documentation does not indicate how the available results were reviewed. Document their review and clinical relevance when applicable.`,
       reasoningSummary:
         "This finding checks whether available diagnostic data are explicitly reconciled in the provider's medical decision-making documentation. It does not determine whether the clinical interpretation is correct.",
       evidence: [],
