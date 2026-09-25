@@ -282,6 +282,37 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
+  it("projects persisted nursing discharge execution from the authorized encounter", async () => {
+    const prismaMock = buildPrismaMock({
+      encounter: {
+        dischargeSummaryJson: {
+          inpatientNursingDischarge: {
+            schemaVersion: "INP.DIS.1D",
+            executionStatus: "COMPLETED",
+            revision: 3,
+            completedAt: "2026-09-25T12:00:00.000Z",
+            departureAt: "2026-09-25T12:15:00.000Z",
+            dispositionMismatch: { detected: false },
+            instructionsReviewed: true,
+          },
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.disposition.nursingDischargeExecution).toMatchObject({
+      present: true,
+      executionStatus: "COMPLETED",
+      revision: 3,
+      completedAt: "2026-09-25T12:00:00.000Z",
+      departureAt: "2026-09-25T12:15:00.000Z",
+      dispositionMismatchDetected: false,
+    });
+    expect(snapshot.disposition.nursingDischargeExecution?.documentation?.text).toContain("instructionsReviewed");
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("NURSING_DISCHARGE_EXECUTION");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
   it("rejects an actor without active facility access", async () => {
     const prismaMock = buildPrismaMock();
     const builder = await createBuilder(prismaMock);
