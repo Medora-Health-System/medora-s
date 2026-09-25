@@ -254,6 +254,22 @@ const FINDING_COPY = {
       fr: "Un remplissage IV est documenté après une tachycardie, mais aucune fréquence cardiaque ni évaluation de réponse ultérieure n’a été identifiée.",
     },
   },
+  procedureWithoutReassessment: {
+    title: { en: "Procedure documented without a later reassessment", es: "Procedimiento documentado sin reevaluación posterior", fr: "Procédure documentée sans réévaluation ultérieure" },
+    summary: {
+      en: "{procedure} is documented, but a later reassessment entry was not identified in the reassessment documentation reviewed by Medora Assist. Review the patient response and document reassessment when appropriate.",
+      es: "{procedure} está documentado, pero no se identificó una entrada posterior de reevaluación en la documentación revisada por Medora Assist. Revise la respuesta del paciente y documente la reevaluación cuando corresponda.",
+      fr: "{procedure} est documenté, mais aucune entrée de réévaluation ultérieure n’a été trouvée dans la documentation de réévaluation examinée par Medora Assist. Revoyez la réponse du patient et documentez la réévaluation lorsque cela s’applique.",
+    },
+  },
+  ivRemovalDocumentationIncomplete: {
+    title: { en: "IV removal documentation is incomplete", es: "La documentación del retiro de la vía IV está incompleta", fr: "La documentation du retrait de la voie IV est incomplète" },
+    summary: {
+      en: "IV removal is documented, but the removal time or reason is incomplete. Review the IV documentation before the encounter is finalized.",
+      es: "El retiro de la vía IV está documentado, pero la hora o el motivo del retiro están incompletos. Revise la documentación de la vía IV antes de finalizar el encuentro.",
+      fr: "Le retrait de la voie IV est documenté, mais l’heure ou le motif du retrait est incomplet. Revoyez la documentation de la voie IV avant de finaliser la rencontre.",
+    },
+  },
   clinicTransferIncomplete: {
     title: {
       en: "Emergency transfer documentation is incomplete",
