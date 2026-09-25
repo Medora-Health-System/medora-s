@@ -206,10 +206,25 @@ export const aiProcedureSchema = z.object({
 
 export type AiProcedure = z.infer<typeof aiProcedureSchema>;
 
+export const aiProcedureEventSchema = z.object({
+  id: z.string(),
+  eventType: z.literal("PROCEDURE_DOCUMENTED"),
+  documentedAt: z.string().datetime(),
+  performedAt: z.string().datetime().nullable().optional(),
+  procedureType: z.string().nullable().optional(),
+  site: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  documentationRole: z.string().nullable().optional(),
+  payload: aiBoundedTextSchema,
+});
+
+export type AiProcedureEvent = z.infer<typeof aiProcedureEventSchema>;
+
 export const aiTreatmentsSchema = z.object({
   medicationOrders: z.array(aiMedicationOrderSchema).max(100).optional(),
   medicationAdministrations: z.array(aiMedicationAdministrationSchema).max(500).optional(),
   procedures: z.array(aiProcedureSchema).max(100).optional(),
+  procedureEvents: z.array(aiProcedureEventSchema).max(100).optional(),
 });
 
 export type AiTreatments = z.infer<typeof aiTreatmentsSchema>;
@@ -294,7 +309,8 @@ export const aiSnapshotCompletenessSchema = z.object({
     "FOLLOW_UPS",
     "APPOINTMENTS",
     "NURSING_DISCHARGE_EXECUTION",
-  ])).max(13),
+    "PROCEDURE_EVENTS",
+  ])).max(14),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",

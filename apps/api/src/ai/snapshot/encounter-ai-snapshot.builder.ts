@@ -27,6 +27,8 @@ const MAX_CRITICAL_RESULTS = 50;
 const MAX_MEDICATION_ORDERS = 100;
 const MAX_MEDICATION_ADMINISTRATIONS = 500;
 const MAX_PROCEDURES = 100;
+const MAX_PROCEDURE_EVENTS = 100;
+const MAX_PROCEDURE_EVENT_CHARS = 20_000;
 const MAX_DIAGNOSES = 50;
 const MAX_FOLLOWUPS = 50;
 const MAX_APPOINTMENTS = 50;
@@ -116,6 +118,7 @@ export class EncounterAiSnapshotBuilder {
       providerDocumentationVersions,
       providerAddenda,
       clinicalDocumentationEntries,
+      procedureEvents,
     ] = await Promise.all([
       this.findTriage(encounterId, facilityId),
       this.findVitalsReadings(encounterId, facilityId),
@@ -129,6 +132,7 @@ export class EncounterAiSnapshotBuilder {
       this.findProviderDocumentationVersions(encounterId, facilityId),
       this.findProviderAddenda(encounterId, facilityId),
       this.findClinicalDocumentationEntries(encounterId, facilityId),
+      this.findProcedureEvents(encounterId, facilityId),
     ]);
 
     const generatedAt = new Date().toISOString();
@@ -169,7 +173,7 @@ export class EncounterAiSnapshotBuilder {
       presentation: this.buildPresentation(encounter, triage, triageVitalsReadings),
       clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes, providerDocumentationVersions, providerAddenda, clinicalDocumentationEntries),
       diagnostics: this.buildDiagnostics(orders, results),
-      treatments: this.buildTreatments(orders, medicationAdministrations),
+      treatments: this.buildTreatments(orders, medicationAdministrations, procedureEvents),
       diagnoses: this.buildDiagnoses(diagnoses),
       disposition: this.buildDisposition(encounter, followUps, appointments),
     };
@@ -187,6 +191,7 @@ export class EncounterAiSnapshotBuilder {
       providerDocumentationVersions,
       providerAddenda,
       clinicalDocumentationEntries,
+      procedureEvents,
     });
     const snapshotVersion = this.computeSnapshotVersion({ ...snapshotWithoutVersion, completeness });
 
@@ -379,6 +384,15 @@ export class EncounterAiSnapshotBuilder {
         marAction: true,
         route: true,
       },
+    });
+  }
+
+  private async findProcedureEvents(encounterId: string, facilityId: string) {
+    return this.prisma.encounterClinicalEvent.findMany({
+      where: { encounterId, facilityId, eventType: "PROCEDURE_DOCUMENTED" },
+      take: MAX_PROCEDURE_EVENTS,
+      orderBy: { createdAt: "desc" },
+      select: { id: true, eventType: true, payloadJson: true, createdAt: true },
     });
   }
 
@@ -652,7 +666,8 @@ export class EncounterAiSnapshotBuilder {
 
   private buildTreatments(
     orders: Awaited<ReturnType<typeof this.findOrders>>,
-    administrations: Awaited<ReturnType<typeof this.findMedicationAdministrations>>
+    administrations: Awaited<ReturnType<typeof this.findMedicationAdministrations>>,
+    procedureEvents: Awaited<ReturnType<typeof this.findProcedureEvents>>
   ): EncounterAiSnapshot["treatments"] {
     const medicationOrders = orders
       .flatMap((order) => order.items)
@@ -697,10 +712,28 @@ export class EncounterAiSnapshotBuilder {
         status: item.status,
       }));
 
+    const mappedProcedureEvents = procedureEvents.map((event) => {
+      const payload = event.payloadJson && typeof event.payloadJson === "object" && !Array.isArray(event.payloadJson)
+        ? event.payloadJson as Record<string, unknown>
+        : {};
+      return {
+        id: event.id,
+        eventType: "PROCEDURE_DOCUMENTED" as const,
+        documentedAt: event.createdAt.toISOString(),
+        performedAt: typeof payload.performedAt === "string" ? toIsoString(payload.performedAt) : null,
+        procedureType: typeof payload.procedureType === "string" ? payload.procedureType : null,
+        site: typeof payload.site === "string" ? payload.site : null,
+        status: typeof payload.status === "string" ? payload.status : "COMPLETED",
+        documentationRole: typeof payload.documentationRole === "string" ? payload.documentationRole : null,
+        payload: toAiBoundedText(JSON.stringify(payload), MAX_PROCEDURE_EVENT_CHARS)!,
+      };
+    });
+
     return {
       medicationOrders,
       medicationAdministrations: mappedAdministrations,
       procedures,
+      procedureEvents: mappedProcedureEvents,
     };
   }
 
@@ -782,6 +815,7 @@ export class EncounterAiSnapshotBuilder {
     providerDocumentationVersions: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderDocumentationVersions"]>>;
     providerAddenda: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderAddenda"]>>;
     clinicalDocumentationEntries: Awaited<ReturnType<EncounterAiSnapshotBuilder["findClinicalDocumentationEntries"]>>;
+    procedureEvents: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProcedureEvents"]>>;
   }): NonNullable<EncounterAiSnapshot["completeness"]> {
     const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
     if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
@@ -798,6 +832,7 @@ export class EncounterAiSnapshotBuilder {
     if (input.medicationAdministrations.length >= MAX_MEDICATION_ADMINISTRATIONS) truncatedDomains.push("MEDICATION_ADMINISTRATIONS");
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
     if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
+    if (input.procedureEvents.length >= MAX_PROCEDURE_EVENTS || input.procedureEvents.some((event) => JSON.stringify(event.payloadJson ?? {}).length > MAX_PROCEDURE_EVENT_CHARS)) truncatedDomains.push("PROCEDURE_EVENTS");
     const dischargeRoot = input.encounter.dischargeSummaryJson && typeof input.encounter.dischargeSummaryJson === "object" && !Array.isArray(input.encounter.dischargeSummaryJson) ? input.encounter.dischargeSummaryJson as Record<string, unknown> : null;
     const nursingDischarge = dischargeRoot?.inpatientNursingDischarge && typeof dischargeRoot.inpatientNursingDischarge === "object" && !Array.isArray(dischargeRoot.inpatientNursingDischarge) ? dischargeRoot.inpatientNursingDischarge as Record<string, unknown> : null;
     if (nursingDischarge && JSON.stringify(nursingDischarge).length > MAX_NURSING_DISCHARGE_CHARS) truncatedDomains.push("NURSING_DISCHARGE_EXECUTION");
@@ -809,7 +844,6 @@ export class EncounterAiSnapshotBuilder {
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
     const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "PROCEDURE_EVENTS",
       "IV_ACCESS_EVENTS",
       "STRUCTURED_RESULT_DATA",
     ];
