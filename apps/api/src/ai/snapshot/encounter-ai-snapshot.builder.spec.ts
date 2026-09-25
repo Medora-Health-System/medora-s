@@ -116,6 +116,9 @@ function buildPrismaMock(overrides: any = {}) {
     encounterClinicalDocumentationEntry: {
       findMany: jest.fn(async () => []),
     },
+    encounterClinicalEvent: {
+      findMany: jest.fn(async () => []),
+    },
     ...overrides.prisma,
   };
 }
@@ -310,6 +313,37 @@ describe("EncounterAiSnapshotBuilder", () => {
     });
     expect(snapshot.disposition.nursingDischargeExecution?.documentation?.text).toContain("instructionsReviewed");
     expect(snapshot.completeness?.missingSourceDomains).not.toContain("NURSING_DISCHARGE_EXECUTION");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
+  it("projects append-only facility-scoped procedure documentation events", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterClinicalEvent: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ encounterId: ENCOUNTER_ID, facilityId: FACILITY_ID, eventType: "PROCEDURE_DOCUMENTED" });
+            expect(args.take).toBe(100);
+            return [{
+              id: "proc-event-1",
+              eventType: "PROCEDURE_DOCUMENTED",
+              createdAt: new Date("2026-09-25T14:00:00.000Z"),
+              payloadJson: { procedureType: "LACERATION_REPAIR", site: "left forearm", performedAt: "2026-09-25T13:55:00.000Z", documentationRole: "PROVIDER" },
+            }];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.treatments.procedureEvents?.[0]).toMatchObject({
+      id: "proc-event-1",
+      eventType: "PROCEDURE_DOCUMENTED",
+      procedureType: "LACERATION_REPAIR",
+      site: "left forearm",
+      performedAt: "2026-09-25T13:55:00.000Z",
+      documentationRole: "PROVIDER",
+    });
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROCEDURE_EVENTS");
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
