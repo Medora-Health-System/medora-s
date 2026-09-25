@@ -2,6 +2,7 @@ import { ClinicalReviewOrchestratorService } from "./clinical-review-orchestrato
 
 const baseSnapshot = {
   snapshotVersion: "snapshot-v1",
+  completeness: { complete: true, truncatedDomains: [], missingSourceDomains: [] },
   generatedAt: "2026-09-12T20:00:00.000Z",
   encounterContext: {
     encounterId: "11111111-1111-4111-8111-111111111111",
@@ -60,6 +61,53 @@ describe("ClinicalReviewOrchestratorService", () => {
     encounterId: "11111111-1111-4111-8111-111111111111",
     actorUserId: "44444444-4444-4444-8444-444444444444",
   };
+
+  it("suppresses all review engines when the snapshot is incomplete", async () => {
+    const incompleteSnapshot = {
+      ...baseSnapshot,
+      completeness: {
+        complete: false,
+        truncatedDomains: ["RESULTS"],
+        missingSourceDomains: [],
+      },
+    } as any;
+    const snapshotBuilder = { build: jest.fn(async () => incompleteSnapshot) };
+    const deterministicReview = { run: jest.fn(() => ({ suggestions: [deterministicSuggestion] })) };
+    const featureFlags = { isFacilityEnabled: jest.fn(() => true) };
+    const modelProvider = { providerName: "OPENAI", modelName: "test", generateStructured: jest.fn() };
+    const service = new ClinicalReviewOrchestratorService(
+      snapshotBuilder as any,
+      deterministicReview as any,
+      featureFlags as any,
+      modelProvider as any
+    );
+
+    const result = await service.run(input);
+
+    expect(result).toEqual({ suggestions: [] });
+    expect(deterministicReview.run).not.toHaveBeenCalled();
+    expect(featureFlags.isFacilityEnabled).not.toHaveBeenCalled();
+    expect(modelProvider.generateStructured).not.toHaveBeenCalled();
+    expect(snapshotBuilder.build).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when completeness metadata is absent", async () => {
+    const { completeness: _omitted, ...legacySnapshot } = baseSnapshot as any;
+    const snapshotBuilder = { build: jest.fn(async () => legacySnapshot) };
+    const deterministicReview = { run: jest.fn() };
+    const featureFlags = { isFacilityEnabled: jest.fn(() => true) };
+    const modelProvider = { providerName: "OPENAI", modelName: "test", generateStructured: jest.fn() };
+    const service = new ClinicalReviewOrchestratorService(
+      snapshotBuilder as any,
+      deterministicReview as any,
+      featureFlags as any,
+      modelProvider as any
+    );
+
+    expect(await service.run(input)).toEqual({ suggestions: [] });
+    expect(deterministicReview.run).not.toHaveBeenCalled();
+    expect(modelProvider.generateStructured).not.toHaveBeenCalled();
+  });
 
   it("returns deterministic review only when external AI is disabled", async () => {
     const snapshotBuilder = { build: jest.fn(async () => baseSnapshot) };
