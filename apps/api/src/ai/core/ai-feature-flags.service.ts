@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AiConfigService } from "./ai-config.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 /**
  * AI-1 external-provider deployment kill switch. This deliberately does not
@@ -10,7 +11,7 @@ import { AiConfigService } from "./ai-config.service";
  */
 @Injectable()
 export class AiFeatureFlagsService {
-  constructor(private readonly config: AiConfigService) {}
+  constructor(private readonly config: AiConfigService, private readonly prisma: PrismaService) {}
 
   isAiEnabled(): boolean {
     return this.config.getProvider() !== "NO_OP";
@@ -21,13 +22,22 @@ export class AiFeatureFlagsService {
     return false;
   }
 
-  isFacilityEnabled(facilityId: string): boolean {
+  async isFacilityEnabled(facilityId: string): Promise<boolean> {
     if (!this.isAiEnabled() || !facilityId || typeof facilityId !== "string") return false;
-    const raw = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
-    if (!raw || raw.trim().length === 0) return false;
-    const entries = raw.split(",").map((value) => value.trim()).filter(Boolean);
-    // No wildcard, partial matches, or malformed list can grant permission.
-    if (entries.some((value) => value === "*" || !/^[a-zA-Z0-9_-]{8,128}$/.test(value))) return false;
-    return entries.includes(facilityId);
+
+    // Durable facility configuration is authoritative. External provider
+    // configuration alone never grants PHI-bearing AI access.
+    const row = await this.prisma.facilityConfiguration.findUnique({
+      where: { facilityId },
+      select: { settingsJson: true, facility: { select: { isActive: true } } },
+    });
+    if (!row?.facility?.isActive || !row.settingsJson || typeof row.settingsJson !== "object" || Array.isArray(row.settingsJson)) {
+      return false;
+    }
+    const settings = row.settingsJson as Record<string, unknown>;
+    const ai = settings.medoraAssist;
+    if (!ai || typeof ai !== "object" || Array.isArray(ai)) return false;
+    return (ai as Record<string, unknown>).externalClinicalReviewEnabled === true;
   }
+}
 }
