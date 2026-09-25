@@ -107,6 +107,12 @@ function buildPrismaMock(overrides: any = {}) {
     encounterNote: {
       findMany: jest.fn(async () => []),
     },
+    encounterProviderDocumentationVersion: {
+      findMany: jest.fn(async () => []),
+    },
+    encounterProviderAddendum: {
+      findMany: jest.fn(async () => []),
+    },
     ...overrides.prisma,
   };
 }
@@ -200,6 +206,41 @@ describe("EncounterAiSnapshotBuilder", () => {
     });
     expect(snapshot.completeness?.truncatedDomains).toContain("ENCOUNTER_NOTES");
     expect(snapshot.completeness?.missingSourceDomains).not.toContain("ENCOUNTER_NOTES");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
+  it("projects facility-scoped provider signed history and addenda", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterProviderDocumentationVersion: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ encounterId: ENCOUNTER_ID, facilityId: FACILITY_ID });
+            return [{
+              id: "ver-1", versionNumber: 1, signedAt: new Date("2026-09-24T19:00:00.000Z"),
+              clinicalSnapshotJson: { providerNote: "signed note" }, snapshotHash: "hash-1",
+              schemaVersion: "1", documentType: "PROVIDER_DOCUMENTATION", encounterMode: "EMERGENCY",
+              sourceEncounterVersion: 3, previousVersionId: null, unlockedAt: null, unlockReason: null,
+            }];
+          }),
+        },
+        encounterProviderAddendum: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ encounterId: ENCOUNTER_ID, facilityId: FACILITY_ID });
+            return [{ id: "add-1", text: "Late clarification", amendmentReason: "Clarification", createdAt: new Date("2026-09-24T21:00:00.000Z") }];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.clinicalDocumentation.providerDocumentationVersions?.[0]).toMatchObject({
+      id: "ver-1", versionNumber: 1, snapshotHash: "hash-1", clinicalSnapshot: { providerNote: "signed note" },
+    });
+    expect(snapshot.clinicalDocumentation.providerAddenda?.[0]).toMatchObject({
+      id: "add-1", text: { text: "Late clarification", truncated: false },
+    });
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROVIDER_DOCUMENTATION_HISTORY");
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROVIDER_ADDENDA");
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 

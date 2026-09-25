@@ -32,6 +32,10 @@ const MAX_APPOINTMENTS = 50;
 const MAX_VITALS_TREND_ENTRIES = 50;
 const MAX_ENCOUNTER_NOTES = 100;
 const MAX_ENCOUNTER_NOTE_CHARS = 20_000;
+const MAX_PROVIDER_DOCUMENTATION_VERSIONS = 50;
+const MAX_PROVIDER_ADDENDA = 50;
+const MAX_PROVIDER_ADDENDUM_CHARS = 5_000;
+const MAX_PROVIDER_UNLOCK_REASON_CHARS = 5_000;
 const UNKNOWN_STRUCTURED_DOCUMENTED_AT = "1970-01-01T00:00:00.000Z";
 
 function ageYearsFromDob(dob: Date | string | null | undefined): number | null {
@@ -108,6 +112,8 @@ export class EncounterAiSnapshotBuilder {
       followUps,
       appointments,
       encounterNotes,
+      providerDocumentationVersions,
+      providerAddenda,
     ] = await Promise.all([
       this.findTriage(encounterId, facilityId),
       this.findVitalsReadings(encounterId, facilityId),
@@ -118,6 +124,8 @@ export class EncounterAiSnapshotBuilder {
       this.findFollowUps(encounterId, facilityId),
       this.findAppointments(encounterId, facilityId),
       this.findEncounterNotes(encounterId, facilityId),
+      this.findProviderDocumentationVersions(encounterId, facilityId),
+      this.findProviderAddenda(encounterId, facilityId),
     ]);
 
     const generatedAt = new Date().toISOString();
@@ -156,7 +164,7 @@ export class EncounterAiSnapshotBuilder {
         relevantHistory: (patient.clinicalHistoryProfileJson as unknown) ?? null,
       },
       presentation: this.buildPresentation(encounter, triage, triageVitalsReadings),
-      clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes),
+      clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes, providerDocumentationVersions, providerAddenda),
       diagnostics: this.buildDiagnostics(orders, results),
       treatments: this.buildTreatments(orders, medicationAdministrations),
       diagnoses: this.buildDiagnoses(diagnoses),
@@ -173,6 +181,8 @@ export class EncounterAiSnapshotBuilder {
       followUps,
       appointments,
       encounterNotes,
+      providerDocumentationVersions,
+      providerAddenda,
     });
     const snapshotVersion = this.computeSnapshotVersion({ ...snapshotWithoutVersion, completeness });
 
@@ -368,6 +378,37 @@ export class EncounterAiSnapshotBuilder {
     });
   }
 
+  private async findProviderDocumentationVersions(encounterId: string, facilityId: string) {
+    return this.prisma.encounterProviderDocumentationVersion.findMany({
+      where: { encounterId, facilityId },
+      take: MAX_PROVIDER_DOCUMENTATION_VERSIONS,
+      orderBy: { versionNumber: "asc" },
+      select: {
+        id: true,
+        versionNumber: true,
+        signedAt: true,
+        clinicalSnapshotJson: true,
+        snapshotHash: true,
+        schemaVersion: true,
+        documentType: true,
+        encounterMode: true,
+        sourceEncounterVersion: true,
+        previousVersionId: true,
+        unlockedAt: true,
+        unlockReason: true,
+      },
+    });
+  }
+
+  private async findProviderAddenda(encounterId: string, facilityId: string) {
+    return this.prisma.encounterProviderAddendum.findMany({
+      where: { encounterId, facilityId },
+      take: MAX_PROVIDER_ADDENDA,
+      orderBy: { createdAt: "asc" },
+      select: { id: true, text: true, amendmentReason: true, createdAt: true },
+    });
+  }
+
   private async findEncounterNotes(encounterId: string, facilityId: string) {
     return this.prisma.encounterNote.findMany({
       where: { encounterId, facilityId },
@@ -458,7 +499,9 @@ export class EncounterAiSnapshotBuilder {
 
   private buildClinicalDocumentation(
     encounter: Awaited<ReturnType<typeof this.findAuthorizedEncounter>>,
-    encounterNotes: Awaited<ReturnType<typeof this.findEncounterNotes>>
+    encounterNotes: Awaited<ReturnType<typeof this.findEncounterNotes>>,
+    providerDocumentationVersions: Awaited<ReturnType<typeof this.findProviderDocumentationVersions>>,
+    providerAddenda: Awaited<ReturnType<typeof this.findProviderAddenda>>
   ): EncounterAiSnapshot["clinicalDocumentation"] {
     const providerNote = toAiBoundedText(encounter?.providerNote, MAX_PROVIDER_NOTE_CHARS);
     const treatmentPlan = toAiBoundedText(encounter?.treatmentPlan, MAX_TREATMENT_PLAN_CHARS);
@@ -490,6 +533,26 @@ export class EncounterAiSnapshotBuilder {
       treatmentPlan,
       structuredEntries,
       reassessments,
+      providerDocumentationVersions: providerDocumentationVersions.map((version) => ({
+        id: version.id,
+        versionNumber: version.versionNumber,
+        signedAt: version.signedAt.toISOString(),
+        snapshotHash: version.snapshotHash,
+        schemaVersion: version.schemaVersion,
+        documentType: version.documentType,
+        encounterMode: version.encounterMode,
+        sourceEncounterVersion: version.sourceEncounterVersion,
+        previousVersionId: version.previousVersionId,
+        unlockedAt: toIsoString(version.unlockedAt),
+        unlockReason: toAiBoundedText(version.unlockReason, MAX_PROVIDER_UNLOCK_REASON_CHARS),
+        clinicalSnapshot: version.clinicalSnapshotJson,
+      })),
+      providerAddenda: providerAddenda.map((addendum) => ({
+        id: addendum.id,
+        text: toAiBoundedText(addendum.text, MAX_PROVIDER_ADDENDUM_CHARS)!,
+        amendmentReason: toAiBoundedText(addendum.amendmentReason, MAX_PROVIDER_ADDENDUM_CHARS),
+        createdAt: addendum.createdAt.toISOString(),
+      })),
       encounterNotes: encounterNotes.map((note) => ({
         id: note.id,
         noteType: String(note.noteType),
@@ -675,6 +738,8 @@ export class EncounterAiSnapshotBuilder {
     followUps: Awaited<ReturnType<EncounterAiSnapshotBuilder["findFollowUps"]>>;
     appointments: Awaited<ReturnType<EncounterAiSnapshotBuilder["findAppointments"]>>;
     encounterNotes: Awaited<ReturnType<EncounterAiSnapshotBuilder["findEncounterNotes"]>>;
+    providerDocumentationVersions: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderDocumentationVersions"]>>;
+    providerAddenda: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderAddenda"]>>;
   }): NonNullable<EncounterAiSnapshot["completeness"]> {
     const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
     if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
@@ -692,13 +757,13 @@ export class EncounterAiSnapshotBuilder {
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
     if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
     if (input.encounterNotes.length >= MAX_ENCOUNTER_NOTES || input.encounterNotes.some((note) => note.body.length > MAX_ENCOUNTER_NOTE_CHARS)) truncatedDomains.push("ENCOUNTER_NOTES");
+    if (input.providerDocumentationVersions.length >= MAX_PROVIDER_DOCUMENTATION_VERSIONS || input.providerDocumentationVersions.some((version) => (version.unlockReason?.length ?? 0) > MAX_PROVIDER_UNLOCK_REASON_CHARS)) truncatedDomains.push("PROVIDER_DOCUMENTATION_HISTORY");
+    if (input.providerAddenda.length >= MAX_PROVIDER_ADDENDA || input.providerAddenda.some((addendum) => addendum.text.length > MAX_PROVIDER_ADDENDUM_CHARS || (addendum.amendmentReason?.length ?? 0) > MAX_PROVIDER_ADDENDUM_CHARS)) truncatedDomains.push("PROVIDER_ADDENDA");
     // Audited against Medora's encounter-scoped legal/closed-chart composition.
     // These sources are persisted and clinically relevant but are not yet loaded
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
     const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "PROVIDER_DOCUMENTATION_HISTORY",
-      "PROVIDER_ADDENDA",
       "CLINICAL_DOCUMENTATION_ENTRIES",
       "NURSING_DISCHARGE_EXECUTION",
       "PROCEDURE_EVENTS",
