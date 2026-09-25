@@ -654,7 +654,25 @@ export class EncounterAiSnapshotBuilder {
     if (input.medicationAdministrations.length >= MAX_MEDICATION_ADMINISTRATIONS) truncatedDomains.push("MEDICATION_ADMINISTRATIONS");
     if (input.followUps.length >= MAX_FOLLOWUPS) truncatedDomains.push("FOLLOW_UPS");
     if (input.appointments.length >= MAX_APPOINTMENTS) truncatedDomains.push("APPOINTMENTS");
-    return { complete: truncatedDomains.length === 0, truncatedDomains };
+    // Audited against Medora's encounter-scoped legal/closed-chart composition.
+    // These sources are persisted and clinically relevant but are not yet loaded
+    // by this AI snapshot builder. Keep completeness fail-closed until each is
+    // deliberately projected, bounded, and covered by regression tests.
+    const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
+      "PROVIDER_DOCUMENTATION_HISTORY",
+      "PROVIDER_ADDENDA",
+      "ENCOUNTER_NOTES",
+      "CLINICAL_DOCUMENTATION_ENTRIES",
+      "NURSING_DISCHARGE_EXECUTION",
+      "PROCEDURE_EVENTS",
+      "IV_ACCESS_EVENTS",
+      "STRUCTURED_RESULT_DATA",
+    ];
+    return {
+      complete: truncatedDomains.length === 0 && missingSourceDomains.length === 0,
+      truncatedDomains,
+      missingSourceDomains,
+    };
   }
 
   private computeSnapshotVersion(
