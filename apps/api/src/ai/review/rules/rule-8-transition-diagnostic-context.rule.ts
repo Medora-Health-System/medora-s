@@ -51,9 +51,9 @@ export function rule8TransitionDiagnosticContext(
         priority: "MEDIUM",
         title: "Diagnostic impression not documented before transition",
         summary:
-          "Diagnostic work is present in the record and the encounter has entered a transition of care, but no active documented diagnosis is present in the structured snapshot.",
+          "Diagnostic testing is documented and a transition of care is underway, but no active diagnosis is documented in the chart.",
         reasoningSummary:
-          "This is a documentation-context check only. It does not infer a diagnosis from results or symptoms and does not claim that a diagnosis is clinically required beyond what the structured chart supports.",
+          "This finding reviews documentation only. Medora Assist does not infer a diagnosis from symptoms or test results and does not determine which diagnosis is clinically appropriate.",
         evidence: [
           {
             sourceType: "RESULT",
