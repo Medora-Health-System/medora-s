@@ -110,4 +110,4 @@ export class AiChartReviewController {
     return { facilityId, actorUserId };
   }
 
-}\n
+}
