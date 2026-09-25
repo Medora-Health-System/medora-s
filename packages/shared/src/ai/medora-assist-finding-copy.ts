@@ -292,14 +292,14 @@ const FINDING_COPY = {
   },
   transitionReassessmentMissing: {
     title: {
-      en: "No reassessment documented after treatment before transition",
-      es: "No hay reevaluación documentada después del tratamiento antes de la transición",
-      fr: "Aucune réévaluation documentée après le traitement avant la transition",
+      en: "No reassessment entry found after treatment before transition",
+      es: "No se encontró una entrada de reevaluación después del tratamiento antes de la transición",
+      fr: "Aucune entrée de réévaluation trouvée après le traitement avant la transition",
     },
     summary: {
-      en: "Treatment is documented and a transition of care is underway, but no later reassessment is documented. Review the patient response to treatment and document reassessment when appropriate.",
-      es: "Hay tratamiento documentado y se está realizando una transición de atención, pero no hay una reevaluación posterior documentada. Revise la respuesta del paciente al tratamiento y documente la reevaluación cuando corresponda.",
-      fr: "Un traitement est documenté et une transition de soins est en cours, mais aucune réévaluation ultérieure n’est documentée. Revoyez la réponse du patient au traitement et documentez la réévaluation lorsque cela s’applique.",
+      en: "Treatment is documented and a transition of care is underway, but no later reassessment entry was found in the reassessment documentation reviewed by Medora Assist. Review the patient response to treatment and document reassessment when appropriate.",
+      es: "Hay tratamiento documentado y se está realizando una transición de atención, pero Medora Assist no encontró una entrada de reevaluación posterior en la documentación de reevaluación revisada. Revise la respuesta del paciente al tratamiento y documente la reevaluación cuando corresponda.",
+      fr: "Un traitement est documenté et une transition de soins est en cours, mais Medora Assist n’a trouvé aucune entrée de réévaluation ultérieure dans la documentation de réévaluation examinée. Revoyez la réponse du patient au traitement et documentez la réévaluation lorsque cela s’applique.",
     },
   },
   transitionReassessmentUntimed: {
@@ -321,9 +321,9 @@ const FINDING_COPY = {
       fr: "La dernière réévaluation est antérieure au dernier traitement",
     },
     summary: {
-      en: "A transition of care is underway, and the latest documented reassessment occurred before the most recent treatment. Review the patient response and document a later reassessment when appropriate.",
-      es: "Se está realizando una transición de atención y la última reevaluación documentada ocurrió antes del tratamiento más reciente. Revise la respuesta del paciente y documente una reevaluación posterior cuando corresponda.",
-      fr: "Une transition de soins est en cours et la dernière réévaluation documentée a eu lieu avant le traitement le plus récent. Revoyez la réponse du patient et documentez une réévaluation ultérieure lorsque cela s’applique.",
+      en: "A transition of care is underway, and the latest reassessment entry reviewed by Medora Assist occurred before the most recent treatment. Review the patient response and document a later reassessment when appropriate.",
+      es: "Se está realizando una transición de atención y la entrada de reevaluación más reciente revisada por Medora Assist ocurrió antes del tratamiento más reciente. Revise la respuesta del paciente y documente una reevaluación posterior cuando corresponda.",
+      fr: "Une transition de soins est en cours et l’entrée de réévaluation la plus récente examinée par Medora Assist est antérieure au traitement le plus récent. Revoyez la réponse du patient et documentez une réévaluation ultérieure lorsque cela s’applique.",
     },
   },
 } as const;
