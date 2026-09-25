@@ -33,7 +33,7 @@ export function rule11AdministrationTimestampIntegrity(
       summary:
         "One or more MAR entries are marked as administered but do not contain an administration timestamp. Confirm and complete the medication administration record when appropriate.",
       reasoningSummary:
-        "This finding compares only the structured MAR action and timestamp fields. It does not determine whether the medication was actually given.",
+        "The medication administration record shows an administered status without an administration time. This does not determine whether the medication was actually given.",
       evidence: affected.map((administration) => ({
         sourceType: "MEDICATION" as const,
         sourceId: administration.id,

@@ -78,8 +78,8 @@ export function rule13MdmCompleteness(
         ? "Medical decision-making documentation is not present"
         : "Medical decision-making documentation may be incomplete",
       summary: noMdmDocumented
-        ? "Structured provider documentation is present, but the captured MDM fields do not contain documented clinical reasoning."
-        : `The structured MDM is missing documented ${missing.join(", ")}.`,
+        ? "Provider documentation is present, but medical decision-making does not include documented clinical reasoning."
+        : `Medical decision-making is missing documented ${missing.join(", ")}.`,
       reasoningSummary:
         "This finding checks documentation completeness only. It does not determine whether the clinician's assessment, diagnosis, treatment, or disposition is clinically correct.",
       evidence: [
