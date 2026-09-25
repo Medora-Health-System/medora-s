@@ -87,6 +87,32 @@ function structuredEntryDocumentedAt(payload: unknown): string {
   return UNKNOWN_STRUCTURED_DOCUMENTED_AT;
 }
 
+function strictBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+const NURSING_DISCHARGE_IDENTITY_KEYS = new Set([
+  "userId", "user_id", "nurseId", "nurse_id", "staffId", "staff_id",
+  "providerId", "provider_id", "employeeId", "employee_id", "email",
+  "phone", "signature", "signedBy", "signed_by", "completedBy", "completed_by",
+  "createdBy", "created_by", "updatedBy", "updated_by", "authorId", "author_id",
+]);
+
+function sanitizeNursingDischargeValue(value: unknown, depth = 0): unknown {
+  if (depth > 6) return "[truncated]";
+  if (value == null || typeof value === "boolean" || typeof value === "number") return value;
+  if (typeof value === "string") return value.length > 4_000 ? value.slice(0, 4_000) : value;
+  if (Array.isArray(value)) return value.slice(0, 50).map((item) => sanitizeNursingDischargeValue(item, depth + 1));
+  if (typeof value !== "object") return null;
+  const source = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(source).sort().slice(0, 100)) {
+    if (NURSING_DISCHARGE_IDENTITY_KEYS.has(key)) continue;
+    result[key] = sanitizeNursingDischargeValue(source[key], depth + 1);
+  }
+  return result;
+}
+
 function stableStructuredEntryId(namespace: string, payload: unknown): string {
   const digest = createHash("sha256")
     .update(`${namespace}\n${canonicalJsonStringify(payload)}`)
@@ -840,8 +866,8 @@ export class EncounterAiSnapshotBuilder {
         revision: typeof nursingRaw?.revision === "number" ? nursingRaw.revision : null,
         completedAt: typeof nursingRaw?.completedAt === "string" ? toIsoString(nursingRaw.completedAt) : null,
         departureAt: typeof nursingRaw?.departureAt === "string" ? toIsoString(nursingRaw.departureAt) : null,
-        dispositionMismatchDetected: nursingRaw?.dispositionMismatch && typeof nursingRaw.dispositionMismatch === "object" && !Array.isArray(nursingRaw.dispositionMismatch) ? Boolean((nursingRaw.dispositionMismatch as Record<string, unknown>).detected) : null,
-        documentation: nursingRaw ? toAiBoundedText(JSON.stringify(nursingRaw), MAX_NURSING_DISCHARGE_CHARS) : null,
+        dispositionMismatchDetected: nursingRaw?.dispositionMismatch && typeof nursingRaw.dispositionMismatch === "object" && !Array.isArray(nursingRaw.dispositionMismatch) ? strictBoolean((nursingRaw.dispositionMismatch as Record<string, unknown>).detected) : null,
+        documentation: nursingRaw ? toAiBoundedText(canonicalJsonStringify(sanitizeNursingDischargeValue(nursingRaw)), MAX_NURSING_DISCHARGE_CHARS) : null,
       },
       appointments: appointments.map((appointment) => ({
         id: appointment.id,
