@@ -114,6 +114,7 @@ export class EncounterAiSnapshotBuilder {
       encounterNotes,
       providerDocumentationVersions,
       providerAddenda,
+      clinicalDocumentationEntries,
     ] = await Promise.all([
       this.findTriage(encounterId, facilityId),
       this.findVitalsReadings(encounterId, facilityId),
@@ -126,6 +127,7 @@ export class EncounterAiSnapshotBuilder {
       this.findEncounterNotes(encounterId, facilityId),
       this.findProviderDocumentationVersions(encounterId, facilityId),
       this.findProviderAddenda(encounterId, facilityId),
+      this.findClinicalDocumentationEntries(encounterId, facilityId),
     ]);
 
     const generatedAt = new Date().toISOString();
@@ -164,7 +166,7 @@ export class EncounterAiSnapshotBuilder {
         relevantHistory: (patient.clinicalHistoryProfileJson as unknown) ?? null,
       },
       presentation: this.buildPresentation(encounter, triage, triageVitalsReadings),
-      clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes, providerDocumentationVersions, providerAddenda),
+      clinicalDocumentation: this.buildClinicalDocumentation(encounter, encounterNotes, providerDocumentationVersions, providerAddenda, clinicalDocumentationEntries),
       diagnostics: this.buildDiagnostics(orders, results),
       treatments: this.buildTreatments(orders, medicationAdministrations),
       diagnoses: this.buildDiagnoses(diagnoses),
@@ -183,6 +185,7 @@ export class EncounterAiSnapshotBuilder {
       encounterNotes,
       providerDocumentationVersions,
       providerAddenda,
+      clinicalDocumentationEntries,
     });
     const snapshotVersion = this.computeSnapshotVersion({ ...snapshotWithoutVersion, completeness });
 
@@ -378,6 +381,15 @@ export class EncounterAiSnapshotBuilder {
     });
   }
 
+  private async findClinicalDocumentationEntries(encounterId: string, facilityId: string) {
+    return this.prisma.encounterClinicalDocumentationEntry.findMany({
+      where: { encounterId, facilityId },
+      take: MAX_STRUCTURED_ENTRIES,
+      orderBy: { createdAt: "desc" },
+      select: { id: true, category: true, cardId: true, createdAt: true, payloadJson: true, voidedAt: true, requiresWitnessSignature: true, witnessedAt: true },
+    });
+  }
+
   private async findProviderDocumentationVersions(encounterId: string, facilityId: string) {
     return this.prisma.encounterProviderDocumentationVersion.findMany({
       where: { encounterId, facilityId },
@@ -501,7 +513,8 @@ export class EncounterAiSnapshotBuilder {
     encounter: Awaited<ReturnType<typeof this.findAuthorizedEncounter>>,
     encounterNotes: Awaited<ReturnType<typeof this.findEncounterNotes>>,
     providerDocumentationVersions: Awaited<ReturnType<typeof this.findProviderDocumentationVersions>>,
-    providerAddenda: Awaited<ReturnType<typeof this.findProviderAddenda>>
+    providerAddenda: Awaited<ReturnType<typeof this.findProviderAddenda>>,
+    clinicalDocumentationEntries: Awaited<ReturnType<typeof this.findClinicalDocumentationEntries>>
   ): EncounterAiSnapshot["clinicalDocumentation"] {
     const providerNote = toAiBoundedText(encounter?.providerNote, MAX_PROVIDER_NOTE_CHARS);
     const treatmentPlan = toAiBoundedText(encounter?.treatmentPlan, MAX_TREATMENT_PLAN_CHARS);
@@ -527,11 +540,23 @@ export class EncounterAiSnapshotBuilder {
       }
     }
 
+    const persistedStructuredEntries = clinicalDocumentationEntries.map((entry) => ({
+      id: entry.id,
+      namespace: `clinical-documentation:${entry.cardId}`,
+      documentedAt: entry.createdAt.toISOString(),
+      payloadSummary: entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson) ? (entry.payloadJson as Record<string, unknown>) : undefined,
+      category: String(entry.category),
+      cardId: entry.cardId,
+      voidedAt: toIsoString(entry.voidedAt),
+      requiresWitnessSignature: entry.requiresWitnessSignature,
+      witnessedAt: toIsoString(entry.witnessedAt),
+    }));
+
     return {
       providerDocumentationStatus: encounter?.providerDocumentationStatus ?? null,
       providerNote,
       treatmentPlan,
-      structuredEntries,
+      structuredEntries: persistedStructuredEntries,
       reassessments,
       providerDocumentationVersions: providerDocumentationVersions.map((version) => ({
         id: version.id,
@@ -740,6 +765,7 @@ export class EncounterAiSnapshotBuilder {
     encounterNotes: Awaited<ReturnType<EncounterAiSnapshotBuilder["findEncounterNotes"]>>;
     providerDocumentationVersions: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderDocumentationVersions"]>>;
     providerAddenda: Awaited<ReturnType<EncounterAiSnapshotBuilder["findProviderAddenda"]>>;
+    clinicalDocumentationEntries: Awaited<ReturnType<EncounterAiSnapshotBuilder["findClinicalDocumentationEntries"]>>;
   }): NonNullable<EncounterAiSnapshot["completeness"]> {
     const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
     if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
@@ -764,7 +790,6 @@ export class EncounterAiSnapshotBuilder {
     // by this AI snapshot builder. Keep completeness fail-closed until each is
     // deliberately projected, bounded, and covered by regression tests.
     const missingSourceDomains: NonNullable<EncounterAiSnapshot["completeness"]>["missingSourceDomains"] = [
-      "CLINICAL_DOCUMENTATION_ENTRIES",
       "NURSING_DISCHARGE_EXECUTION",
       "PROCEDURE_EVENTS",
       "IV_ACCESS_EVENTS",

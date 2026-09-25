@@ -113,6 +113,9 @@ function buildPrismaMock(overrides: any = {}) {
     encounterProviderAddendum: {
       findMany: jest.fn(async () => []),
     },
+    encounterClinicalDocumentationEntry: {
+      findMany: jest.fn(async () => []),
+    },
     ...overrides.prisma,
   };
 }
@@ -241,6 +244,41 @@ describe("EncounterAiSnapshotBuilder", () => {
     });
     expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROVIDER_DOCUMENTATION_HISTORY");
     expect(snapshot.completeness?.missingSourceDomains).not.toContain("PROVIDER_ADDENDA");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
+  it("projects authoritative facility-scoped structured clinical documentation", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterClinicalDocumentationEntry: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ encounterId: ENCOUNTER_ID, facilityId: FACILITY_ID });
+            expect(args.take).toBe(100);
+            return [{
+              id: "edoc-1",
+              category: "NURSING",
+              cardId: "pain_reassessment",
+              createdAt: new Date("2026-09-24T22:00:00.000Z"),
+              payloadJson: { painScore: 3, response: "improved" },
+              voidedAt: null,
+              requiresWitnessSignature: true,
+              witnessedAt: new Date("2026-09-24T22:05:00.000Z"),
+            }];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.clinicalDocumentation.structuredEntries?.[0]).toMatchObject({
+      id: "edoc-1",
+      namespace: "clinical-documentation:pain_reassessment",
+      category: "NURSING",
+      cardId: "pain_reassessment",
+      payloadSummary: { painScore: 3, response: "improved" },
+      requiresWitnessSignature: true,
+    });
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("CLINICAL_DOCUMENTATION_ENTRIES");
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
