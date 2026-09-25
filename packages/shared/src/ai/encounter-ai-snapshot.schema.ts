@@ -91,6 +91,28 @@ export const aiEncounterNarrativeNoteSchema = z.object({
 
 export type AiEncounterNarrativeNote = z.infer<typeof aiEncounterNarrativeNoteSchema>;
 
+export const aiProviderDocumentationVersionSchema = z.object({
+  id: z.string(),
+  versionNumber: z.number().int(),
+  signedAt: z.string().datetime(),
+  snapshotHash: z.string(),
+  schemaVersion: z.string(),
+  documentType: z.string(),
+  encounterMode: z.string(),
+  sourceEncounterVersion: z.number().int(),
+  previousVersionId: z.string().nullable().optional(),
+  unlockedAt: z.string().datetime().nullable().optional(),
+  unlockReason: aiBoundedTextSchema.nullable().optional(),
+  clinicalSnapshot: z.unknown(),
+});
+
+export const aiProviderAddendumSchema = z.object({
+  id: z.string(),
+  text: aiBoundedTextSchema,
+  amendmentReason: aiBoundedTextSchema.nullable().optional(),
+  createdAt: z.string().datetime(),
+});
+
 export const aiClinicalDocumentationSchema = z.object({
   providerDocumentationStatus: z.string().nullable().optional(),
   providerNote: aiBoundedTextSchema.nullable().optional(),
@@ -98,6 +120,8 @@ export const aiClinicalDocumentationSchema = z.object({
   structuredEntries: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
   reassessments: z.array(aiStructuredDocumentationEntrySchema).max(100).optional(),
   encounterNotes: z.array(aiEncounterNarrativeNoteSchema).max(100).optional(),
+  providerDocumentationVersions: z.array(aiProviderDocumentationVersionSchema).max(50).optional(),
+  providerAddenda: z.array(aiProviderAddendumSchema).max(50).optional(),
 });
 
 export type AiClinicalDocumentation = z.infer<typeof aiClinicalDocumentationSchema>;
@@ -242,6 +266,8 @@ export const aiSnapshotCompletenessSchema = z.object({
     "VITALS",
     "STRUCTURED_DOCUMENTATION",
     "ENCOUNTER_NOTES",
+    "PROVIDER_DOCUMENTATION_HISTORY",
+    "PROVIDER_ADDENDA",
     "ORDERS",
     "ORDER_ITEMS",
     "RESULTS",
@@ -249,7 +275,7 @@ export const aiSnapshotCompletenessSchema = z.object({
     "MEDICATION_ADMINISTRATIONS",
     "FOLLOW_UPS",
     "APPOINTMENTS",
-  ])).max(10),
+  ])).max(12),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",
