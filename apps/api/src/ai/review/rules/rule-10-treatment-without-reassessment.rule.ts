@@ -1,4 +1,4 @@
-import type { EncounterAiSnapshot } from "@medora/shared";
+import type { AiSuggestion, EncounterAiSnapshot } from "@medora/shared";
 import type { SuggestionContext } from "../review.types.js";
 import {
   administeredAtMs,
@@ -14,7 +14,7 @@ import { buildCopiedSuggestion } from "../review.utils.js";
 const TACHYCARDIA_HR = 130;
 
 /**
- * Rule 10 — Treatment given without a later structured response reassessment.
+ * Rule 10 — Treatment given without a later documented response reassessment.
  * Pain reassessment is tied only to recognized analgesic names already in the order label.
  * IV-fluid response is tied only when tachycardia is documented before the infusion.
  */
@@ -22,7 +22,9 @@ export function rule10TreatmentWithoutReassessment(
   snapshot: EncounterAiSnapshot,
   ctx: SuggestionContext
 ) {
-  const suggestions = [];
+  const suggestions: AiSuggestion[] = [];
+  const careSetting = snapshot.encounterContext.careSetting;
+  if (careSetting === "OFFICE_OUTPATIENT_CLINIC") return suggestions;
   const ordersById = new Map(
     (snapshot.treatments.medicationOrders ?? []).map((order) => [order.id, order])
   );
