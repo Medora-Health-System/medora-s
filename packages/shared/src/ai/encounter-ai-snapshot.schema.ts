@@ -220,11 +220,27 @@ export const aiProcedureEventSchema = z.object({
 
 export type AiProcedureEvent = z.infer<typeof aiProcedureEventSchema>;
 
+export const aiIvAccessEventSchema = z.object({
+  id: z.string(),
+  eventType: z.enum(["IV_INSERTED", "IV_REMOVED"]),
+  documentedAt: z.string().datetime(),
+  insertionEventId: z.string().nullable().optional(),
+  insertedAt: z.string().datetime().nullable().optional(),
+  removedAt: z.string().datetime().nullable().optional(),
+  site: z.string().nullable().optional(),
+  gauge: z.string().nullable().optional(),
+  reason: z.string().nullable().optional(),
+  notes: aiBoundedTextSchema.nullable().optional(),
+});
+
+export type AiIvAccessEvent = z.infer<typeof aiIvAccessEventSchema>;
+
 export const aiTreatmentsSchema = z.object({
   medicationOrders: z.array(aiMedicationOrderSchema).max(100).optional(),
   medicationAdministrations: z.array(aiMedicationAdministrationSchema).max(500).optional(),
   procedures: z.array(aiProcedureSchema).max(100).optional(),
   procedureEvents: z.array(aiProcedureEventSchema).max(100).optional(),
+  ivAccessEvents: z.array(aiIvAccessEventSchema).max(100).optional(),
 });
 
 export type AiTreatments = z.infer<typeof aiTreatmentsSchema>;
@@ -310,7 +326,8 @@ export const aiSnapshotCompletenessSchema = z.object({
     "APPOINTMENTS",
     "NURSING_DISCHARGE_EXECUTION",
     "PROCEDURE_EVENTS",
-  ])).max(14),
+    "IV_ACCESS_EVENTS",
+  ])).max(15),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",
