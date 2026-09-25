@@ -630,14 +630,14 @@ export class EncounterAiSnapshotBuilder {
   }
 
   private buildCompleteness(input: {
-    encounter: NonNullable<Awaited<ReturnType<typeof this.findAuthorizedEncounter>>>;
-    triageVitalsReadings: Awaited<ReturnType<typeof this.findVitalsReadings>>;
-    orders: Awaited<ReturnType<typeof this.findOrders>>;
-    results: Awaited<ReturnType<typeof this.findResults>>;
-    diagnoses: Awaited<ReturnType<typeof this.findDiagnoses>>;
-    medicationAdministrations: Awaited<ReturnType<typeof this.findMedicationAdministrations>>;
-    followUps: Awaited<ReturnType<typeof this.findFollowUps>>;
-    appointments: Awaited<ReturnType<typeof this.findAppointments>>;
+    encounter: NonNullable<Awaited<ReturnType<EncounterAiSnapshotBuilder["findAuthorizedEncounter"]>>>;
+    triageVitalsReadings: Awaited<ReturnType<EncounterAiSnapshotBuilder["findVitalsReadings"]>>;
+    orders: Awaited<ReturnType<EncounterAiSnapshotBuilder["findOrders"]>>;
+    results: Awaited<ReturnType<EncounterAiSnapshotBuilder["findResults"]>>;
+    diagnoses: Awaited<ReturnType<EncounterAiSnapshotBuilder["findDiagnoses"]>>;
+    medicationAdministrations: Awaited<ReturnType<EncounterAiSnapshotBuilder["findMedicationAdministrations"]>>;
+    followUps: Awaited<ReturnType<EncounterAiSnapshotBuilder["findFollowUps"]>>;
+    appointments: Awaited<ReturnType<EncounterAiSnapshotBuilder["findAppointments"]>>;
   }): NonNullable<EncounterAiSnapshot["completeness"]> {
     const truncatedDomains: NonNullable<EncounterAiSnapshot["completeness"]>["truncatedDomains"] = [];
     if (input.triageVitalsReadings.length >= MAX_VITALS_TREND_ENTRIES) truncatedDomains.push("VITALS");
