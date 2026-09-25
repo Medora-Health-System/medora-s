@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AiCoreModule } from "./core/ai-core.module";
+import { AiFacilityReviewContextService } from "./core/ai-facility-review-context.service.js";
+import { PrismaModule } from "../prisma/prisma.module.js";
 import { AiProviderModule } from "./providers/ai-provider.module";
 import { AiAuditModule } from "./audit/ai-audit.module";
 import { EncounterAiSnapshotModule } from "./snapshot/encounter-ai-snapshot.module";
@@ -18,13 +20,14 @@ import { AiChartReviewController } from "./ai-chart-review.controller.js";
 @Module({
   imports: [
     AiCoreModule,
+    PrismaModule,
     AiProviderModule,
     AiAuditModule,
     EncounterAiSnapshotModule,
     DeterministicReviewModule,
   ],
   controllers: [AiChartReviewController],
-  providers: [ClinicalReviewOrchestratorService],
+  providers: [ClinicalReviewOrchestratorService, AiFacilityReviewContextService],
   exports: [
     AiCoreModule,
     AiProviderModule,

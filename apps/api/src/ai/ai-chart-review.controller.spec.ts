@@ -11,8 +11,9 @@ function createController(options?: {
     build: jest.fn(async () => ({ snapshotVersion: options?.snapshotVersion ?? "snapshot-v1" })),
   };
   const aiAudit = { log: jest.fn(async () => undefined) };
-  const controller = new AiChartReviewController(orchestrator as any, snapshotBuilder as any, aiAudit as any);
-  return { controller, orchestrator, snapshotBuilder, aiAudit };
+  const facilityReviewContext = { resolve: jest.fn(async () => ({ country: { jurisdiction: "US" }, language: "en" })) };
+  const controller = new AiChartReviewController(orchestrator as any, snapshotBuilder as any, aiAudit as any, facilityReviewContext as any);
+  return { controller, orchestrator, snapshotBuilder, aiAudit, facilityReviewContext };
 }
 
 const request = {
@@ -55,6 +56,14 @@ describe("AiChartReviewController", () => {
       "provider-1"
     );
     expect(result).toBe(output);
+  });
+
+  it("ignores client locale and uses persisted encounter facility language", async () => {
+    const { controller, orchestrator, facilityReviewContext } = createController();
+    facilityReviewContext.resolve.mockResolvedValue({ country: { jurisdiction: "HT" }, language: "fr" });
+    await controller.getChartReview("encounter-1", "en-US", request);
+    expect(facilityReviewContext.resolve).toHaveBeenCalledWith("facility-1", "encounter-1");
+    expect(orchestrator.run).toHaveBeenCalledWith(expect.objectContaining({ encounterId: "encounter-1" }), "fr");
   });
 
   it("does not let audit telemetry failure block chart review", async () => {

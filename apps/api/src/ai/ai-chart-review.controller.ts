@@ -19,6 +19,7 @@ import {
   RequireRoles,
 } from "../common/guards/roles.guard.js";
 import { AiAuditService } from "./audit/ai-audit.service.js";
+import { AiFacilityReviewContextService } from "./core/ai-facility-review-context.service.js";
 import { ClinicalReviewOrchestratorService } from "./review/clinical-review-orchestrator.service.js";
 import { EncounterAiSnapshotBuilder } from "./snapshot/encounter-ai-snapshot.builder.js";
 
@@ -36,7 +37,8 @@ export class AiChartReviewController {
   constructor(
     private readonly reviewOrchestrator: ClinicalReviewOrchestratorService,
     private readonly snapshotBuilder: EncounterAiSnapshotBuilder,
-    private readonly aiAudit: AiAuditService
+    private readonly aiAudit: AiAuditService,
+    private readonly facilityReviewContext: AiFacilityReviewContextService
   ) {}
 
   @Get(":encounterId")
@@ -48,7 +50,10 @@ export class AiChartReviewController {
     @Req() req: any
   ) {
     const { facilityId, actorUserId } = this.resolveActor(req);
-    const locale = this.resolveLocale(localeValue);
+    // The request locale is retained for backwards compatibility only; the
+    // persisted encounter facility language is authoritative.
+    void localeValue;
+    const { language: locale } = await this.facilityReviewContext.resolve(facilityId, encounterId);
 
     await this.safeAudit("AI_REVIEW_REQUESTED", { facilityId, encounterId }, actorUserId);
     try {
@@ -95,13 +100,6 @@ export class AiChartReviewController {
     );
 
     return { accepted: true };
-  }
-
-  private resolveLocale(value: string | undefined): AiReviewLocale {
-    const normalized = value?.trim().toLowerCase();
-    if (normalized?.startsWith("fr")) return "fr";
-    if (normalized?.startsWith("es")) return "es";
-    return "en";
   }
 
   private resolveActor(req: any): { facilityId: string; actorUserId: string } {
