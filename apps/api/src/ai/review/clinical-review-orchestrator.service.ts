@@ -103,6 +103,18 @@ export class ClinicalReviewOrchestratorService {
 
   async run(input: EncounterAiSnapshotBuildInput, locale: AiReviewLocale = "en"): Promise<AiClinicalReviewOutput> {
     const initialSnapshot = await this.snapshotBuilder.build(input);
+
+    // Whole-chart review is fail-closed. A bounded/truncated or source-incomplete
+    // snapshot must never be presented as a complete clinical chart review.
+    // Do not invoke either review engine: deterministic rules can also create
+    // unsupported cross-chart conclusions when their source domain was truncated.
+    if (initialSnapshot.completeness?.complete !== true) {
+      this.logger.warn(
+        `AI chart review suppressed because snapshot is incomplete (truncated=${initialSnapshot.completeness?.truncatedDomains?.join(",") ?? "unknown"}; missing=${initialSnapshot.completeness?.missingSourceDomains?.join(",") ?? "unknown"})`
+      );
+      return { suggestions: [] };
+    }
+
     const deterministicRaw = this.deterministicReview.run(initialSnapshot);
     const deterministic = { suggestions: deterministicRaw.suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)) };
 
