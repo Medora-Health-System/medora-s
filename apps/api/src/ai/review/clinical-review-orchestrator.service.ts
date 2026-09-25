@@ -118,7 +118,7 @@ export class ClinicalReviewOrchestratorService {
     const deterministicRaw = this.deterministicReview.run(initialSnapshot);
     const deterministic = { suggestions: deterministicRaw.suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)) };
 
-    if (!this.featureFlags.isFacilityEnabled(input.facilityId)) {
+    if (!(await this.featureFlags.isFacilityEnabled(input.facilityId))) {
       return this.returnOnlyIfCurrent(input, initialSnapshot.snapshotVersion, deterministic, locale);
     }
 
