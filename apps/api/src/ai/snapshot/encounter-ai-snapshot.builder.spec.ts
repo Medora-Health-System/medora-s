@@ -375,6 +375,42 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
+  it("projects bounded structured result data without attachment payloads", async () => {
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        result: {
+          findMany: jest.fn(async (args: any) => {
+            expect(args.where).toEqual({ facilityId: FACILITY_ID, orderItem: { order: { encounterId: ENCOUNTER_ID } } });
+            return [{
+              id: "result-structured-1",
+              orderItemId: "oi-1",
+              resultText: "No acute process.",
+              resultData: {
+                modality: "XR",
+                impression: "No acute cardiopulmonary abnormality.",
+                measurements: { heartSize: "normal" },
+                attachments: [{ name: "image.png", base64: "do-not-project" }],
+              },
+              criticalValue: false,
+              acknowledgedByProviderAt: null,
+              createdAt: new Date("2026-09-25T15:00:00.000Z"),
+              verifiedAt: new Date("2026-09-25T15:05:00.000Z"),
+            }];
+          }),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    const result = snapshot.diagnostics.results?.[0];
+    expect(result?.structuredDataKeys).toEqual(["modality", "impression", "measurements"]);
+    expect(result?.attachmentCount).toBe(1);
+    expect(result?.structuredData?.text).toContain("No acute cardiopulmonary abnormality.");
+    expect(result?.structuredData?.text).not.toContain("do-not-project");
+    expect(snapshot.completeness?.missingSourceDomains).not.toContain("STRUCTURED_RESULT_DATA");
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
   it("rejects an actor without active facility access", async () => {
     const prismaMock = buildPrismaMock();
     const builder = await createBuilder(prismaMock);
