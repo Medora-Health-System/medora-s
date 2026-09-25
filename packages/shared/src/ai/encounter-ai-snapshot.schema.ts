@@ -234,6 +234,17 @@ export const aiSnapshotCompletenessSchema = z.object({
     "FOLLOW_UPS",
     "APPOINTMENTS",
   ])).max(9),
+  /** Persisted legal-chart domains not yet projected into this AI snapshot. */
+  missingSourceDomains: z.array(z.enum([
+    "PROVIDER_DOCUMENTATION_HISTORY",
+    "PROVIDER_ADDENDA",
+    "ENCOUNTER_NOTES",
+    "CLINICAL_DOCUMENTATION_ENTRIES",
+    "NURSING_DISCHARGE_EXECUTION",
+    "PROCEDURE_EVENTS",
+    "IV_ACCESS_EVENTS",
+    "STRUCTURED_RESULT_DATA",
+  ])).max(8).default([]),
 });
 
 export type AiSnapshotCompleteness = z.infer<typeof aiSnapshotCompletenessSchema>;
