@@ -55,7 +55,7 @@ export class AiChartReviewController {
     void localeValue;
     const { language: locale } = await this.facilityReviewContext.resolve(facilityId, encounterId);
 
-    await this.safeAudit("AI_REVIEW_REQUESTED", { facilityId, encounterId }, actorUserId);
+    // AI chart access is PHI-bearing clinical access: the request audit is a\n    // mandatory control, not best-effort telemetry. If persistence fails, fail closed.\n    await this.aiAudit.log("AI_REVIEW_REQUESTED", { facilityId, encounterId }, actorUserId);
     try {
       const output = await this.reviewOrchestrator.run({ facilityId, encounterId, actorUserId }, locale);
       await this.safeAudit(
@@ -110,15 +110,4 @@ export class AiChartReviewController {
     return { facilityId, actorUserId };
   }
 
-  private async safeAudit(
-    action: Parameters<AiAuditService["log"]>[0],
-    metadata: Parameters<AiAuditService["log"]>[1],
-    actorUserId: string
-  ): Promise<void> {
-    try {
-      await this.aiAudit.log(action, metadata, actorUserId);
-    } catch {
-      // Review audit telemetry must never block the read-only clinical support response.
-    }
-  }
-}
+}\n
