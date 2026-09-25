@@ -241,6 +241,7 @@ export const aiSnapshotCompletenessSchema = z.object({
   truncatedDomains: z.array(z.enum([
     "VITALS",
     "STRUCTURED_DOCUMENTATION",
+    "ENCOUNTER_NOTES",
     "ORDERS",
     "ORDER_ITEMS",
     "RESULTS",
@@ -248,7 +249,7 @@ export const aiSnapshotCompletenessSchema = z.object({
     "MEDICATION_ADMINISTRATIONS",
     "FOLLOW_UPS",
     "APPOINTMENTS",
-  ])).max(9),
+  ])).max(10),
   /** Persisted legal-chart domains not yet projected into this AI snapshot. */
   missingSourceDomains: z.array(z.enum([
     "PROVIDER_DOCUMENTATION_HISTORY",
