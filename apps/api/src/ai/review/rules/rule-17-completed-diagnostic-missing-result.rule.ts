@@ -24,11 +24,11 @@ export function rule17CompletedDiagnosticMissingResult(snapshot: EncounterAiSnap
   return [buildAiSuggestion(ctx, {
     category: "RESULT_FOLLOWUP",
     priority: "MEDIUM",
-    title: "Completed diagnostic order has no linked result",
+    title: "Completed diagnostic study has no result available in the chart",
     summary: labels.length
-      ? `The chart marks ${labels.join(", ")}${suffix} as completed, but no linked result is present in the current encounter snapshot. Confirm result availability and reconciliation.`
-      : "One or more diagnostic orders are marked completed, but no linked result is present in the current encounter snapshot. Confirm result availability and reconciliation.",
-    reasoningSummary: "This finding compares only structured diagnostic order completion state with linked result records. It does not assume the test was not performed or that the result is clinically abnormal.",
+      ? `${labels.join(", ")}${suffix} is documented as completed, but a result is not available in the chart. Confirm the result status and document review when available.`
+      : "One or more diagnostic studies are documented as completed, but a result is not available in the chart. Confirm the result status and document review when available.",
+    reasoningSummary: "The study is documented as completed, but Medora Assist did not identify a corresponding result in the chart. This does not mean the study was not performed or that the result is abnormal.",
     evidence: [],
     recommendedActions: [{ actionType: "NAVIGATE", targetSection: "results", label: "Review results" }],
   })];

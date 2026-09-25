@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AiConfigService } from "./ai-config.service";
 import { AiFeatureFlagsService } from "./ai-feature-flags.service";
 import { AI_PROVIDER } from "./ai.constants";
+import { PrismaService } from "../../prisma/prisma.service";
 
 describe("AiFeatureFlagsService", () => {
   async function createService(env: Record<string, string | undefined>) {
@@ -14,7 +15,7 @@ describe("AiFeatureFlagsService", () => {
           load: [() => env],
         }),
       ],
-      providers: [AiConfigService, AiFeatureFlagsService],
+      providers: [AiConfigService, AiFeatureFlagsService, { provide: PrismaService, useValue: { facilityConfiguration: { findUnique: jest.fn(async ({ where }: any) => env.__FACILITY_ENABLED === "true" ? { settingsJson: { medoraAssist: { externalClinicalReviewEnabled: true } }, facility: { isActive: true } } : null) } } }],
     }).compile();
 
     return module.get(AiFeatureFlagsService);
@@ -24,7 +25,7 @@ describe("AiFeatureFlagsService", () => {
     const service = await createService({});
     expect(service.isAiEnabled()).toBe(false);
     expect(service.isCategoryEnabled("CLINICAL_SAFETY")).toBe(false);
-    expect(service.isFacilityEnabled("fac-1")).toBe(false);
+    expect(await service.isFacilityEnabled("fac-1")).toBe(false);
   });
 
   it("keeps external AI off when provider is configured but facility is not explicitly allowlisted", async () => {
@@ -32,7 +33,7 @@ describe("AiFeatureFlagsService", () => {
     const prior = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
     try {
       delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
-      expect(service.isFacilityEnabled("11111111-1111-4111-8111-111111111111")).toBe(false);
+      expect(await service.isFacilityEnabled("11111111-1111-4111-8111-111111111111")).toBe(false);
       expect(service.isCategoryEnabled("CLINICAL_SAFETY")).toBe(false);
     } finally {
       if (prior === undefined) delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
@@ -40,20 +41,14 @@ describe("AiFeatureFlagsService", () => {
     }
   });
 
-  it("requires exact facility match and rejects wildcards", async () => {
+  it("requires explicit persisted facility authorization", async () => {
+    const service = await createService({ [AI_PROVIDER]: "OPENAI", __FACILITY_ENABLED: "true" });
+    expect(await service.isFacilityEnabled("11111111-1111-4111-8111-111111111111")).toBe(true);
+  });
+
+  it("fails closed when persisted facility authorization is absent", async () => {
     const service = await createService({ [AI_PROVIDER]: "OPENAI" });
-    const prior = process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
-    const facility = "11111111-1111-4111-8111-111111111111";
-    try {
-      process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = facility;
-      expect(service.isFacilityEnabled(facility)).toBe(true);
-      expect(service.isFacilityEnabled("22222222-2222-4222-8222-222222222222")).toBe(false);
-      process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = facility + ",*";
-      expect(service.isFacilityEnabled(facility)).toBe(false);
-    } finally {
-      if (prior === undefined) delete process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS;
-      else process.env.MEDORA_AI_EXTERNAL_FACILITY_IDS = prior;
-    }
+    expect(await service.isFacilityEnabled("11111111-1111-4111-8111-111111111111")).toBe(false);
   });
 
   it("disables AI when provider is NO_OP", async () => {
