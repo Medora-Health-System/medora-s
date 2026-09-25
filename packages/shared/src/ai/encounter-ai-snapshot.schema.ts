@@ -72,7 +72,7 @@ export const aiStructuredDocumentationEntrySchema = z.object({
   namespace: z.string(),
   documentedAt: z.string().datetime(),
   version: z.number().int().optional(),
-  payloadSummary: z.record(z.unknown()).optional(),
+  payloadSummary: aiBoundedTextSchema.optional(),
   category: z.string().nullable().optional(),
   cardId: z.string().nullable().optional(),
   voidedAt: z.string().datetime().nullable().optional(),
@@ -108,7 +108,7 @@ export const aiProviderDocumentationVersionSchema = z.object({
   previousVersionId: z.string().nullable().optional(),
   unlockedAt: z.string().datetime().nullable().optional(),
   unlockReason: aiBoundedTextSchema.nullable().optional(),
-  clinicalSnapshot: z.unknown(),
+  clinicalSnapshot: aiBoundedTextSchema,
 });
 
 export const aiProviderAddendumSchema = z.object({
