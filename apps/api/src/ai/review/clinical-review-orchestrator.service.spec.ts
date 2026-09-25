@@ -125,7 +125,61 @@ describe("ClinicalReviewOrchestratorService", () => {
 
     expect(result.suggestions).toEqual([deterministicSuggestion]);
     expect(modelProvider.generateStructured).not.toHaveBeenCalled();
-    expect(snapshotBuilder.build).toHaveBeenCalledTimes(1);
+    expect(snapshotBuilder.build).toHaveBeenCalledTimes(2);
+  });
+
+  it("discards deterministic output when the chart changes before return", async () => {
+    const changedSnapshot = { ...baseSnapshot, snapshotVersion: "snapshot-v2" } as any;
+    const snapshotBuilder = {
+      build: jest.fn()
+        .mockResolvedValueOnce(baseSnapshot)
+        .mockResolvedValueOnce(changedSnapshot),
+    };
+    const deterministicReview = {
+      run: jest.fn((snapshot: any) => ({
+        suggestions: snapshot.snapshotVersion === "snapshot-v2" ? [] : [deterministicSuggestion],
+      })),
+    };
+    const featureFlags = { isFacilityEnabled: jest.fn(() => false) };
+    const modelProvider = { providerName: "OPENAI", modelName: "test", generateStructured: jest.fn() };
+    const service = new ClinicalReviewOrchestratorService(
+      snapshotBuilder as any,
+      deterministicReview as any,
+      featureFlags as any,
+      modelProvider as any
+    );
+
+    expect(await service.run(input)).toEqual({ suggestions: [] });
+    expect(deterministicReview.run).toHaveBeenLastCalledWith(changedSnapshot);
+    expect(modelProvider.generateStructured).not.toHaveBeenCalled();
+  });
+
+  it("suppresses fallback output if the chart becomes incomplete", async () => {
+    const incompleteSnapshot = {
+      ...baseSnapshot,
+      snapshotVersion: "snapshot-v2",
+      completeness: { complete: false, truncatedDomains: ["RESULTS"], missingSourceDomains: [] },
+    } as any;
+    const snapshotBuilder = {
+      build: jest.fn()
+        .mockResolvedValueOnce(baseSnapshot)
+        .mockResolvedValueOnce(incompleteSnapshot),
+    };
+    const deterministicReview = { run: jest.fn(() => ({ suggestions: [deterministicSuggestion] })) };
+    const featureFlags = { isFacilityEnabled: jest.fn(() => true) };
+    const modelProvider = {
+      providerName: "OPENAI",
+      modelName: "test",
+      generateStructured: jest.fn(async () => { throw new Error("provider down"); }),
+    };
+    const service = new ClinicalReviewOrchestratorService(
+      snapshotBuilder as any,
+      deterministicReview as any,
+      featureFlags as any,
+      modelProvider as any
+    );
+
+    expect(await service.run(input)).toEqual({ suggestions: [] });
   });
 
   it("merges validated external suggestions without allowing model provenance fields", async () => {

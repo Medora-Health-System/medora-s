@@ -118,7 +118,9 @@ export class ClinicalReviewOrchestratorService {
     const deterministicRaw = this.deterministicReview.run(initialSnapshot);
     const deterministic = { suggestions: deterministicRaw.suggestions.map((suggestion) => this.localizeDeterministic(suggestion, locale)) };
 
-    if (!this.featureFlags.isFacilityEnabled(input.facilityId)) return deterministic;
+    if (!this.featureFlags.isFacilityEnabled(input.facilityId)) {
+      return this.returnOnlyIfCurrent(input, initialSnapshot.snapshotVersion, deterministic, locale);
+    }
 
     try {
       const providerResponse = await this.modelProvider.generateStructured({
@@ -131,13 +133,13 @@ export class ClinicalReviewOrchestratorService {
 
       if (providerResponse.snapshotVersion !== initialSnapshot.snapshotVersion) {
         this.logger.warn("External clinical AI response snapshot mismatch; result discarded");
-        return deterministic;
+        return this.returnOnlyIfCurrent(input, initialSnapshot.snapshotVersion, deterministic, locale);
       }
 
       const parsedExternal = externalClinicalReviewSchema.safeParse(providerResponse.output);
       if (!parsedExternal.success) {
         this.logger.warn("External clinical AI output failed Medora schema validation; result discarded");
-        return deterministic;
+        return this.returnOnlyIfCurrent(input, initialSnapshot.snapshotVersion, deterministic, locale);
       }
 
       const currentSnapshot = await this.snapshotBuilder.build(input);
@@ -172,8 +174,30 @@ export class ClinicalReviewOrchestratorService {
       return validated.data;
     } catch {
       this.logger.warn("External clinical AI unavailable; returning deterministic review");
-      return deterministic;
+      return this.returnOnlyIfCurrent(input, initialSnapshot.snapshotVersion, deterministic, locale);
     }
+  }
+
+  private async returnOnlyIfCurrent(
+    input: EncounterAiSnapshotBuildInput,
+    expectedSnapshotVersion: string,
+    output: AiClinicalReviewOutput,
+    locale: AiReviewLocale
+  ): Promise<AiClinicalReviewOutput> {
+    const currentSnapshot = await this.snapshotBuilder.build(input);
+    if (currentSnapshot.completeness?.complete !== true) {
+      this.logger.warn("Encounter became incomplete during clinical AI review; result discarded");
+      return { suggestions: [] };
+    }
+    if (currentSnapshot.snapshotVersion === expectedSnapshotVersion) return output;
+
+    this.logger.warn("Encounter changed during clinical AI review; stale result discarded");
+    const currentDeterministic = this.deterministicReview.run(currentSnapshot);
+    return {
+      suggestions: currentDeterministic.suggestions.map((suggestion) =>
+        this.localizeDeterministic(suggestion, locale)
+      ),
+    };
   }
 
   private localizeDeterministic(suggestion: AiSuggestion, locale: AiReviewLocale): AiSuggestion {
