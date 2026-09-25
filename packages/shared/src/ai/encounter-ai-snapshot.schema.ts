@@ -221,9 +221,27 @@ export const aiDispositionSchema = z.object({
 
 export type AiDisposition = z.infer<typeof aiDispositionSchema>;
 
+export const aiSnapshotCompletenessSchema = z.object({
+  complete: z.boolean(),
+  truncatedDomains: z.array(z.enum([
+    "VITALS",
+    "STRUCTURED_DOCUMENTATION",
+    "ORDERS",
+    "ORDER_ITEMS",
+    "RESULTS",
+    "DIAGNOSES",
+    "MEDICATION_ADMINISTRATIONS",
+    "FOLLOW_UPS",
+    "APPOINTMENTS",
+  ])).max(9),
+});
+
+export type AiSnapshotCompleteness = z.infer<typeof aiSnapshotCompletenessSchema>;
+
 export const encounterAiSnapshotSchema = z.object({
   snapshotVersion: z.string(),
   generatedAt: z.string().datetime(),
+  completeness: aiSnapshotCompletenessSchema.optional(),
   encounterContext: aiEncounterContextSchema,
   patientContext: aiPatientContextSchema,
   presentation: aiPresentationSchema,
