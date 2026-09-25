@@ -143,7 +143,7 @@ export class EncounterAiSnapshotBuilder {
       }),
     };
 
-    const snapshotWithoutVersion: Omit<EncounterAiSnapshot, "snapshotVersion" | "generatedAt"> = {
+    const snapshotWithoutVersion: Omit<EncounterAiSnapshot, "snapshotVersion" | "generatedAt" | "completeness"> = {
       encounterContext,
       patientContext: {
         age: ageYearsFromDob(patient.dob),
