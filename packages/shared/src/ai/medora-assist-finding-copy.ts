@@ -314,6 +314,30 @@ const FINDING_COPY = {
       fr: "{medication} a une ordonnance active sans administration correspondante pendant la préparation de la sortie. Effectuez la conciliation du dossier médicamenteux avant la sortie lorsque cela s’applique.",
     },
   },
+  dischargeExecutionMismatch: {
+    title: {
+      en: "Discharge execution and documented disposition need reconciliation",
+      es: "La ejecución del alta y la disposición documentada requieren conciliación",
+      fr: "L’exécution de la sortie et l’orientation documentée nécessitent une conciliation",
+    },
+    summary: {
+      en: "Nursing discharge documentation records a disposition mismatch. Review the documented disposition and discharge execution before finalizing the transition of care.",
+      es: "La documentación de alta de enfermería registra una discrepancia en la disposición. Revise la disposición documentada y la ejecución del alta antes de finalizar la transición de atención.",
+      fr: "La documentation infirmière de sortie signale une divergence d’orientation. Revoyez l’orientation documentée et l’exécution de la sortie avant de finaliser la transition des soins.",
+    },
+  },
+  dischargeExecutionIncomplete: {
+    title: {
+      en: "Discharge execution is not documented as complete",
+      es: "La ejecución del alta no está documentada como completada",
+      fr: "L’exécution de la sortie n’est pas documentée comme terminée",
+    },
+    summary: {
+      en: "The chart indicates discharge is complete, but nursing discharge execution is not documented as completed. Review the discharge workflow and documentation for consistency.",
+      es: "La historia indica que el alta está completada, pero la ejecución del alta de enfermería no está documentada como finalizada. Revise el flujo y la documentación del alta para comprobar su coherencia.",
+      fr: "Le dossier indique que la sortie est terminée, mais l’exécution infirmière de la sortie n’est pas documentée comme achevée. Revoyez le processus et la documentation de sortie pour en vérifier la cohérence.",
+    },
+  },
   dispositionNeedsReconciliation: {
     title: {
       en: "Disposition needs review with unresolved chart findings",
