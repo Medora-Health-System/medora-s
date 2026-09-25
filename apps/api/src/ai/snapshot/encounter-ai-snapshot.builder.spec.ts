@@ -411,6 +411,52 @@ describe("EncounterAiSnapshotBuilder", () => {
     expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
   });
 
+  it("bounds signed history and structured documentation payloads without mutating sources", async () => {
+    const largeClinicalSnapshot = { narrative: "x".repeat(60_000) };
+    const largeStructuredPayload = { narrative: "y".repeat(30_000) };
+    const prismaMock = buildPrismaMock({
+      prisma: {
+        encounterProviderDocumentationVersion: {
+          findMany: jest.fn(async () => [{
+            id: "version-1",
+            versionNumber: 1,
+            signedAt: new Date("2026-09-25T12:00:00.000Z"),
+            clinicalSnapshotJson: largeClinicalSnapshot,
+            snapshotHash: "hash-1",
+            schemaVersion: 1,
+            documentType: null,
+            encounterMode: null,
+            sourceEncounterVersion: null,
+            previousVersionId: null,
+            unlockedAt: null,
+            unlockReason: null,
+          }]),
+        },
+        encounterClinicalDocumentationEntry: {
+          findMany: jest.fn(async () => [{
+            id: "structured-1",
+            category: "ASSESSMENT",
+            cardId: "assessment",
+            createdAt: new Date("2026-09-25T12:05:00.000Z"),
+            payloadJson: largeStructuredPayload,
+            voidedAt: null,
+            requiresWitnessSignature: false,
+            witnessedAt: null,
+          }]),
+        },
+      },
+    });
+    const builder = await createBuilder(prismaMock);
+    const snapshot = await builder.build({ facilityId: FACILITY_ID, encounterId: ENCOUNTER_ID, actorUserId: ACTOR_USER_ID });
+    expect(snapshot.clinicalDocumentation.providerDocumentationVersions?.[0].clinicalSnapshot.text.length).toBeLessThanOrEqual(50_000);
+    expect(snapshot.clinicalDocumentation.structuredEntries?.[0].payloadSummary?.text.length).toBeLessThanOrEqual(20_000);
+    expect(snapshot.completeness?.truncatedDomains).toEqual(expect.arrayContaining(["PROVIDER_DOCUMENTATION_HISTORY", "STRUCTURED_DOCUMENTATION"]));
+    expect(snapshot.completeness?.complete).toBe(false);
+    expect((largeClinicalSnapshot.narrative as string).length).toBe(60_000);
+    expect((largeStructuredPayload.narrative as string).length).toBe(30_000);
+    expect(encounterAiSnapshotSchema.safeParse(snapshot).success).toBe(true);
+  });
+
   it("rejects an actor without active facility access", async () => {
     const prismaMock = buildPrismaMock();
     const builder = await createBuilder(prismaMock);
