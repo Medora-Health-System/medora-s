@@ -146,6 +146,20 @@ describe("AiChartReviewController", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("does not trust a raw x-facility-id header when RolesGuard has not authorized facility context", async () => {
+    const { controller, orchestrator, facilityReviewContext } = createController();
+
+    await expect(
+      controller.getChartReview("encounter-1", undefined, {
+        user: { userId: "provider-1" },
+        headers: { "x-facility-id": "spoofed-facility" },
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(facilityReviewContext.resolve).not.toHaveBeenCalled();
+    expect(orchestrator.run).not.toHaveBeenCalled();
+  });
+
   it("rejects requests without an authenticated actor", async () => {
     const { controller } = createController();
 
