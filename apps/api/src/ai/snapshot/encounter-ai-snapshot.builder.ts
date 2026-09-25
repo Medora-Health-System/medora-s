@@ -43,6 +43,8 @@ const MAX_PROVIDER_DOCUMENTATION_VERSIONS = 50;
 const MAX_PROVIDER_ADDENDA = 50;
 const MAX_PROVIDER_ADDENDUM_CHARS = 5_000;
 const MAX_PROVIDER_UNLOCK_REASON_CHARS = 5_000;
+const MAX_PROVIDER_CLINICAL_SNAPSHOT_CHARS = 50_000;
+const MAX_STRUCTURED_DOCUMENTATION_PAYLOAD_CHARS = 20_000;
 const UNKNOWN_STRUCTURED_DOCUMENTED_AT = "1970-01-01T00:00:00.000Z";
 
 function ageYearsFromDob(dob: Date | string | null | undefined): number | null {
@@ -562,7 +564,7 @@ export class EncounterAiSnapshotBuilder {
           id: stableStructuredEntryId(namespace, payload),
           namespace,
           documentedAt: structuredEntryDocumentedAt(payload),
-          payloadSummary: payload as Record<string, unknown>,
+          payloadSummary: toAiBoundedText(canonicalJsonStringify(payload), MAX_STRUCTURED_DOCUMENTATION_PAYLOAD_CHARS)!,
         };
         if (namespace.toLowerCase().includes("reassess")) {
           reassessments?.push(entry);
@@ -576,7 +578,7 @@ export class EncounterAiSnapshotBuilder {
       id: entry.id,
       namespace: `clinical-documentation:${entry.cardId}`,
       documentedAt: entry.createdAt.toISOString(),
-      payloadSummary: entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson) ? (entry.payloadJson as Record<string, unknown>) : undefined,
+      payloadSummary: entry.payloadJson && typeof entry.payloadJson === "object" && !Array.isArray(entry.payloadJson) ? toAiBoundedText(canonicalJsonStringify(entry.payloadJson), MAX_STRUCTURED_DOCUMENTATION_PAYLOAD_CHARS)! : undefined,
       category: String(entry.category),
       cardId: entry.cardId,
       voidedAt: toIsoString(entry.voidedAt),
@@ -602,7 +604,7 @@ export class EncounterAiSnapshotBuilder {
         previousVersionId: version.previousVersionId,
         unlockedAt: toIsoString(version.unlockedAt),
         unlockReason: toAiBoundedText(version.unlockReason, MAX_PROVIDER_UNLOCK_REASON_CHARS),
-        clinicalSnapshot: version.clinicalSnapshotJson,
+        clinicalSnapshot: toAiBoundedText(canonicalJsonStringify(version.clinicalSnapshotJson), MAX_PROVIDER_CLINICAL_SNAPSHOT_CHARS)!,
       })),
       providerAddenda: providerAddenda.map((addendum) => ({
         id: addendum.id,
@@ -875,6 +877,7 @@ export class EncounterAiSnapshotBuilder {
       !Array.isArray(input.encounter.nursingAssessment) &&
       Object.keys(input.encounter.nursingAssessment as Record<string, unknown>).length >= MAX_STRUCTURED_ENTRIES
     ) truncatedDomains.push("STRUCTURED_DOCUMENTATION");
+    if (input.clinicalDocumentationEntries.length >= MAX_STRUCTURED_ENTRIES || input.clinicalDocumentationEntries.some((entry) => canonicalJsonStringify(entry.payloadJson).length > MAX_STRUCTURED_DOCUMENTATION_PAYLOAD_CHARS)) truncatedDomains.push("STRUCTURED_DOCUMENTATION");
     if (input.orders.length >= MAX_ORDERS) truncatedDomains.push("ORDERS");
     if (input.orders.some((order) => order.items.length >= MAX_ORDER_ITEMS)) truncatedDomains.push("ORDER_ITEMS");
     if (input.results.length >= MAX_RESULTS) truncatedDomains.push("RESULTS");
@@ -895,7 +898,7 @@ export class EncounterAiSnapshotBuilder {
     const nursingDischarge = dischargeRoot?.inpatientNursingDischarge && typeof dischargeRoot.inpatientNursingDischarge === "object" && !Array.isArray(dischargeRoot.inpatientNursingDischarge) ? dischargeRoot.inpatientNursingDischarge as Record<string, unknown> : null;
     if (nursingDischarge && JSON.stringify(nursingDischarge).length > MAX_NURSING_DISCHARGE_CHARS) truncatedDomains.push("NURSING_DISCHARGE_EXECUTION");
     if (input.encounterNotes.length >= MAX_ENCOUNTER_NOTES || input.encounterNotes.some((note) => note.body.length > MAX_ENCOUNTER_NOTE_CHARS)) truncatedDomains.push("ENCOUNTER_NOTES");
-    if (input.providerDocumentationVersions.length >= MAX_PROVIDER_DOCUMENTATION_VERSIONS || input.providerDocumentationVersions.some((version) => (version.unlockReason?.length ?? 0) > MAX_PROVIDER_UNLOCK_REASON_CHARS)) truncatedDomains.push("PROVIDER_DOCUMENTATION_HISTORY");
+    if (input.providerDocumentationVersions.length >= MAX_PROVIDER_DOCUMENTATION_VERSIONS || input.providerDocumentationVersions.some((version) => (version.unlockReason?.length ?? 0) > MAX_PROVIDER_UNLOCK_REASON_CHARS || canonicalJsonStringify(version.clinicalSnapshotJson).length > MAX_PROVIDER_CLINICAL_SNAPSHOT_CHARS)) truncatedDomains.push("PROVIDER_DOCUMENTATION_HISTORY");
     if (input.providerAddenda.length >= MAX_PROVIDER_ADDENDA || input.providerAddenda.some((addendum) => addendum.text.length > MAX_PROVIDER_ADDENDUM_CHARS || (addendum.amendmentReason?.length ?? 0) > MAX_PROVIDER_ADDENDUM_CHARS)) truncatedDomains.push("PROVIDER_ADDENDA");
     // Audited against Medora's encounter-scoped legal/closed-chart composition.
     // These sources are persisted and clinically relevant but are not yet loaded
