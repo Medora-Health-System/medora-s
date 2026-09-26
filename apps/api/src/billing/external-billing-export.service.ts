@@ -573,7 +573,7 @@ export class ExternalBillingExportService {
         `Monthly export exceeds maximum of ${MAX_EXTERNAL_BILLING_MONTHLY_ENCOUNTER_COUNT} encounters. Narrow the date range or export weekly.`
       );
     }
-    const batchId = `BATCH-${start.toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+    const batchId = `BATCH-${start.toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
     const exportedAt = new Date().toISOString();
     const facility = await this.prisma.facility.findFirst({
       where: { id: facilityId },
