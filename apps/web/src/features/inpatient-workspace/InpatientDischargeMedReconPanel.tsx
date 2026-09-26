@@ -36,7 +36,7 @@ type Props = {
 };
 
 function newId(): string {
-  return `mrl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `mrl-${crypto.randomUUID()}`;
 }
 
 function serializeLine(l: MedReconLineDraft) {
