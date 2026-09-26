@@ -27,6 +27,7 @@ import { rule17CompletedDiagnosticMissingResult } from "./rules/rule-17-complete
 import { rule18CompletedDiagnosticMissingResultAtDischarge } from "./rules/rule-18-completed-diagnostic-missing-result-at-discharge.rule.js";
 import { rule19DispositionConsistency } from "./rules/rule-19-disposition-consistency.rule.js";
 import { rule20DischargeExecutionConsistency } from "./rules/rule-20-discharge-execution-consistency.rule.js";
+import { rule21TreatmentResponseDocumentation } from "./rules/rule-21-treatment-response-documentation.rule.js";
 
 const PRIORITY_RANK: Record<AiSuggestion["priority"], number> = {
   CRITICAL: 0,
@@ -72,6 +73,7 @@ export class DeterministicReviewEngine {
     rule17CompletedDiagnosticMissingResult,
     rule18CompletedDiagnosticMissingResultAtDischarge,
     rule20DischargeExecutionConsistency,
+    rule21TreatmentResponseDocumentation,
   ];
 
   run(snapshot: EncounterAiSnapshot): AiClinicalReviewOutput {
