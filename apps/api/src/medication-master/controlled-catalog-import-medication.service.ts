@@ -463,11 +463,11 @@ export class ControlledCatalogImportMedicationService {
         },
       });
 
-      if (row.ndc11) {
-        await tx.medicationBillingProfile.create({
-          data: { packageId: pkg.id, requiresManualReview: true },
-        });
-      }
+      // Billing review exists even when the source did not provide an NDC.
+      // Missing external identifiers must remain explicit, never synthesized later.
+      await tx.medicationBillingProfile.create({
+        data: { packageId: pkg.id, requiresManualReview: true },
+      });
 
       const ffi = await tx.facilityFormularyItem.create({
         data: {
