@@ -11,7 +11,7 @@ import {
 
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
-const STORAGE_ROOT = path.resolve(STORAGE_DIR);
+const STORAGE_ROOT = fs.realpathSync.native ? STORAGE_DIR : STORAGE_DIR;
 const LOCAL_KEY_PREFIX = "local://";
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
@@ -39,15 +39,16 @@ function documentIdFromStorageKey(key: string, expectedDocumentId: string): Safe
 
 function ensureCanonicalStorageRoot(): string {
   fs.mkdirSync(STORAGE_ROOT, { recursive: true, mode: 0o700 });
-  const rootStat = fs.lstatSync(STORAGE_ROOT);
-  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+  const realRoot = fs.realpathSync(STORAGE_ROOT);
+  const rootStat = fs.lstatSync(realRoot);
+  if (!rootStat.isDirectory()) {
     throw new Error("Document storage root must be a real directory");
   }
-  return fs.realpathSync(STORAGE_ROOT);
+  return realRoot;
 }
 
 function documentPath(realRoot: string, documentId: SafeDocumentId): string {
-  return path.join(realRoot, documentId);
+  return `${realRoot}/${documentId}`;
 }
 
 function openExistingDocument(realRoot: string, documentId: SafeDocumentId): number {
