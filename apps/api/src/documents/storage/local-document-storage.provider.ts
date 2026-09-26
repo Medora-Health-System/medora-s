@@ -22,7 +22,13 @@ function safeDocumentId(documentId: string): SafeDocumentId {
   if (!DOCUMENT_ID_PATTERN.test(value)) {
     throw new Error("Invalid document storage identifier");
   }
-  return value as SafeDocumentId;
+  // Keep directory semantics out of the value before it reaches filesystem APIs.
+  // basename is deliberately paired with equality so normalization cannot change identity.
+  const basename = path.basename(value);
+  if (basename !== value) {
+    throw new Error("Invalid document storage identifier");
+  }
+  return basename as SafeDocumentId;
 }
 
 function storageKey(documentId: string): string {
