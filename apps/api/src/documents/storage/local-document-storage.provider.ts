@@ -12,65 +12,52 @@ import {
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
 const STORAGE_ROOT = path.resolve(STORAGE_DIR);
+const LOCAL_KEY_PREFIX = "local://";
+const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-function isPathInside(root: string, candidate: string): boolean {
-  const relative = path.relative(root, candidate);
-  return relative !== "" &&
-    relative !== ".." &&
-    !relative.startsWith(`..${path.sep}`) &&
-    !path.isAbsolute(relative);
-}
-
-function assertContainedStoragePath(storagePath: string): string {
-  const resolved = path.resolve(storagePath);
-  if (!isPathInside(STORAGE_ROOT, resolved)) {
-    throw new Error("Document storage path is outside the configured storage root");
+function safeDocumentId(documentId: string): string {
+  const value = documentId?.trim();
+  if (!DOCUMENT_ID_PATTERN.test(value)) {
+    throw new Error("Invalid document storage identifier");
   }
-  return resolved;
+  return value;
 }
 
-function safeFacilityStorageSegment(facilityId: string | null | undefined): string {
-  const raw = facilityId?.trim() || "global";
-  if (!/^[A-Za-z0-9_-]+$/.test(raw)) {
-    throw new Error("Invalid facility storage identifier");
+function storageKey(documentId: string): string {
+  return `${LOCAL_KEY_PREFIX}${safeDocumentId(documentId)}`;
+}
+
+function documentIdFromStorageKey(key: string, expectedDocumentId: string): string {
+  const expected = safeDocumentId(expectedDocumentId);
+  if (key !== storageKey(expected)) {
+    throw new Error("Document storage key does not match the requested document");
   }
-  return raw;
+  return expected;
 }
 
-function ensureStorageRoot(): string {
+function ensureCanonicalStorageRoot(): string {
   fs.mkdirSync(STORAGE_ROOT, { recursive: true, mode: 0o700 });
-  const stat = fs.lstatSync(STORAGE_ROOT);
-  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+  const rootStat = fs.lstatSync(STORAGE_ROOT);
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
     throw new Error("Document storage root must be a real directory");
   }
   return fs.realpathSync(STORAGE_ROOT);
 }
 
-function assertRealDirectoryInsideRoot(directoryPath: string, realRoot: string): string {
-  const lexical = assertContainedStoragePath(directoryPath);
-  const stat = fs.lstatSync(lexical);
-  if (stat.isSymbolicLink() || !stat.isDirectory()) {
-    throw new Error("Document storage directory must be a real directory");
-  }
-  const realDirectory = fs.realpathSync(lexical);
-  if (!isPathInside(realRoot, realDirectory)) {
-    throw new Error("Document storage directory resolves outside the configured storage root");
-  }
-  return realDirectory;
+function documentPath(realRoot: string, documentId: string): string {
+  return path.join(realRoot, safeDocumentId(documentId));
 }
 
-function resolveExistingStoredFile(storagePath: string): { lexical: string; real: string } {
-  const lexical = assertContainedStoragePath(storagePath);
-  const stat = fs.lstatSync(lexical);
-  if (stat.isSymbolicLink() || !stat.isFile()) {
-    throw new Error("Document storage path must be a real file");
+function openExistingDocument(realRoot: string, documentId: string): number {
+  const candidate = documentPath(realRoot, documentId);
+  const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
+  const fd = fs.openSync(candidate, fs.constants.O_RDONLY | noFollow);
+  const stat = fs.fstatSync(fd);
+  if (!stat.isFile()) {
+    fs.closeSync(fd);
+    throw new Error("Document storage object is not a regular file");
   }
-  const realRoot = ensureStorageRoot();
-  const real = fs.realpathSync(lexical);
-  if (!isPathInside(realRoot, real)) {
-    throw new Error("Document storage path resolves outside the configured storage root");
-  }
-  return { lexical, real };
+  return fd;
 }
 
 @Injectable()
@@ -79,20 +66,13 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
   private readonly logger = new Logger(LocalDocumentStorageProvider.name);
 
   async save(input: DocumentStorageSaveInput): Promise<DocumentStorageSaveResult> {
-    const realRoot = ensureStorageRoot();
-    const subDir = safeFacilityStorageSegment(input.facilityId);
-    const targetDir = assertContainedStoragePath(path.join(STORAGE_ROOT, subDir));
-
-    fs.mkdirSync(targetDir, { recursive: true, mode: 0o700 });
-    const realTargetDir = assertRealDirectoryInsideRoot(targetDir, realRoot);
-
-    const ext = path.extname(input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")) || "";
-    const storedName = `${Date.now()}_${crypto.randomBytes(8).toString("hex")}${ext}`;
-    const storagePath = assertContainedStoragePath(path.join(realTargetDir, storedName));
-
+    const realRoot = ensureCanonicalStorageRoot();
+    const documentId = safeDocumentId(input.documentId);
+    const target = documentPath(realRoot, documentId);
     const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
     const flags = fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY | noFollow;
-    const fd = fs.openSync(storagePath, flags, 0o600);
+
+    const fd = fs.openSync(target, flags, 0o600);
     try {
       fs.writeFileSync(fd, input.buffer);
       fs.fsyncSync(fd);
@@ -100,20 +80,18 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
       fs.closeSync(fd);
     }
 
-    const verified = fs.existsSync(storagePath);
-    if (!verified) {
-      this.logger.warn("local write verification failed");
-    }
-
-    return { provider: "local", storagePath, verified };
+    return {
+      provider: "local",
+      storagePath: storageKey(documentId),
+      verified: true,
+    };
   }
 
-  async read(storagePath: string): Promise<DocumentStorageReadResult | null> {
-    if (!storagePath) return null;
+  async read(storagePath: string, documentId: string): Promise<DocumentStorageReadResult | null> {
     try {
-      const { real } = resolveExistingStoredFile(storagePath);
-      const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
-      const fd = fs.openSync(real, fs.constants.O_RDONLY | noFollow);
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const fd = openExistingDocument(realRoot, id);
       try {
         return { provider: "local", buffer: fs.readFileSync(fd) };
       } finally {
@@ -124,25 +102,38 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
     }
   }
 
-  async exists(storagePath: string): Promise<boolean> {
-    if (!storagePath) return false;
+  async exists(storagePath: string, documentId: string): Promise<boolean> {
     try {
-      resolveExistingStoredFile(storagePath);
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const fd = openExistingDocument(realRoot, id);
+      fs.closeSync(fd);
       return true;
     } catch {
       return false;
     }
   }
 
-  async delete(storagePath: string): Promise<void> {
-    if (!storagePath) return;
+  async delete(storagePath: string, documentId: string): Promise<void> {
     try {
-      const { lexical, real } = resolveExistingStoredFile(storagePath);
-      if (lexical !== real) {
-        this.logger.warn("local delete rejected: non-canonical storage path");
-        return;
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const candidate = documentPath(realRoot, id);
+
+      const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
+      const fd = fs.openSync(candidate, fs.constants.O_RDONLY | noFollow);
+      try {
+        const stat = fs.fstatSync(fd);
+        if (!stat.isFile()) throw new Error("Document storage object is not a regular file");
+        const current = fs.lstatSync(candidate);
+        const opened = fs.fstatSync(fd);
+        if (current.isSymbolicLink() || current.dev !== opened.dev || current.ino !== opened.ino) {
+          throw new Error("Document storage object changed during delete validation");
+        }
+        fs.unlinkSync(candidate);
+      } finally {
+        fs.closeSync(fd);
       }
-      fs.unlinkSync(real);
     } catch (err) {
       this.logger.warn(`local delete rejected or failed: err=${(err as Error)?.message}`);
     }
