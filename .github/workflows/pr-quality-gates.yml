@@ -18,7 +18,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: medora_ci
         ports:
           - 5432:5432
@@ -29,7 +29,7 @@ jobs:
           --health-retries=10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medora_ci
+      DATABASE_URL: postgresql://postgres@localhost:5432/medora_ci
       JWT_ACCESS_SECRET: ci_access_secret
       JWT_REFRESH_SECRET: ci_refresh_secret
       PATIENT_PORTAL_JWT_ACCESS_SECRET: ci_patient_portal_access_secret
