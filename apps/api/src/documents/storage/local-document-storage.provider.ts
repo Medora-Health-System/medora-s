@@ -15,7 +15,7 @@ const STORAGE_ROOT = path.resolve(STORAGE_DIR);
 const LOCAL_KEY_PREFIX = "local://";
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-function safeDocumentId(documentId: string): string {
+type SafeDocumentId = string & { readonly __safeDocumentId: unique symbol };\n\nfunction safeDocumentId(documentId: string): SafeDocumentId {
   const value = documentId?.trim();
   if (!DOCUMENT_ID_PATTERN.test(value)) {
     throw new Error("Invalid document storage identifier");
@@ -48,7 +48,7 @@ function documentPath(realRoot: string, documentId: string): string {
   return path.join(realRoot, safeDocumentId(documentId));
 }
 
-function openExistingDocument(realRoot: string, documentId: string): number {
+function openExistingDocument(realRoot: string, documentId: SafeDocumentId): number {
   const candidate = documentPath(realRoot, documentId);
   const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
   const fd = fs.openSync(candidate, fs.constants.O_RDONLY | noFollow);
