@@ -58,6 +58,20 @@ function MsppBrandMark(){
 
 const MEDORA_ICON_BLUE = "#60a5fa";
 
+function RadiologyNavIcon(){
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="pointer-events-none block h-5 w-5 shrink-0" fill="none" stroke={MEDORA_ICON_BLUE} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5h16" />
+      <path d="M6.5 16.5 15.7 7.3" />
+      <path d="m14.2 5.8 4 4" />
+      <path d="m5.3 15.2 3.5 3.5" />
+      <path d="M16.8 4.8 19.2 7.2" />
+      <circle cx="18.2" cy="16.3" r="2.2" />
+      <path d="M18.2 14.1v4.4M16 16.3h4.4" opacity=".75" />
+    </svg>
+  );
+}
+
 function TablerNavIcon({name}:{name:string}){
   return <span
     aria-hidden
@@ -78,6 +92,7 @@ function TablerNavIcon({name}:{name:string}){
 
 export function SidebarNavIcon({href}:{href:string}){
   if(href==="/app/mspp/dashboard" || href==="/app/mspp/analytics") return <MsppBrandMark/>;
+  if(href==="/app/rad-worklist") return <RadiologyNavIcon/>;
   const iconKey=resolveSidebarNavIconPathname(href);
   const name=HREF_TABLER_ICON[iconKey] ?? HREF_TABLER_ICON[href] ?? "circle";
   return <TablerNavIcon name={name}/>;
