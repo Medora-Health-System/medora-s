@@ -27,7 +27,7 @@ function storageKey(documentId: string): string {
   return `${LOCAL_KEY_PREFIX}${safeDocumentId(documentId)}`;
 }
 
-function documentIdFromStorageKey(key: string, expectedDocumentId: string): string {
+function documentIdFromStorageKey(key: string, expectedDocumentId: string): SafeDocumentId {
   const expected = safeDocumentId(expectedDocumentId);
   if (key !== storageKey(expected)) {
     throw new Error("Document storage key does not match the requested document");
