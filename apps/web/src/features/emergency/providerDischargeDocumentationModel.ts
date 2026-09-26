@@ -977,11 +977,11 @@ export function applyProviderDischargeDocumentationToDischargeForm(
 }
 
 export function newDiagnosisDocId(): string {
-  return `dxdoc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return `dxdoc-${crypto.randomUUID()}`;
 }
 
 export function newFollowUpRowId(): string {
-  return `fu-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return `fu-${crypto.randomUUID()}`;
 }
 
 export function newDefaultFollowUpRow(): ProviderDischargeFollowUpRow {
