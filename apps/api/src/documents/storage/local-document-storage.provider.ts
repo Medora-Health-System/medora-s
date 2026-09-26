@@ -11,6 +11,24 @@ import {
 
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
+const STORAGE_ROOT = path.resolve(STORAGE_DIR);
+
+function assertContainedStoragePath(storagePath: string): string {
+  const resolved = path.resolve(storagePath);
+  const relative = path.relative(STORAGE_ROOT, resolved);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error("Document storage path is outside the configured storage root");
+  }
+  return resolved;
+}
+
+function safeFacilityStorageSegment(facilityId: string | null | undefined): string {
+  const raw = facilityId?.trim() || "global";
+  if (!/^[A-Za-z0-9_-]+$/.test(raw)) {
+    throw new Error("Invalid facility storage identifier");
+  }
+  return raw;
+}
 
 @Injectable()
 export class LocalDocumentStorageProvider implements DocumentStorageProvider {
@@ -18,29 +36,36 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
   private readonly logger = new Logger(LocalDocumentStorageProvider.name);
 
   async save(input: DocumentStorageSaveInput): Promise<DocumentStorageSaveResult> {
-    const subDir = input.facilityId || "global";
-    const targetDir = path.join(STORAGE_DIR, subDir);
+    const subDir = safeFacilityStorageSegment(input.facilityId);
+    const targetDir = assertContainedStoragePath(path.join(STORAGE_ROOT, subDir));
 
     fs.mkdirSync(targetDir, { recursive: true });
 
     const ext = path.extname(input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")) || "";
     const storedName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
-    const storagePath = path.join(targetDir, storedName);
+    const storagePath = assertContainedStoragePath(path.join(targetDir, storedName));
 
     fs.writeFileSync(storagePath, input.buffer);
 
     const verified = fs.existsSync(storagePath);
     if (!verified) {
-      this.logger.warn(`local write verification failed: ${storagePath}`);
+      this.logger.warn("local write verification failed");
     }
 
     return { provider: "local", storagePath, verified };
   }
 
-  async read(_storagePath: string): Promise<DocumentStorageReadResult | null> {
-    if (!_storagePath || !fs.existsSync(_storagePath)) return null;
+  async read(storagePath: string): Promise<DocumentStorageReadResult | null> {
+    if (!storagePath) return null;
+    let safePath: string;
     try {
-      const buffer = fs.readFileSync(_storagePath);
+      safePath = assertContainedStoragePath(storagePath);
+    } catch {
+      return null;
+    }
+    if (!fs.existsSync(safePath)) return null;
+    try {
+      const buffer = fs.readFileSync(safePath);
       return { provider: "local", buffer };
     } catch {
       return null;
@@ -48,15 +73,28 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
   }
 
   async exists(storagePath: string): Promise<boolean> {
-    return !!storagePath && fs.existsSync(storagePath);
+    if (!storagePath) return false;
+    try {
+      return fs.existsSync(assertContainedStoragePath(storagePath));
+    } catch {
+      return false;
+    }
   }
 
   async delete(storagePath: string): Promise<void> {
-    if (storagePath && fs.existsSync(storagePath)) {
+    if (!storagePath) return;
+    let safePath: string;
+    try {
+      safePath = assertContainedStoragePath(storagePath);
+    } catch {
+      this.logger.warn("local delete rejected: path outside configured storage root");
+      return;
+    }
+    if (fs.existsSync(safePath)) {
       try {
-        fs.unlinkSync(storagePath);
+        fs.unlinkSync(safePath);
       } catch (err) {
-        this.logger.warn(`local delete failed: ${storagePath} err=${(err as Error)?.message}`);
+        this.logger.warn(`local delete failed: err=${(err as Error)?.message}`);
       }
     }
   }
