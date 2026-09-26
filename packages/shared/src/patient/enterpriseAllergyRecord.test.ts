@@ -19,6 +19,18 @@ describe("enterpriseAllergyRecord D4A.3.3A", () => {
     expect(activeAllergiesSummary({ nkda: true }, "NKDA").availability).toBe("NOT_PRESENT");
   });
 
+  it("rejects structured allergy rows that have no durable identity", () => {
+    const section = sanitizeEnterpriseAllergiesSection({
+      entries: [
+        { substance: "Penicillin", status: "ACTIVE" },
+        { id: "allergy-verified-1", substance: "Latex", status: "ACTIVE" },
+      ],
+    });
+    expect(section.entries).toEqual([
+      { id: "allergy-verified-1", substance: "Latex", status: "ACTIVE" },
+    ]);
+  });
+
   it("syncs legacy text from structured entries", () => {
     const synced = syncLegacyAllergyTextFields({
       entries: [
