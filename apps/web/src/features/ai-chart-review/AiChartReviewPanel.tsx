@@ -278,8 +278,8 @@ export function AiChartReviewPanel({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 8, background: "#eff6ff", border: "1px solid #dbeafe", overflow: "hidden" }}>
-            <img src="/branding/medora-favicon-source.jpg" alt="" width={28} height={28} style={{ objectFit: "contain" }} />
+          <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 9, background: "#03172d", overflow: "hidden", boxShadow: "inset 0 0 0 1px rgba(96,165,250,.18)" }}>
+            <img src="/branding/medora-icon-ios-master.png" alt="" width={36} height={36} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
           </span>
           <h2 style={{ margin: 0, fontSize: 16, color: "#0f172a", letterSpacing: "-.01em" }}>{copy.title}</h2>
         </div>
