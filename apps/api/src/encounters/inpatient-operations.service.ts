@@ -3,6 +3,8 @@
  * Zero schema migration. Facility/actor always from JWT.
  */
 
+import { randomUUID } from "node:crypto";
+
 import {
   BadRequestException,
   ConflictException,
@@ -1772,7 +1774,7 @@ export class InpatientOperationsService {
       ops.consults = [
         ...(ops.consults ?? []),
         {
-          consultId: `c-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          consultId: `c-${randomUUID()}`,
           specialty: String(patch.appendConsult.specialty ?? "").trim(),
           reason: String(patch.appendConsult.reason ?? "").trim(),
           priority: patch.appendConsult.priority ?? "ROUTINE",
@@ -1807,7 +1809,7 @@ export class InpatientOperationsService {
       ops.medicationReconciliation = [
         ...(ops.medicationReconciliation ?? []),
         {
-          lineId: `mr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          lineId: `mr-${randomUUID()}`,
           sourceLabel: String(patch.appendMedRecon.sourceLabel ?? "").trim(),
           decision: decision as MedReconDecision,
           reason: patch.appendMedRecon.reason ?? null,
