@@ -73,7 +73,10 @@ export function sanitizeEnterpriseAllergyEntry(raw: unknown): EnterpriseAllergyE
   const o = raw as Record<string, unknown>;
   const substance = trim(o.substance, 160);
   if (!substance) return null;
-  const id = trim(o.id, 64) || `alg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = trim(o.id, 64);
+  // Sanitization must never invent durable clinical identity. A missing allergy
+  // row ID is invalid at this boundary and must be created explicitly by the writer.
+  if (!id) return null;
   const entry: EnterpriseAllergyEntry = {
     id,
     substance,
