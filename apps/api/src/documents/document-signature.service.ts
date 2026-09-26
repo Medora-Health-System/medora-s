@@ -14,7 +14,10 @@ const SIGNABLE_TYPES = ["REGISTRATION_PACKET"] as const;
 @Injectable()
 export class DocumentSignatureService {
   private readonly logger = new Logger(DocumentSignatureService.name);
-  constructor(\n    private readonly prisma: PrismaService,\n    private readonly storageService: DocumentStorageService,\n  ) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: DocumentStorageService,
+  ) {}
 
   async addSignature(params: {
     documentId: string;
