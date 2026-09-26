@@ -108,9 +108,7 @@ export function HospitalAdmissionIntakeView() {
   const [level, setLevel] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const idempotencyKey = useState(
-    () => `adm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-  )[0];
+  const idempotencyKey = useState(() => `adm-${crypto.randomUUID()}`)[0];
 
   const receivingNurseLabel = t("hospitalAdmissionD4a0.receivingNurse.authenticated");
 
