@@ -15,12 +15,14 @@ const STORAGE_ROOT = path.resolve(STORAGE_DIR);
 const LOCAL_KEY_PREFIX = "local://";
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-type SafeDocumentId = string & { readonly __safeDocumentId: unique symbol };\n\nfunction safeDocumentId(documentId: string): SafeDocumentId {
+type SafeDocumentId = string & { readonly __safeDocumentId: unique symbol };
+
+function safeDocumentId(documentId: string): SafeDocumentId {
   const value = documentId?.trim();
   if (!DOCUMENT_ID_PATTERN.test(value)) {
     throw new Error("Invalid document storage identifier");
   }
-  return value;
+  return value as SafeDocumentId;
 }
 
 function storageKey(documentId: string): string {
@@ -44,8 +46,8 @@ function ensureCanonicalStorageRoot(): string {
   return fs.realpathSync(STORAGE_ROOT);
 }
 
-function documentPath(realRoot: string, documentId: string): string {
-  return path.join(realRoot, safeDocumentId(documentId));
+function documentPath(realRoot: string, documentId: SafeDocumentId): string {
+  return path.join(realRoot, documentId);
 }
 
 function openExistingDocument(realRoot: string, documentId: SafeDocumentId): number {
