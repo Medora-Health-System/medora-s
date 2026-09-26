@@ -22,7 +22,7 @@ function assertContainedStoragePath(storagePath: string): string {
   return resolved;
 }
 
-function safeFacilityStorageSegment(facilityId: string | undefined): string {
+function safeFacilityStorageSegment(facilityId: string | null | undefined): string {
   const raw = facilityId?.trim() || "global";
   if (!/^[A-Za-z0-9_-]+$/.test(raw)) {
     throw new Error("Invalid facility storage identifier");
