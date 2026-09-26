@@ -11,7 +11,7 @@ import {
 
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
-const STORAGE_ROOT = fs.realpathSync.native ? STORAGE_DIR : STORAGE_DIR;
+const STORAGE_ROOT = STORAGE_DIR;
 const LOCAL_KEY_PREFIX = "local://";
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
