@@ -7,14 +7,17 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as crypto from "crypto";
-import * as fs from "fs";
+import { DocumentStorageService } from "./storage/document-storage.service";
 
 const SIGNABLE_TYPES = ["REGISTRATION_PACKET"] as const;
 
 @Injectable()
 export class DocumentSignatureService {
   private readonly logger = new Logger(DocumentSignatureService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: DocumentStorageService,
+  ) {}
 
   async addSignature(params: {
     documentId: string;
@@ -143,9 +146,11 @@ export class DocumentSignatureService {
     if (!staffSig) throw new BadRequestException("Staff or witness signature is required");
 
     let contentHash = doc.checksumSha256;
-    if (!contentHash && doc.storagePath && fs.existsSync(doc.storagePath)) {
-      const buffer = fs.readFileSync(doc.storagePath);
-      contentHash = crypto.createHash("sha256").update(buffer).digest("hex");
+    if (!contentHash && doc.storagePath) {
+      const stored = await this.storageService.read(doc.storagePath, doc.id);
+      if (stored) {
+        contentHash = crypto.createHash("sha256").update(stored.buffer).digest("hex");
+      }
     }
 
     const isRefusal = (patientSig.signatureData as { refusal?: boolean })?.refusal === true;

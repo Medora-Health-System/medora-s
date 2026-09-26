@@ -368,9 +368,9 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(ctrl).toContain("res.end(result.buffer)");
     });
 
-    it("download controller handles disk file response", () => {
-      expect(ctrl).toContain("result.storagePath");
-      expect(ctrl).toContain("res.sendFile(result.storagePath)");
+    it("download controller supports storage-service buffers without exposing local paths", () => {
+      expect(ctrl).toContain("result.buffer");
+      expect(ctrl).toContain("res.end(result.buffer)");
     });
 
     it("upload stores checksumSha256", () => {
@@ -417,14 +417,15 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(storageInterface).toContain('"local" | "blob" | "s3" | "r2" | "azure"');
     });
 
-    it("LocalDocumentStorageProvider implements save with fs", () => {
-      expect(localProvider).toContain("fs.writeFileSync");
-      expect(localProvider).toContain("fs.mkdirSync");
+    it("LocalDocumentStorageProvider implements descriptor-bound local storage", () => {
+      expect(localProvider).toContain("fs.openSync");
+      expect(localProvider).toContain("fs.fstatSync");
+      expect(localProvider).toContain("O_NOFOLLOW");
     });
 
-    it("LocalDocumentStorageProvider verifies write", () => {
-      expect(localProvider).toContain("verified");
-      expect(localProvider).toContain("fs.existsSync(storagePath)");
+    it("LocalDocumentStorageProvider returns opaque local storage keys", () => {
+      expect(localProvider).toContain('LOCAL_KEY_PREFIX = "local://"');
+      expect(localProvider).toContain("storageKey(documentId)");
     });
 
     it("LocalDocumentStorageProvider uses MEDORA_DOCUMENT_STORAGE_DIR", () => {

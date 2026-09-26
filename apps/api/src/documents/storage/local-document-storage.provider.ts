@@ -11,23 +11,62 @@ import {
 
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
-const STORAGE_ROOT = path.resolve(STORAGE_DIR);
+const STORAGE_ROOT = STORAGE_DIR;
+const LOCAL_KEY_PREFIX = "local://";
+const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-function assertContainedStoragePath(storagePath: string): string {
-  const resolved = path.resolve(storagePath);
-  const relative = path.relative(STORAGE_ROOT, resolved);
-  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error("Document storage path is outside the configured storage root");
+type SafeDocumentId = string & { readonly __safeDocumentId: unique symbol };
+
+function safeDocumentId(documentId: string): SafeDocumentId {
+  const value = documentId?.trim();
+  if (!DOCUMENT_ID_PATTERN.test(value)) {
+    throw new Error("Invalid document storage identifier");
   }
-  return resolved;
+  // Keep directory semantics out of the value before it reaches filesystem APIs.
+  // basename is deliberately paired with equality so normalization cannot change identity.
+  const basename = path.basename(value);
+  if (basename !== value) {
+    throw new Error("Invalid document storage identifier");
+  }
+  return basename as SafeDocumentId;
 }
 
-function safeFacilityStorageSegment(facilityId: string | null | undefined): string {
-  const raw = facilityId?.trim() || "global";
-  if (!/^[A-Za-z0-9_-]+$/.test(raw)) {
-    throw new Error("Invalid facility storage identifier");
+function storageKey(documentId: string): string {
+  return `${LOCAL_KEY_PREFIX}${safeDocumentId(documentId)}`;
+}
+
+function documentIdFromStorageKey(key: string, expectedDocumentId: string): SafeDocumentId {
+  const expected = safeDocumentId(expectedDocumentId);
+  if (key !== storageKey(expected)) {
+    throw new Error("Document storage key does not match the requested document");
   }
-  return raw;
+  return expected;
+}
+
+function ensureCanonicalStorageRoot(): string {
+  fs.mkdirSync(STORAGE_ROOT, { recursive: true, mode: 0o700 });
+  const realRoot = fs.realpathSync(STORAGE_ROOT);
+  const rootStat = fs.lstatSync(realRoot);
+  if (!rootStat.isDirectory()) {
+    throw new Error("Document storage root must be a real directory");
+  }
+  return realRoot;
+}
+
+function documentPath(realRoot: string, documentId: SafeDocumentId): string {
+  return `${realRoot}/${documentId}`;
+}
+
+function openExistingDocument(realRoot: string, documentId: SafeDocumentId): number {
+  const candidate = documentPath(realRoot, documentId);
+  const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
+  const fd = fs.openSync(candidate, fs.constants.O_RDONLY | noFollow);
+  const stat = fs.fstatSync(fd);
+  if (!stat.isFile()) {
+    fs.closeSync(fd);
+    throw new Error("Document storage object is not a regular file");
+  }
+  return fd;
 }
 
 @Injectable()
@@ -36,66 +75,80 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
   private readonly logger = new Logger(LocalDocumentStorageProvider.name);
 
   async save(input: DocumentStorageSaveInput): Promise<DocumentStorageSaveResult> {
-    const subDir = safeFacilityStorageSegment(input.facilityId);
-    const targetDir = assertContainedStoragePath(path.join(STORAGE_ROOT, subDir));
+    const realRoot = ensureCanonicalStorageRoot();
+    const documentId = safeDocumentId(input.documentId);
+    const target = documentPath(realRoot, documentId);
+    const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
+    const flags = fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY | noFollow;
 
-    fs.mkdirSync(targetDir, { recursive: true });
-
-    const ext = path.extname(input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")) || "";
-    const storedName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
-    const storagePath = assertContainedStoragePath(path.join(targetDir, storedName));
-
-    fs.writeFileSync(storagePath, input.buffer);
-
-    const verified = fs.existsSync(storagePath);
-    if (!verified) {
-      this.logger.warn("local write verification failed");
+    const fd = fs.openSync(target, flags, 0o600);
+    try {
+      fs.writeFileSync(fd, input.buffer);
+      fs.fsyncSync(fd);
+      const stat = fs.fstatSync(fd);
+      if (!stat.isFile() || stat.size !== input.buffer.length) {
+        throw new Error("Local document write verification failed");
+      }
+    } finally {
+      fs.closeSync(fd);
     }
 
-    return { provider: "local", storagePath, verified };
+    return {
+      provider: "local",
+      storagePath: storageKey(documentId),
+      verified: true,
+    };
   }
 
-  async read(storagePath: string): Promise<DocumentStorageReadResult | null> {
-    if (!storagePath) return null;
-    let safePath: string;
+  async read(storagePath: string, documentId: string): Promise<DocumentStorageReadResult | null> {
     try {
-      safePath = assertContainedStoragePath(storagePath);
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const fd = openExistingDocument(realRoot, id);
+      try {
+        return { provider: "local", buffer: fs.readFileSync(fd) };
+      } finally {
+        fs.closeSync(fd);
+      }
     } catch {
       return null;
     }
-    if (!fs.existsSync(safePath)) return null;
-    try {
-      const buffer = fs.readFileSync(safePath);
-      return { provider: "local", buffer };
-    } catch {
-      return null;
-    }
   }
 
-  async exists(storagePath: string): Promise<boolean> {
-    if (!storagePath) return false;
+  async exists(storagePath: string, documentId: string): Promise<boolean> {
     try {
-      return fs.existsSync(assertContainedStoragePath(storagePath));
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const fd = openExistingDocument(realRoot, id);
+      fs.closeSync(fd);
+      return true;
     } catch {
       return false;
     }
   }
 
-  async delete(storagePath: string): Promise<void> {
-    if (!storagePath) return;
-    let safePath: string;
+  async delete(storagePath: string, documentId: string): Promise<void> {
     try {
-      safePath = assertContainedStoragePath(storagePath);
-    } catch {
-      this.logger.warn("local delete rejected: path outside configured storage root");
-      return;
-    }
-    if (fs.existsSync(safePath)) {
+      const id = documentIdFromStorageKey(storagePath, documentId);
+      const realRoot = ensureCanonicalStorageRoot();
+      const candidate = documentPath(realRoot, id);
+
+      const noFollow = (fs.constants as typeof fs.constants & { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0;
+      const fd = fs.openSync(candidate, fs.constants.O_RDONLY | noFollow);
       try {
-        fs.unlinkSync(safePath);
-      } catch (err) {
-        this.logger.warn(`local delete failed: err=${(err as Error)?.message}`);
+        const stat = fs.fstatSync(fd);
+        if (!stat.isFile()) throw new Error("Document storage object is not a regular file");
+        const current = fs.lstatSync(candidate);
+        const opened = fs.fstatSync(fd);
+        if (current.isSymbolicLink() || current.dev !== opened.dev || current.ino !== opened.ino) {
+          throw new Error("Document storage object changed during delete validation");
+        }
+        fs.unlinkSync(candidate);
+      } finally {
+        fs.closeSync(fd);
       }
+    } catch (err) {
+      this.logger.warn(`local delete rejected or failed: err=${(err as Error)?.message}`);
     }
   }
 }

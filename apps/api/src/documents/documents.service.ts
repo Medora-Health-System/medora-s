@@ -189,13 +189,10 @@ export class DocumentsService {
 
     const result = await this.storageService.read(doc.storagePath, documentId);
     if (result) {
-      if (result.provider === "local" && doc.storagePath) {
-        return { storagePath: doc.storagePath, fileName: doc.fileName, mimeType: doc.mimeType, buffer: null };
-      }
       return { storagePath: null, fileName: doc.fileName, mimeType: doc.mimeType, buffer: result.buffer };
     }
 
-    this.logger.warn(`document file unavailable: docId=${documentId} storagePath=${doc.storagePath}`);
+    this.logger.warn(`document file unavailable: docId=${documentId}`);
     throw new NotFoundException("Document file is unavailable. Please re-upload or contact administrator.");
   }
 
