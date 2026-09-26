@@ -1,0 +1,89 @@
+name: PR Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: Threat, tests, typecheck, build, dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: medora_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d medora_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/medora_ci
+      JWT_ACCESS_SECRET: ci_access_secret
+      JWT_REFRESH_SECRET: ci_refresh_secret
+      PATIENT_PORTAL_JWT_ACCESS_SECRET: ci_patient_portal_access_secret
+      PATIENT_PORTAL_JWT_REFRESH_SECRET: ci_patient_portal_refresh_secret
+      NODE_ENV: test
+      MEDORA_BACKGROUND_WORKERS_ENABLED: "false"
+      CLEARINGHOUSE_RETRY_WORKER_ENABLED: "false"
+      MEDICATION_DOSE_STATUS_PROMOTION_ENABLED: "false"
+      MEDICATION_DOSE_HORIZON_MAINTENANCE_ENABLED: "false"
+      MEDORA_REGISTRY_PREWARM_ENABLED: "false"
+      MEDORA_ALERT_ENABLED: "false"
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency vulnerability baseline
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
+
+      - name: Shared build
+        run: pnpm --filter @medora/shared build
+
+      - name: Prisma generate
+        run: pnpm --filter @medora/api exec prisma generate
+
+      - name: Prisma validate
+        run: pnpm --filter @medora/api exec prisma validate
+
+      - name: Prisma migrate deploy
+        run: pnpm --filter @medora/api exec prisma migrate deploy
+
+      - name: API typecheck
+        run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
+
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit
+
+      - name: Web build
+        run: pnpm --filter @medora/web build
+
+      - name: Security regression tests
+        working-directory: apps/api
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts patient-records.service.spec.ts patient-documents.service.spec.ts patient-document-release.service.spec.ts --runInBand --detectOpenHandles
