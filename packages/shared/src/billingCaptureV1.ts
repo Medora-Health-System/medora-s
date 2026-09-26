@@ -509,10 +509,13 @@ export function upsertBillingCaptureItem(previous: unknown, incoming: BillingCap
 }
 
 export function newBillingCaptureItemId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+  // Persisted identity links capture rows, ledger entries, reviews and audit events.
+  // Fail before creating a candidate if secure generation is unavailable; never
+  // fall back to a timestamp/PRNG identity or rewrite existing stored identifiers.
+  if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+    throw new Error("Secure billing capture ID generation is unavailable");
   }
-  return `bc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 11)}`;
+  return crypto.randomUUID();
 }
 
 /** Mirrors `DiagnosisCodeSource` in Prisma — kept string-union for shared package independence. */

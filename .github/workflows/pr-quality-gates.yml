@@ -64,6 +64,9 @@ jobs:
       - name: Shared build
         run: pnpm --filter @medora/shared build
 
+      - name: Billing capture identity and clinical regression tests
+        run: pnpm --filter @medora/shared exec vitest run src/billingCaptureIdentity.test.ts src/billingCaptureLabRadSafety.test.ts src/billingCaptureMedicationAdministration.test.ts src/billingCaptureOrderAttribution.test.ts src/orderAcknowledgementBillingSafety.test.ts src/medication/medicationAdministrationMarBilling.test.ts
+
       - name: Prisma generate
         run: pnpm --filter @medora/api exec prisma generate
 
