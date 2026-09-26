@@ -26,7 +26,7 @@ type Props = {
 };
 
 function newId(): string {
-  return `dmed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `dmed-${crypto.randomUUID()}`;
 }
 
 export function InpatientDischargeMedicationsPanel({
