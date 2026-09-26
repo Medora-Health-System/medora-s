@@ -43,6 +43,41 @@ describe("LocalDocumentStorageProvider path containment", () => {
     } as any)).rejects.toThrow("Invalid facility storage identifier");
   });
 
+  it("rejects a facility directory symlink that escapes the storage root", async () => {
+    const storage = await provider();
+    const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "medora-storage-outside-"));
+    const facilityLink = path.join(root, "facility_link");
+    fs.symlinkSync(outsideDir, facilityLink, "dir");
+    try {
+      await expect(storage.save({
+        facilityId: "facility_link",
+        fileName: "packet.pdf",
+        buffer: Buffer.from("sensitive"),
+      } as any)).rejects.toThrow("Document storage directory must be a real directory");
+      expect(fs.readdirSync(outsideDir)).toHaveLength(0);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not follow a stored-file symlink outside the configured root", async () => {
+    const storage = await provider();
+    const facilityDir = path.join(root, "facility_123");
+    fs.mkdirSync(facilityDir);
+    const outside = path.join(os.tmpdir(), `medora-outside-${Date.now()}.txt`);
+    const linked = path.join(facilityDir, "linked.txt");
+    fs.writeFileSync(outside, "sensitive");
+    fs.symlinkSync(outside, linked);
+    try {
+      await expect(storage.read(linked)).resolves.toBeNull();
+      await expect(storage.exists(linked)).resolves.toBe(false);
+      await storage.delete(linked);
+      expect(fs.readFileSync(outside, "utf8")).toBe("sensitive");
+    } finally {
+      fs.rmSync(outside, { force: true });
+    }
+  });
+
   it("does not read, probe, or delete paths outside the configured root", async () => {
     const storage = await provider();
     const outside = path.join(os.tmpdir(), `medora-outside-${Date.now()}.txt`);
