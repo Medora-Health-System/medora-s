@@ -76,6 +76,10 @@ export class LocalDocumentStorageProvider implements DocumentStorageProvider {
     try {
       fs.writeFileSync(fd, input.buffer);
       fs.fsyncSync(fd);
+      const stat = fs.fstatSync(fd);
+      if (!stat.isFile() || stat.size !== input.buffer.length) {
+        throw new Error("Local document write verification failed");
+      }
     } finally {
       fs.closeSync(fd);
     }
