@@ -601,14 +601,9 @@ export class ControlledCatalogImportMedicationService {
     if (!product) return;
 
     for (const pkg of product.packages) {
-      if (!pkg.ndc11?.trim()) {
-        const digits = `CTL${Date.now()}${Math.floor(Math.random() * 1000)}`.replace(/\D/g, "").slice(0, 11);
-        const ndc = digits.padStart(11, "0").slice(0, 11);
-        await this.prisma.medicationPackage.update({
-          where: { id: pkg.id },
-          data: { ndc11: ndc, ndcDisplay: ndc },
-        });
-      }
+      // Never fabricate an NDC. An NDC is an external medication identity and must
+      // originate from validated source data. Missing identifiers remain missing
+      // and are handled by the manual-review billing profile below.
       if (pkg.billingProfiles.length === 0) {
         await this.prisma.medicationBillingProfile.create({
           data: { packageId: pkg.id, requiresManualReview: true },
