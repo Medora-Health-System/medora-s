@@ -1,0 +1,50 @@
+name: PR Quality Gates
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: Threat, tests, lint, build, dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency vulnerability gate
+        run: pnpm audit --audit-level=high
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Shared build
+        run: pnpm --filter @medora/shared build
+
+      - name: API typecheck
+        run: pnpm --filter @medora/api exec tsc --noEmit -p tsconfig.build.json
+
+      - name: Web typecheck
+        run: pnpm --filter @medora/web exec tsc --noEmit
+
+      - name: Web build
+        run: pnpm --filter @medora/web build
+
+      - name: Security regression tests
+        working-directory: apps/api
+        run: pnpm exec jest --config jest.config.cjs facility-isolation.e2e.spec.ts rbac.e2e.spec.ts patient-records.service.spec.ts patient-documents.service.spec.ts patient-document-release.service.spec.ts --runInBand
